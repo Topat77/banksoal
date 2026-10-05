@@ -186,6 +186,13 @@ function layarKurikulum() {
   };
 }
 
+// daftar kelas untuk tiap jenjang
+const KELAS_PER_JENJANG = {
+  SD:  ["Kelas 1", "Kelas 2", "Kelas 3", "Kelas 4", "Kelas 5", "Kelas 6"],
+  SMP: ["Kelas 7", "Kelas 8", "Kelas 9"],
+  SMA: ["Kelas 10", "Kelas 11", "Kelas 12"]
+};
+
 function formKurikulum() {
   const lama = data.kurikulum.find(k => k.id === posisi.kurEditId);
   const k = lama || { nama: "Kurikulum Merdeka", jenjang: "SMP", mapel: "", kelas: "" };
@@ -194,7 +201,7 @@ function formKurikulum() {
   jejak.textContent = "";
   tombolKembali.hidden = false;
 
-  const opsiJenjang = ["SMP", "SMA"]
+  const opsiJenjang = ["SD", "SMP", "SMA"]
     .map(j => `<option ${k.jenjang === j ? "selected" : ""}>${j}</option>`)
     .join("");
 
@@ -203,10 +210,35 @@ function formKurikulum() {
       <label>Nama kurikulum <input name="nama" value="${aman(k.nama)}" required></label>
       <label>Jenjang <select name="jenjang">${opsiJenjang}</select></label>
       <label>Mata pelajaran <input name="mapel" value="${aman(k.mapel)}" placeholder="Bahasa Indonesia" required></label>
-      <label>Kelas <input name="kelas" value="${aman(k.kelas)}" placeholder="Kelas 8" required></label>
+      <label>Kelas <select name="kelas" required></select></label>
       <button type="submit" class="tombol-tambah">Simpan</button>
       ${lama ? `<button type="button" class="tombol-hapus" id="hapus">Hapus kurikulum ini</button>` : ""}
     </form>`;
+
+  // isi pilihan kelas sesuai jenjang yang dipilih
+  const pilihJenjang = document.querySelector('[name="jenjang"]');
+  const pilihKelas = document.querySelector('[name="kelas"]');
+
+  function aturKelas() {
+    const kelasSekarang = pilihKelas.value || k.kelas;
+    const daftar = KELAS_PER_JENJANG[pilihJenjang.value] || [];
+    let html = daftar
+      .map(kelas => `<option>${kelas}</option>`)
+      .join("");
+    // data lama yang kelasnya diketik bebas tetap bisa dipilih
+    if (kelasSekarang && !daftar.includes(kelasSekarang)) {
+      html += `<option value="${aman(kelasSekarang)}">${aman(kelasSekarang)}</option>`;
+    }
+    pilihKelas.innerHTML = html;
+    if (kelasSekarang) pilihKelas.value = kelasSekarang;
+    if (!pilihKelas.value) pilihKelas.selectedIndex = 0;
+  }
+  pilihJenjang.onchange = () => {
+    pilihKelas.value = ""; // ganti jenjang → mulai dari kelas pertama jenjang itu
+    k.kelas = "";
+    aturKelas();
+  };
+  aturKelas();
 
   document.getElementById("form").onsubmit = (e) => {
     e.preventDefault();
