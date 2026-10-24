@@ -38,6 +38,6 @@ const KONFIG = {
 
   ai: {
     model: "gemini-3.8-flash",
-    appCheckKey: ""
+    appCheckKey: "6LfLRP4tAAAAAE-ZJ7xPTPcemz4mGBiACH3QVNMw"
   }
 };

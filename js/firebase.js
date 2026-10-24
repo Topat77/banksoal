@@ -33,8 +33,9 @@ export async function buatBackendFirebase(konfig) {
       // di laptop (Live Server) pakai "debug token": kodenya muncul di Console browser,
       // lalu didaftarin sekali di Firebase → App Check → Apps → Manage debug tokens
       if (["localhost", "127.0.0.1"].includes(location.hostname)) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-      const { initializeAppCheck, ReCaptchaV3Provider } = await import(`${SDK}/firebase-app-check.js`);
-      initializeAppCheck(app, { provider: new ReCaptchaV3Provider(setelanAI.appCheckKey), isTokenAutoRefreshEnabled: true });
+      // pakai Fraud Defense (dulu namanya reCAPTCHA Enterprise); reCAPTCHA v3 lama udah nggak diterima
+      const { initializeAppCheck, ReCaptchaEnterpriseProvider } = await import(`${SDK}/firebase-app-check.js`);
+      initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(setelanAI.appCheckKey), isTokenAutoRefreshEnabled: true });
     } catch (err) {
       console.warn("App Check gagal dipasang:", err);
     }
