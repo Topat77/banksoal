@@ -177,15 +177,22 @@ function bacaJawabanAI(teks, bahan) {
 
 function pesanGagalAI(err) {
   const t = `${(err && err.code) || ""} ${(err && err.message) || err || ""}`;
-  if (!navigator.onLine || /network|fetch|Failed to fetch/i.test(t)) return "Sinyal putus. Bikin soal pakai AI butuh internet, coba lagi pas ada sinyal.";
+  if (!navigator.onLine) return "Sinyal putus. Bikin soal pakai AI butuh internet, coba lagi pas ada sinyal.";
   if (/JAWABAN_RUSAK/.test(t)) return "Jawaban AI-nya nggak kebaca. Coba tekan Buat draft soal sekali lagi.";
   if (/JAWABAN_KOSONG/.test(t)) return "AI nggak ngasih soal apa pun. Coba tambahin bahannya (target capaian, ringkasan, atau PDF), lalu coba lagi.";
-  if (/429|quota|RESOURCE_EXHAUSTED|rate/i.test(t)) return "Jatah AI gratis lagi habis atau kebanyakan permintaan. Tunggu sebentar (atau besok), atau kurangi jumlah soal.";
+  if (/\b429\b|quota|RESOURCE_EXHAUSTED|rate.?limit|too many requests/i.test(t)) return "Jatah AI gratis lagi habis atau kebanyakan permintaan. Tunggu sebentar (atau besok), atau kurangi jumlah soal.";
   if (/app.?check/i.test(t)) return "AI ditolak karena pengaman App Check. Admin perlu ngecek pengaturan App Check di Firebase (lihat tutorial).";
-  if (/not.*enabled|has not been used|PERMISSION_DENIED|403|api-not-enabled/i.test(t)) return "Fitur AI belum diaktifkan di Firebase. Admin perlu nyalain Firebase AI Logic dulu (lihat tutorial).";
+  if (/network-request-failed|Failed to fetch|NetworkError/i.test(t)) return "Gagal nyambung ke server AI. Cek sinyal, lalu coba lagi.";
+  if (/not.*enabled|has not been used|PERMISSION_DENIED|403|api-not-enabled|genai config not found|config-not-found/i.test(t)) return "Fitur AI belum diaktifkan di Firebase. Admin perlu nyalain Firebase AI Logic dulu (lihat tutorial).";
   if (/SAFETY|blocked/i.test(t)) return "AI menolak bahan ini. Coba ubah ringkasan atau catatan tambahannya.";
   if (/too large|payload|size/i.test(t)) return `File PDF-nya kegedean. Maksimal ${AI_MAKS_PDF_MB} MB.`;
   return "Gagal bikin soal pakai AI. " + ((err && err.message) || "");
+}
+// pesan + kode aslinya (buat dilaporin kalau ada masalah)
+function pesanGagalAILengkap(err) {
+  const kode = (err && (err.code || err.name)) || "";
+  const asli = String((err && err.message) || err || "").slice(0, 160);
+  return `${pesanGagalAI(err)}${kode || asli ? ` (detail: ${[kode, asli].filter(Boolean).join(" · ")})` : ""}`;
 }
 
 function bacaFileBase64(file) {
@@ -332,7 +339,7 @@ function layarAISoal() {
       document.getElementById("wadahDraf").scrollIntoView({ block: "start", behavior: "smooth" });
     } catch (err) {
       console.warn("AI gagal:", err);
-      status.textContent = pesanGagalAI(err);
+      status.textContent = pesanGagalAILengkap(err);
     } finally {
       tombol.disabled = false;
     }

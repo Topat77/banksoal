@@ -505,6 +505,15 @@ function layarBeranda() {
           <button class="tombol-teks" id="keAkun">Lihat</button>
         </div>`;
     }
+    const hariCadangan = hariSejakCadangan();
+    const adaIsi = toko.mapel.length > 0 || toko.santri.length > 0;
+    if (adaIsi && (hariCadangan === null || hariCadangan >= BATAS_HARI_CADANGAN)) {
+      utama += `
+        <div class="pemberitahuan">
+          <p>${hariCadangan === null ? "<b>Cadangan data belum pernah diunduh.</b>" : `<b>Cadangan data terakhir diunduh ${hariCadangan} hari lalu.</b>`} Unduh sekarang biar data aman kalau ada yang kehapus.</p>
+          <button class="tombol-teks" id="cadanganBeranda">Unduh cadangan</button>
+        </div>`;
+    }
     const kelasKosong = daftarKelas().filter(x => santriKelas(x.jenjang, x.kelas).length === 0);
     if (kelasKosong.length) {
       utama += `
@@ -620,6 +629,10 @@ function layarBeranda() {
   klik("keKelola", () => pergi("kelolaMapel", { dariMapel: false }));
   klik("keSantri", () => pergi("santri", { dariNilai: false }));
   klik("keBobot", () => pergi("bobot"));
+  klik("cadanganBeranda", async () => {
+    const b = document.getElementById("cadanganBeranda");
+    if (await unduhCadangan(b, null)) tampilkan(true);
+  });
   klik("keRapor", () => pergi("rapor"));
   isi.querySelectorAll("[data-kelas-kosong]").forEach(b => b.onclick = () => pergi("santri", { kelasSantri: b.dataset.kelasKosong, dariNilai: false }));
 
@@ -839,7 +852,7 @@ function layarLainnya() {
             <span class="tersimpan" id="tersimpanLembaga" role="status"></span>
           </div>
         </form>
-      </section>`;
+      </section>` + htmlBagianCadangan();
   }
 
   const pilih = pilihanTema();
@@ -887,6 +900,8 @@ function layarLainnya() {
     simpanPengguna(uidSaya(), { ...lama, nama });
     document.getElementById("tersimpanProfil").textContent = "Tersimpan";
   };
+  const uc = document.getElementById("unduhCadangan");
+  if (uc) uc.onclick = () => unduhCadangan(uc, document.getElementById("pesanCadangan"));
   const fl = document.getElementById("formLembaga");
   if (fl) {
     fl.onsubmit = (e) => {
