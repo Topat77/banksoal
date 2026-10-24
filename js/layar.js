@@ -1,5 +1,10 @@
 // =====================================================
-//  layar.js — semua LAYAR dan pindah-pindah layar
+//  layar.js — kerangka layar, menu, beranda, mapel, lainnya, cari
+//
+//  Alur ustadz:  Beranda → Mapel (pilih semester, tab Modul/Sumatif)
+//                  → Modul (pertemuan + target capaian + soal formatif)
+//                  → Sumatif (susun ujian dari soal modul) → Cetak
+//  Alur admin (TU): Beranda → Pantauan / Akun / Mapel & pengampu / Santri / Bobot / Rapor
 // =====================================================
 
 // ====== ELEMEN TETAP DI HALAMAN ======
@@ -7,1109 +12,921 @@ const isi = document.getElementById("isi");
 const judul = document.getElementById("judul");
 const jejak = document.getElementById("jejak");
 const tombolKembali = document.getElementById("tombolKembali");
-
-// alamat sementara buat nampilin file, dibuang tiap pindah layar
-let urlFileAktif = null;
+const samping = document.getElementById("samping");
+const navBawah = document.getElementById("navBawah");
+const tandaHeader = document.getElementById("tandaHeader");
 
 // ====== POSISI & PINDAH LAYAR ======
-let posisi = { layar: "kurikulum" };
+let posisi = { layar: "beranda" };
+let statusTergambar = null;
 
+// nama layar → nama fungsinya (dicari pas dipakai, karena fungsinya ada di beberapa file)
 const daftarLayar = {
-  kurikulum: layarKurikulum,
-  formKurikulum: formKurikulum,
-  promes: layarPromes,
-  formPromes: formPromes,
-  isiPromes: layarIsiPromes,
-  formSalin: formSalin,
-  formModul: formModul,
-  modul: layarModul,
-  formBacaan: formBacaan,
-  formSoal: formSoal,
-  formSumatif: formSumatif,
-  sumatif: layarSumatif,
-  pilihSoal: layarPilihSoal,
-  cari: layarCari,
-  cetak: layarCetak
+  beranda: "layarBeranda",
+  mapel: "layarMapel",
+  formSemester: "formSemester",
+  formModul: "formModul",
+  modul: "layarModul",
+  formBacaan: "formBacaan",
+  formSoal: "formSoal",
+  formSumatif: "formSumatif",
+  sumatif: "layarSumatif",
+  pilihSoal: "layarPilihSoal",
+  formSoalUjian: "formSoalUjian",
+  formSalin: "formSalin",
+  cetak: "layarCetak",
+  cari: "layarCari",
+  lainnya: "layarLainnya",
+  akun: "layarAkun",
+  kelolaMapel: "layarKelolaMapel",
+  formMapel: "formMapel",
+  pantauan: "layarPantauan",
+  santri: "layarSantri",
+  nilai: "layarNilai",
+  rapor: "layarRapor",
+  raporCetak: "layarRaporCetak",
+  bobot: "layarBobot",
+  aiSoal: "layarAISoal"
 };
 
-// gambar layar sesuai posisi
-// tetapDiTempat = true → jangan scroll ke atas (misal habis geser urutan soal)
+// layar yang nggak boleh digambar ulang sendiri waktu data berubah
+// (lagi ngetik / milih sesuatu, nanti isiannya hilang)
+const LAYAR_DIAM = ["formSemester", "formModul", "formBacaan", "formSoal", "formSumatif",
+                    "pilihSoal", "cetak", "cari", "lainnya", "formMapel", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal"];
+
+// data hilang (misal dihapus dari perangkat lain) → dilempar biar balik ke layar aman
+class DataHilang extends Error {}
+function butuh(x) {
+  if (!x) throw new DataHilang();
+  return x;
+}
+
 function tampilkan(tetapDiTempat = false) {
-  if (urlFileAktif) {
-    URL.revokeObjectURL(urlFileAktif);
-    urlFileAktif = null;
+  statusTergambar = toko.status;
+  document.body.dataset.status = toko.status;
+  tombolKembali.hidden = true;
+  jejak.textContent = "";
+
+  if (toko.status !== "aktif") {
+    samping.innerHTML = "";
+    navBawah.innerHTML = "";
+    gambarStatus();
+    gambarTanda();
+    window.scrollTo(0, 0);
+    return;
   }
 
   try {
-    daftarLayar[posisi.layar]();
+    window[daftarLayar[posisi.layar] || "layarBeranda"]();
   } catch (err) {
-    // jaga-jaga: kalau data yang dibuka ternyata udah kehapus, balik ke awal
-    console.error(err);
-    posisi = { layar: "kurikulum" };
-    layarKurikulum();
+    if (err instanceof DataHilang && posisi.mapelId && mapelBisaDibuka(posisi.mapelId) && !isiMapelSiap(posisi.mapelId)) {
+      // isi mapel belum kelar dimuat
+      judul.textContent = "Memuat...";
+      isi.innerHTML = `<p class="kosong">Memuat data...</p>`;
+    } else {
+      if (!(err instanceof DataHilang)) console.error(err);
+      // balik ke halaman mapel kalau masih bisa, kalau nggak ke beranda
+      const keMapel = posisi.mapelId && mapelBisaDibuka(posisi.mapelId) && posisi.layar !== "mapel";
+      posisi = keMapel ? { ...posisi, layar: "mapel" } : { layar: "beranda" };
+      try {
+        window[daftarLayar[posisi.layar]]();
+      } catch (err2) {
+        if (!(err2 instanceof DataHilang)) console.error(err2);
+        posisi = { layar: "beranda" };
+        layarBeranda();
+      }
+    }
   }
+
+  gambarSamping();
+  gambarNavBawah();
+  gambarTanda();
+  segarkanTandaTema();
+
+  judul.title = judul.textContent;
+  jejak.title = jejak.textContent;
+  judul.dir = "auto";
+  isi.querySelectorAll('textarea, input:not([type]), input[type="search"], input[type="text"]').forEach(el => el.dir = "auto");
 
   if (!tetapDiTempat) window.scrollTo(0, 0);
 }
 
 function pergi(layar, tambahan = {}) {
+  // nilai yang baru diketik langsung disimpan sebelum pindah layar
+  if (typeof kirimNilaiTertunda === "function") kirimNilaiTertunda();
   posisi = { ...posisi, ...tambahan, layar };
   tampilkan();
+}
+
+// data berubah (dari perangkat ini atau perangkat lain)
+let tandaLayarModul = null;
+function segarkanLayar(penuh) {
+  if (penuh || statusTergambar !== toko.status) {
+    if (statusTergambar !== toko.status && toko.status === "aktif") posisi = { layar: "beranda" };
+    return tampilkan(statusTergambar === toko.status);
+  }
+  if (toko.status !== "aktif") return;
+
+  if (LAYAR_DIAM.includes(posisi.layar)) {
+    if (!samping.contains(document.activeElement)) gambarSamping();
+    gambarNavBawah();
+    return;
+  }
+  if (posisi.layar === "modul") {
+    // layar modul ada pratinjau PDF: jangan digambar ulang kalau modulnya nggak berubah
+    const m = modulMapel(posisi.mapelId).find(x => x.id === posisi.modId);
+    const tanda = JSON.stringify([m, toko.lembaga]);
+    if (tanda === tandaLayarModul) {
+      if (!samping.contains(document.activeElement)) gambarSamping();
+      return;
+    }
+  }
+  tampilkan(true);
 }
 
 // tombol ‹ : tiap layar balik ke layar "induk"-nya
 function layarInduk() {
   const L = posisi.layar;
-  if (L === "formKurikulum") return posisi.kurEditId ? "promes" : "kurikulum";
-  if (L === "formPromes") return posisi.proEditId ? "isiPromes" : "promes";
-  if (L === "formModul") return posisi.modEditId ? "modul" : "isiPromes";
-  if (L === "formSumatif") return posisi.sumEditId ? "sumatif" : "isiPromes";
+  if (L === "formModul") return posisi.modEditId ? "modul" : "mapel";
+  if (L === "formSumatif") return posisi.sumEditId ? "sumatif" : "mapel";
   if (L === "cetak") return posisi.cetakDari;
+  if (L === "formMapel") return posisi.dariMapel ? "mapel" : "kelolaMapel";
+  if (L === "formSalin") return posisi.salinDari === "modul" ? "modul" : "mapel";
+  if (L === "santri") return posisi.dariNilai ? "nilai" : "beranda";
+  if (L === "aiSoal") return posisi.aiUntuk === "sumatif" ? "sumatif" : "modul";
   return {
-    promes: "kurikulum",
-    cari: "kurikulum",
-    isiPromes: "promes",
-    formSalin: "isiPromes",
-    modul: "isiPromes",
+    mapel: "beranda",
+    formSemester: "mapel",
+    modul: "mapel",
     formBacaan: "modul",
     formSoal: "modul",
-    sumatif: "isiPromes",
-    pilihSoal: "sumatif"
-  }[L];
+    sumatif: "mapel",
+    pilihSoal: "sumatif",
+    formSoalUjian: "sumatif",
+    nilai: "mapel",
+    raporCetak: "rapor"
+  }[L] || "beranda";
 }
-tombolKembali.onclick = () => pergi(layarInduk());
-
-// ====== PENCARI DATA ======
-function kurAktif() {
-  return data.kurikulum.find(k => k.id === posisi.kurId);
-}
-function proAktif() {
-  return kurAktif().promes.find(p => p.id === posisi.proId);
-}
-function modAktif() {
-  return proAktif().modul.find(m => m.id === posisi.modId);
-}
-function sumAktif() {
-  return proAktif().sumatif.find(s => s.id === posisi.sumId);
-}
-
-// cari soal pakai id di semua modul semester ini
-function cariSoal(id) {
-  const p = proAktif();
-  for (let i = 0; i < p.modul.length; i++) {
-    const m = p.modul[i];
-    const s = m.soal.find(s => s.id === id);
-    if (s) {
-      return {
-        soal: s,
-        modul: m,
-        asal: `Modul ${i + 1}`,
-        bacaan: m.bacaan.find(b => b.id === s.bacaanId) || null
-      };
-    }
-  }
-  return null; // nggak ketemu (mungkin udah dihapus)
-}
-
-// pasang tombol ↑ ↓ buat ngatur urutan isi sebuah daftar
-function pasangGeser(daftar) {
-  isi.querySelectorAll("[data-naik]").forEach(b => {
-    b.onclick = () => { geser(daftar, Number(b.dataset.naik), -1); simpan(); tampilkan(true); };
-  });
-  isi.querySelectorAll("[data-turun]").forEach(b => {
-    b.onclick = () => { geser(daftar, Number(b.dataset.turun), 1); simpan(); tampilkan(true); };
-  });
-}
-
-// =====================================================
-//  KURIKULUM
-// =====================================================
-function layarKurikulum() {
-  judul.textContent = "Bank Soal";
-  jejak.textContent = "";
-  tombolKembali.hidden = true;
-
-  let html = "";
-  if (data.kurikulum.length === 0) {
-    html += `<p class="kosong">Belum ada kurikulum. Tambah dulu yuk.</p>`;
-  } else {
-    html += `
-      <form class="cari" id="formCari" role="search">
-        <input type="search" name="kata" placeholder="Cari soal di semua kurikulum..." aria-label="Cari soal">
-      </form>`;
-  }
-  for (const k of data.kurikulum) {
-    html += `
-      <button class="kartu" data-id="${k.id}">
-        <strong>${aman(k.mapel)} · ${aman(k.kelas)}</strong>
-        <span>${aman(k.nama)} · ${aman(k.jenjang)} · ${k.promes.length} promes</span>
-      </button>`;
-  }
-  html += `<button class="tombol-tambah" id="tambah">+ Tambah Kurikulum</button>`;
-  html += `
-    <div class="kotak-backup">
-      <strong>Pindah data &amp; backup</strong>
-      <span>${teksTerakhirBackup()}</span>
-      <div class="pilih-jenis">
-        <button class="tombol-kecil" id="kirimData">Kirim Data</button>
-        <button class="tombol-kecil" id="ambilData">Ambil Data</button>
-      </div>
-      <input type="file" id="fileData" hidden>
-    </div>`;
-  isi.innerHTML = html;
-
-  const formCari = document.getElementById("formCari");
-  if (formCari) {
-    formCari.onsubmit = (e) => {
-      e.preventDefault();
-      pergi("cari", { kata: formCari.kata.value });
-    };
-  }
-
-  document.getElementById("tambah").onclick = () => pergi("formKurikulum", { kurEditId: null });
-  isi.querySelectorAll(".kartu").forEach(kartu => {
-    kartu.onclick = () => pergi("promes", { kurId: kartu.dataset.id });
-  });
-
-  const tombolKirim = document.getElementById("kirimData");
-  tombolKirim.onclick = async () => {
-    tombolKirim.disabled = true;
-    tombolKirim.textContent = "Menyiapkan...";
-    await eksporData();
-    tampilkan(true); // gambar ulang biar tanggal backup ke-update
-  };
-
-  const pilihFile = document.getElementById("fileData");
-  document.getElementById("ambilData").onclick = () => pilihFile.click();
-  pilihFile.onchange = () => {
-    if (pilihFile.files[0]) imporData(pilihFile.files[0]);
-  };
-}
-
-// daftar kelas untuk tiap jenjang
-const KELAS_PER_JENJANG = {
-  SD:  ["Kelas 1", "Kelas 2", "Kelas 3", "Kelas 4", "Kelas 5", "Kelas 6"],
-  SMP: ["Kelas 7", "Kelas 8", "Kelas 9"],
-  SMA: ["Kelas 10", "Kelas 11", "Kelas 12"]
+tombolKembali.onclick = () => {
+  const ke = layarInduk();
+  if (ke === "mapel" && posisi.layar === "modul") return pergi(ke, { tab: "modul" });
+  if (ke === "mapel" && posisi.layar === "sumatif") return pergi(ke, { tab: "sumatif" });
+  if (ke === "mapel" && posisi.layar === "nilai") return pergi(ke, { tab: "nilai" });
+  pergi(ke);
 };
 
-function formKurikulum() {
-  const lama = data.kurikulum.find(k => k.id === posisi.kurEditId);
-  const k = lama || { nama: "Kurikulum Merdeka", jenjang: "SMP", mapel: "", kelas: "" };
+// ====== PENCARI DATA LAYAR ======
+// mapel yang boleh dibuka: yang diampu (atau semua, buat kurikulum)
+function mapelBisaDibuka(id) { return mapelTerlihat().find(m => m.id === id) || null; }
+function mapelAktif() { return butuh(mapelBisaDibuka(posisi.mapelId)); }
+function semAktif() { return posisi.semester ? dariKunciSemester(posisi.semester) : semesterSekarang(); }
+function modAktif() { return butuh(modulMapel(posisi.mapelId).find(m => m.id === posisi.modId)); }
+function sumAktif() { return butuh(sumatifMapel(posisi.mapelId).find(s => s.id === posisi.sumId)); }
 
-  judul.textContent = lama ? "Edit Kurikulum" : "Tambah Kurikulum";
-  jejak.textContent = "";
-  tombolKembali.hidden = false;
+function jumlahSoal(m) { return (m.soal || []).length; }
+function namaMapel(m) { return `${m.nama} ${m.kelas}`; }
 
-  const opsiJenjang = ["SD", "SMP", "SMA"]
-    .map(j => `<option ${k.jenjang === j ? "selected" : ""}>${j}</option>`)
-    .join("");
+// semua semester yang ada isinya di satu mapel + semester sekarang
+function daftarSemesterMapel(idMapel) {
+  const peta = new Map();
+  const tambah = (x) => peta.set(kunciSemester(x), { semester: x.semester, tahun: x.tahun });
+  tambah(semesterSekarang());
+  modulMapel(idMapel).forEach(tambah);
+  sumatifMapel(idMapel).forEach(tambah);
+  if (posisi.semester && posisi.mapelId === idMapel) tambah(dariKunciSemester(posisi.semester));
+  return [...peta.values()].sort(bandingSemester);
+}
 
-  isi.innerHTML = `
-    <form id="form">
-      <label>Nama kurikulum <input name="nama" value="${aman(k.nama)}" required></label>
-      <label>Jenjang <select name="jenjang">${opsiJenjang}</select></label>
-      <label>Mata pelajaran <input name="mapel" value="${aman(k.mapel)}" placeholder="Bahasa Indonesia" required></label>
-      <label>Kelas <select name="kelas" required></select></label>
-      <button type="submit" class="tombol-tambah">Simpan</button>
-      ${lama ? `<button type="button" class="tombol-hapus" id="hapus">Hapus kurikulum ini</button>` : ""}
-    </form>`;
+// ====== POTONGAN HTML YANG SERING DIPAKAI ======
+const LOGO = `<svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+  <rect class="logo-kertas" x="6" y="3" width="20" height="26" rx="3" stroke-width="2"/>
+  <path class="logo-garis" d="M11 10h10M11 15h10M17 22h4" fill="none" stroke-width="2" stroke-linecap="round"/>
+  <ellipse class="logo-lingkar" cx="12.5" cy="22" rx="3.3" ry="2.7" transform="rotate(-14 12.5 22)" fill="none" stroke-width="2"/>
+</svg>`;
 
-  // isi pilihan kelas sesuai jenjang yang dipilih
-  const pilihJenjang = document.querySelector('[name="jenjang"]');
-  const pilihKelas = document.querySelector('[name="kelas"]');
+const IKON = {
+  beranda: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>`,
+  cari: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>`,
+  lainnya: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-3.5 3.8-5 7-5s6 1.5 7 5"/></svg>`,
+  pantauan: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,
+  akun: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.8-3 3-4.5 6-4.5s5.2 1.5 6 4.5M16 6.5a3 3 0 0 1 0 5.5M18 14.8c1.6.6 2.6 2 3 4.2"/></svg>`,
+  mapel: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/></svg>`,
+  rapor: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4M10 12h6M10 16h6"/></svg>`,
+  santri: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>`
+};
 
-  function aturKelas() {
-    const kelasSekarang = pilihKelas.value || k.kelas;
-    const daftar = KELAS_PER_JENJANG[pilihJenjang.value] || [];
-    let html = daftar
-      .map(kelas => `<option>${kelas}</option>`)
-      .join("");
-    // data lama yang kelasnya diketik bebas tetap bisa dipilih
-    if (kelasSekarang && !daftar.includes(kelasSekarang)) {
-      html += `<option value="${aman(kelasSekarang)}">${aman(kelasSekarang)}</option>`;
-    }
-    pilihKelas.innerHTML = html;
-    if (kelasSekarang) pilihKelas.value = kelasSekarang;
-    if (!pilihKelas.value) pilihKelas.selectedIndex = 0;
-  }
-  pilihJenjang.onchange = () => {
-    pilihKelas.value = ""; // ganti jenjang → mulai dari kelas pertama jenjang itu
-    k.kelas = "";
-    aturKelas();
-  };
-  aturKelas();
-
-  document.getElementById("form").onsubmit = (e) => {
-    e.preventDefault();
-    const f = new FormData(e.target);
-    const isian = {
-      nama: f.get("nama"),
-      jenjang: f.get("jenjang"),
-      mapel: f.get("mapel"),
-      kelas: f.get("kelas")
-    };
-    if (lama) {
-      Object.assign(lama, isian);
-      simpan();
-      pergi("promes");
-    } else {
-      data.kurikulum.push({ id: buatId(), ...isian, promes: [] });
-      simpan();
-      pergi("kurikulum");
-    }
-  };
-
-  if (lama) {
-    document.getElementById("hapus").onclick = async () => {
-      const modul = lama.promes.flatMap(p => p.modul);
-      const jumlahSoal = modul.reduce((n, m) => n + m.soal.length, 0);
-      const yakin = confirm(
-        `Hapus kurikulum ${lama.mapel} ${lama.kelas}?\n\n` +
-        `Semua promes, ${modul.length} modul, dan ${jumlahSoal} soal di dalamnya ikut terhapus dan TIDAK bisa dikembalikan.`
-      );
-      if (!yakin) return;
-      await hapusFileModul(modul);
-      data.kurikulum = data.kurikulum.filter(x => x.id !== lama.id);
-      simpan();
-      pergi("kurikulum");
-    };
-  }
+// satu baris di daftar
+function htmlBaris({ attr, nomor, judulBaris, sub, kanan, tanda, tandaJenis, arahJudul }) {
+  return `
+    <button class="baris" ${attr}>
+      ${nomor !== undefined ? `<span class="baris-nomor">${nomor}</span>` : ""}
+      <span class="baris-isi">
+        <strong${arahJudul ? ` dir="auto"` : ""}>${judulBaris}</strong>
+        ${sub ? `<span class="baris-sub">${sub}</span>` : ""}
+        ${tanda ? `<span class="tanda ${tandaJenis || ""}">${tanda}</span>` : ""}
+      </span>
+      ${kanan ? `<span class="baris-kanan">${kanan}</span>` : ""}
+      <span class="baris-panah" aria-hidden="true">›</span>
+    </button>`;
 }
 
 // =====================================================
-//  PROMES
+//  LAYAR STATUS: memuat, masuk, menunggu persetujuan
 // =====================================================
-function layarPromes() {
-  const k = kurAktif();
-  judul.textContent = `${k.mapel} · ${k.kelas}`;
-  jejak.textContent = `${k.nama} · ${k.jenjang}`;
-  tombolKembali.hidden = false;
+function gambarStatus() {
+  const lembaga = KONFIG.namaLembaga || "";
+  judul.innerHTML = `<span class="judul-logo">${LOGO}${aman(KONFIG.namaAplikasi)}</span>`;
+  const coba = toko.backend && toko.backend.mode === "coba";
 
-  let html = `
-    <div class="baris-aksi">
-      <button class="tombol-kecil" id="editKur">Edit kurikulum</button>
-    </div>`;
-  if (k.promes.length === 0) {
-    html += `<p class="kosong">Belum ada promes.</p>`;
-  }
-  for (const p of k.promes) {
-    html += `
-      <button class="kartu" data-id="${p.id}">
-        <strong>Semester ${aman(p.semester)}</strong>
-        <span>${aman(p.tahun)} · ${p.modul.length} modul · ${p.sumatif.length} sumatif</span>
-      </button>`;
-  }
-  html += `<button class="tombol-tambah" id="tambah">+ Tambah Promes</button>`;
-  isi.innerHTML = html;
-
-  document.getElementById("editKur").onclick = () => pergi("formKurikulum", { kurEditId: k.id });
-  document.getElementById("tambah").onclick = () => pergi("formPromes", { proEditId: null });
-  isi.querySelectorAll(".kartu").forEach(kartu => {
-    kartu.onclick = () => pergi("isiPromes", { proId: kartu.dataset.id, tab: "modul" });
-  });
-}
-
-function formPromes() {
-  const k = kurAktif();
-  const lama = k.promes.find(p => p.id === posisi.proEditId);
-  const p = lama || { semester: "Ganjil", tahun: "" };
-
-  judul.textContent = lama ? "Edit Promes" : "Tambah Promes";
-  jejak.textContent = `${k.mapel} · ${k.kelas}`;
-  tombolKembali.hidden = false;
-
-  const opsiSemester = ["Ganjil", "Genap"]
-    .map(s => `<option ${p.semester === s ? "selected" : ""}>${s}</option>`)
-    .join("");
-
-  isi.innerHTML = `
-    <form id="form">
-      <label>Semester <select name="semester">${opsiSemester}</select></label>
-      <label>Tahun ajaran <input name="tahun" value="${aman(p.tahun)}" placeholder="2026/2027" required></label>
-      <button type="submit" class="tombol-tambah">Simpan</button>
-      ${lama ? `<button type="button" class="tombol-hapus" id="hapus">Hapus promes ini</button>` : ""}
-    </form>`;
-
-  document.getElementById("form").onsubmit = (e) => {
-    e.preventDefault();
-    const f = new FormData(e.target);
-    const isian = { semester: f.get("semester"), tahun: f.get("tahun") };
-    if (lama) {
-      Object.assign(lama, isian);
-      simpan();
-      pergi("isiPromes");
-    } else {
-      k.promes.push({ id: buatId(), ...isian, modul: [], sumatif: [] });
-      simpan();
-      pergi("promes");
-    }
-  };
-
-  if (lama) {
-    document.getElementById("hapus").onclick = async () => {
-      const jumlahSoal = lama.modul.reduce((n, m) => n + m.soal.length, 0);
-      const yakin = confirm(
-        `Hapus promes Semester ${lama.semester} ${lama.tahun}?\n\n` +
-        `${lama.modul.length} modul, ${jumlahSoal} soal, dan ${lama.sumatif.length} sumatif ikut terhapus dan TIDAK bisa dikembalikan.`
-      );
-      if (!yakin) return;
-      await hapusFileModul(lama.modul);
-      k.promes = k.promes.filter(x => x.id !== lama.id);
-      simpan();
-      pergi("promes");
-    };
-  }
-}
-
-// ====== ISI PROMES (TAB MODUL / SUMATIF) ======
-function layarIsiPromes() {
-  const k = kurAktif();
-  const p = proAktif();
-  const tab = posisi.tab || "modul";
-  judul.textContent = `Semester ${p.semester} ${p.tahun}`;
-  jejak.textContent = `${k.mapel} · ${k.kelas}`;
-  tombolKembali.hidden = false;
-
-  let html = `
-    <div class="baris-aksi">
-      <button class="tombol-kecil" id="editPro">Edit promes</button>
-      <button class="tombol-kecil" id="salinPro">Salin ke tahun ajaran baru</button>
-    </div>
-    <div class="tab">
-      <button data-tab="modul" class="${tab === "modul" ? "aktif" : ""}">Modul Ajar</button>
-      <button data-tab="sumatif" class="${tab === "sumatif" ? "aktif" : ""}">Sumatif</button>
-    </div>`;
-
-  if (tab === "modul") {
-    if (p.modul.length === 0) html += `<p class="kosong">Belum ada modul ajar.</p>`;
-    p.modul.forEach((m, i) => {
-      html += `
-        <button class="kartu" data-id="${m.id}">
-          <small class="label">Modul ${i + 1}</small>
-          <strong>${aman(m.judul)}</strong>
-          <span>${aman(m.minggu || "Minggu belum diisi")} · ${m.soal.length} soal formatif</span>
-        </button>`;
-    });
-    html += `<button class="tombol-tambah" id="tambah">+ Tambah Modul Ajar</button>`;
-  } else {
-    html += `<p class="info">Soal sumatif disusun dari soal-soal di semua modul semester ini.</p>`;
-    if (p.sumatif.length === 0) html += `<p class="kosong">Belum ada soal sumatif.</p>`;
-    for (const s of p.sumatif) {
-      html += `
-        <button class="kartu kartu-sumatif" data-id="${s.id}">
-          <strong>${aman(s.nama)}</strong>
-          <span>${aman(s.pelaksanaan || "Pelaksanaan belum diisi")} · ${s.soalId.length} soal</span>
-        </button>`;
-    }
-    html += `<button class="tombol-tambah tombol-sumatif" id="tambah">+ Buat Soal Sumatif</button>`;
-  }
-  isi.innerHTML = html;
-
-  document.getElementById("editPro").onclick = () => pergi("formPromes", { proEditId: p.id });
-  document.getElementById("salinPro").onclick = () => pergi("formSalin");
-  isi.querySelectorAll(".tab button").forEach(b => {
-    b.onclick = () => pergi("isiPromes", { tab: b.dataset.tab });
-  });
-  document.getElementById("tambah").onclick = () => {
-    if (tab === "modul") pergi("formModul", { modEditId: null });
-    else pergi("formSumatif", { sumEditId: null });
-  };
-  isi.querySelectorAll(".kartu").forEach(kartu => {
-    if (tab === "modul") kartu.onclick = () => pergi("modul", { modId: kartu.dataset.id });
-    else kartu.onclick = () => pergi("sumatif", { sumId: kartu.dataset.id });
-  });
-}
-
-// ====== SALIN PROMES KE TAHUN AJARAN BARU ======
-function formSalin() {
-  const k = kurAktif();
-  const p = proAktif();
-  judul.textContent = "Salin Promes";
-  jejak.textContent = `Semester ${p.semester} ${p.tahun}`;
-  tombolKembali.hidden = false;
-
-  // tebak tahun berikutnya: 2026/2027 → 2027/2028
-  const cocok = (p.tahun || "").match(/(\d{4})\D+(\d{4})/);
-  const tahunBerikut = cocok ? `${Number(cocok[1]) + 1}/${Number(cocok[2]) + 1}` : "";
-  const jumlahSoal = p.modul.reduce((n, m) => n + m.soal.length, 0);
-
-  const opsiSemester = ["Ganjil", "Genap"]
-    .map(s => `<option ${p.semester === s ? "selected" : ""}>${s}</option>`)
-    .join("");
-
-  isi.innerHTML = `
-    <p class="info">Semua ${p.modul.length} modul, teks bacaan, dan ${jumlahSoal} soal bakal disalin ke promes baru. Yang lama tetap aman, jadi soal tahun lalu bisa dipakai ulang lalu diedit.</p>
-    <form id="form">
-      <label>Semester <select name="semester">${opsiSemester}</select></label>
-      <label>Tahun ajaran baru <input name="tahun" value="${aman(tahunBerikut)}" placeholder="2027/2028" required></label>
-      <label class="centang"><input type="checkbox" name="sumatif" checked> Ikut salin ${p.sumatif.length} soal sumatif</label>
-      <button type="submit" class="tombol-tambah" id="tombolSalin">Salin sekarang</button>
-    </form>`;
-
-  document.getElementById("form").onsubmit = async (e) => {
-    e.preventDefault();
-    const f = new FormData(e.target);
-    const tombol = document.getElementById("tombolSalin");
-    tombol.disabled = true;
-    tombol.textContent = "Menyalin...";
-    try {
-      const baru = await salinPromes(p, f.get("semester"), f.get("tahun"), f.get("sumatif") === "on");
-      k.promes.push(baru);
-      simpan();
-      pergi("isiPromes", { proId: baru.id, tab: "modul" });
-    } catch (err) {
-      alert("Gagal menyalin.\n\n" + err);
-      tombol.disabled = false;
-      tombol.textContent = "Salin sekarang";
-    }
-  };
-}
-
-// =====================================================
-//  MODUL
-// =====================================================
-function formModul() {
-  const p = proAktif();
-  const lama = p.modul.find(m => m.id === posisi.modEditId); // undefined kalau modul baru
-  const m = lama || { judul: "", minggu: "", link: "", catatan: "" };
-  const sumber = m.namaFile ? "file" : "link";
-
-  judul.textContent = lama ? "Edit Modul Ajar" : "Tambah Modul Ajar";
-  jejak.textContent = `Semester ${p.semester} ${p.tahun}`;
-  tombolKembali.hidden = false;
-
-  isi.innerHTML = `
-    <form id="form">
-      <label>Judul modul <input name="judul" value="${aman(m.judul)}" placeholder="Teks Eksposisi" required></label>
-      <label>Minggu ke- <input name="minggu" value="${aman(m.minggu || "")}" placeholder="Minggu 1–4"></label>
-
-      <div>
-        <p class="label-form">File modul (opsional)</p>
-        <div class="pilih-jenis">
-          <label class="radio"><input type="radio" name="sumber" value="link" ${sumber === "link" ? "checked" : ""}> Pakai link</label>
-          <label class="radio"><input type="radio" name="sumber" value="file" ${sumber === "file" ? "checked" : ""}> Upload file</label>
-        </div>
-      </div>
-
-      <label id="bagianLink">Link Google Drive / Docs
-        <input name="link" type="url" value="${aman(m.link || "")}" placeholder="https://drive.google.com/...">
-      </label>
-
-      <div id="bagianFile" class="kolom">
-        ${m.namaFile ? `<p class="info">File sekarang: <b>${aman(m.namaFile)}</b> (${ukuranRapi(m.ukuranFile)}). Pilih file baru kalau mau ganti.</p>` : ""}
-        <label>Pilih file (PDF paling enak, bisa langsung dilihat)
-          <input name="file" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx">
-        </label>
-      </div>
-
-      <label>Catatan (opsional) <textarea name="catatan" rows="3" placeholder="Tujuan pembelajaran, dll">${aman(m.catatan || "")}</textarea></label>
-      <button type="submit" class="tombol-tambah">Simpan</button>
-      ${lama ? `<button type="button" class="tombol-hapus" id="hapus">Hapus modul ini</button>` : ""}
-    </form>`;
-
-  const form = document.getElementById("form");
-
-  function aturSumber() {
-    const pakaiFile = form.sumber.value === "file";
-    document.getElementById("bagianLink").hidden = pakaiFile;
-    document.getElementById("bagianFile").hidden = !pakaiFile;
-  }
-  form.querySelectorAll('[name="sumber"]').forEach(r => r.onchange = aturSumber);
-  aturSumber();
-
-  form.onsubmit = async (e) => {
-    e.preventDefault();
-    const f = new FormData(form);
-    const pakaiFile = f.get("sumber") === "file";
-    const fileBaru = f.get("file");
-    const adaFileBaru = fileBaru && fileBaru.size > 0;
-
-    if (pakaiFile && !adaFileBaru && !m.namaFile) {
-      return alert("Pilih file modulnya dulu ya.");
-    }
-    if (adaFileBaru && fileBaru.size > 20 * 1024 * 1024) {
-      return alert("File-nya kegedean (maks 20 MB). Mending upload ke Drive terus pakai link.");
-    }
-
-    const id = lama ? lama.id : buatId();
-    const isian = {
-      judul: f.get("judul"),
-      minggu: f.get("minggu"),
-      catatan: f.get("catatan")
-    };
-
-    try {
-      if (pakaiFile) {
-        isian.link = "";
-        if (adaFileBaru) {
-          await simpanFile(id, fileBaru);
-          isian.namaFile = fileBaru.name;
-          isian.ukuranFile = fileBaru.size;
-          isian.jenisFile = fileBaru.type;
-        }
-      } else {
-        isian.link = f.get("link").trim();
-        if (m.namaFile) {
-          await hapusFile(id);
-          isian.namaFile = isian.ukuranFile = isian.jenisFile = null;
-        }
-      }
-    } catch (err) {
-      return alert("Gagal nyimpen file. Mungkin penyimpanan browser penuh.\n\n" + err);
-    }
-
-    if (lama) {
-      Object.assign(lama, isian); // soal & bacaan tetap aman
-      simpan();
-      pergi("modul");
-    } else {
-      p.modul.push({ id, ...isian, soal: [], bacaan: [] });
-      simpan();
-      pergi("isiPromes", { tab: "modul" });
-    }
-  };
-
-  if (lama) {
-    document.getElementById("hapus").onclick = async () => {
-      const yakin = confirm(
-        `Hapus modul "${lama.judul}"?\n\n` +
-        `${lama.soal.length} soal dan ${lama.bacaan.length} teks bacaan ikut terhapus, ` +
-        `dan soal-soalnya juga keluar dari semua sumatif. TIDAK bisa dikembalikan.`
-      );
-      if (!yakin) return;
-      const idSoal = new Set(lama.soal.map(s => s.id));
-      for (const sum of p.sumatif) sum.soalId = sum.soalId.filter(id => !idSoal.has(id));
-      await hapusFileModul([lama]);
-      p.modul = p.modul.filter(x => x.id !== lama.id);
-      simpan();
-      pergi("isiPromes", { tab: "modul" });
-    };
-  }
-}
-
-function layarModul() {
-  const p = proAktif();
-  const m = modAktif();
-  const nomorModul = p.modul.indexOf(m) + 1;
-  judul.textContent = m.judul;
-  jejak.textContent = `Semester ${p.semester} ${p.tahun} › Modul ${nomorModul}`;
-  tombolKembali.hidden = false;
-
-  // --- info modul ---
-  let html = `<div class="kotak-info">
-    <span>${aman(m.minggu || "Minggu belum diisi")}</span>`;
-  if (m.link && /^https?:\/\//.test(m.link)) {
-    html += `<a href="${aman(m.link)}" target="_blank" rel="noopener">Buka di tab baru ↗</a>`;
-  }
-  if (m.namaFile) {
-    html += `<span>File: <b>${aman(m.namaFile)}</b> (${ukuranRapi(m.ukuranFile)})</span>
-             <button class="tombol-kecil" id="bukaFile">Buka file</button>`;
-  }
-  if (m.catatan) html += `<p>${aman(m.catatan)}</p>`;
-  html += `<button class="tombol-kecil" id="editModul">Edit info modul</button>
-    </div>`;
-
-  // --- pratinjau file modul ---
-  const pratinjau = linkPratinjau(m.link);
-  if (pratinjau) {
-    html += `<iframe class="pratinjau" src="${aman(pratinjau)}" title="File modul" loading="lazy"></iframe>`;
-  } else if (m.namaFile) {
-    html += `<div id="tempatFile"></div>`;
-  } else if (!m.link) {
-    html += `<p class="info">Tambahin link Drive atau upload PDF di "Edit info modul" biar isi modulnya tampil di sini.</p>`;
-  }
-
-  // --- teks bacaan ---
-  html += `<h2 class="subjudul">Teks Bacaan <small>${m.bacaan.length} teks</small></h2>`;
-  if (m.bacaan.length === 0) {
-    html += `<p class="info">Pakai teks bacaan kalau beberapa soal ngacu ke satu teks yang sama (cerpen, paragraf, berita, dll). Teksnya cukup diketik sekali.</p>`;
-  }
-  for (const b of m.bacaan) {
-    const dipakai = m.soal.filter(s => s.bacaanId === b.id).length;
-    html += `
-      <div class="bacaan">
-        <strong>${aman(b.judul || "Tanpa judul")}</strong>
-        <p class="bacaan-pratinjau">${aman(b.teks)}</p>
-        <span class="info">Dipakai ${dipakai} soal</span>
-        <div class="soal-aksi">
-          <button data-edit-bacaan="${b.id}">Edit</button>
-          <button data-soal-bacaan="${b.id}">+ Soal untuk teks ini</button>
-        </div>
-      </div>`;
-  }
-  html += `<button class="tombol-garis tombol-garis-utama" id="tambahBacaan">+ Tambah Teks Bacaan</button>`;
-
-  // --- soal formatif ---
-  html += `<h2 class="subjudul">Soal Formatif <small>${m.soal.length} soal</small></h2>`;
-  if (m.soal.length === 0) html += `<p class="kosong">Belum ada soal.</p>`;
-  m.soal.forEach((s, i) => {
-    html += kartuSoal(s, {
-      nomor: i + 1,
-      indeks: i,
-      jumlah: m.soal.length,
-      mode: "modul",
-      bacaan: m.bacaan.find(b => b.id === s.bacaanId)
-    });
-  });
-  if (m.soal.length > 0) {
-    html += `<button class="tombol-garis tombol-garis-utama" id="cetakFormatif">Cetak soal formatif</button>`;
-  }
-  html += `<button class="tombol-tambah" id="tambah">+ Tambah Soal Formatif</button>`;
-  isi.innerHTML = html;
-
-  // --- tombol-tombol ---
-  document.getElementById("editModul").onclick = () => pergi("formModul", { modEditId: m.id });
-  if (m.namaFile) tampilkanFileModul(m);
-
-  document.getElementById("tambahBacaan").onclick = () => pergi("formBacaan", { bacaanId: null });
-  isi.querySelectorAll("[data-edit-bacaan]").forEach(b => {
-    b.onclick = () => pergi("formBacaan", { bacaanId: b.dataset.editBacaan });
-  });
-  isi.querySelectorAll("[data-soal-bacaan]").forEach(b => {
-    b.onclick = () => pergi("formSoal", { soalId: null, bacaanPilih: b.dataset.soalBacaan });
-  });
-
-  const tombolCetak = document.getElementById("cetakFormatif");
-  if (tombolCetak) tombolCetak.onclick = () => pergi("cetak", { cetakDari: "modul" });
-
-  document.getElementById("tambah").onclick = () => pergi("formSoal", { soalId: null, bacaanPilih: null });
-  isi.querySelectorAll("[data-edit]").forEach(b => {
-    b.onclick = () => pergi("formSoal", { soalId: b.dataset.edit, bacaanPilih: null });
-  });
-  isi.querySelectorAll("[data-hapus]").forEach(b => {
-    b.onclick = () => hapusSoal(b.dataset.hapus);
-  });
-  pasangGeser(m.soal);
-}
-
-// ambil file modul dari IndexedDB, terus tampilkan / siapkan tombol buka
-async function tampilkanFileModul(m) {
-  const file = await ambilFile(m.id);
-  const tempat = document.getElementById("tempatFile");
-  const tombolBuka = document.getElementById("bukaFile");
-  if (!tempat || posisi.modId !== m.id) return; // keburu pindah layar
-
-  if (!file) {
-    tempat.innerHTML = `<p class="kosong">File-nya nggak ketemu di perangkat ini. Mungkin di-upload dari perangkat lain.</p>`;
-    tombolBuka.hidden = true;
+  if (toko.status === "memuat") {
+    isi.innerHTML = `<div class="layar-status"><p class="kosong">Memuat...</p></div>`;
     return;
   }
 
-  urlFileAktif = URL.createObjectURL(file);
-  const pdf = file.type === "application/pdf" || /\.pdf$/i.test(m.namaFile);
-
-  if (pdf) {
-    tempat.innerHTML = `<iframe class="pratinjau" src="${urlFileAktif}" title="File modul"></iframe>`;
-    tombolBuka.onclick = () => window.open(urlFileAktif, "_blank");
-  } else {
-    tempat.innerHTML = `<p class="info">File Word/PowerPoint nggak bisa ditampilin langsung di browser. Klik "Buka file" buat download.</p>`;
-    tombolBuka.onclick = () => {
-      const a = document.createElement("a");
-      a.href = urlFileAktif;
-      a.download = m.namaFile;
-      a.click();
-    };
-  }
-}
-
-// ubah link Drive/Docs jadi link pratinjau yang bisa ditempel di halaman
-function linkPratinjau(link) {
-  if (!link) return null;
-  let cocok = link.match(/drive\.google\.com\/file\/d\/([\w-]+)/)
-           || link.match(/drive\.google\.com\/open\?id=([\w-]+)/);
-  if (cocok) return `https://drive.google.com/file/d/${cocok[1]}/preview`;
-  cocok = link.match(/docs\.google\.com\/(document|presentation|spreadsheets)\/d\/([\w-]+)/);
-  if (cocok) return `https://docs.google.com/${cocok[1]}/d/${cocok[2]}/preview`;
-  return null;
-}
-
-// =====================================================
-//  TEKS BACAAN
-// =====================================================
-function formBacaan() {
-  const m = modAktif();
-  const lama = m.bacaan.find(b => b.id === posisi.bacaanId);
-  const b = lama || { judul: "", teks: "" };
-
-  judul.textContent = lama ? "Edit Teks Bacaan" : "Tambah Teks Bacaan";
-  jejak.textContent = m.judul;
-  tombolKembali.hidden = false;
-
-  isi.innerHTML = `
-    <form id="form">
-      <label>Judul (opsional) <input name="judul" value="${aman(b.judul)}" placeholder="Si Kancil dan Buaya"></label>
-      <label>Isi teks
-        <textarea name="teks" rows="12" required placeholder="Tempel atau ketik teks bacaannya di sini...">${aman(b.teks)}</textarea>
-      </label>
-      <button type="submit" class="tombol-tambah">Simpan</button>
-      ${lama ? `<button type="button" class="tombol-hapus" id="hapus">Hapus teks bacaan ini</button>` : ""}
-    </form>`;
-
-  document.getElementById("form").onsubmit = (e) => {
-    e.preventDefault();
-    const f = new FormData(e.target);
-    const isian = { judul: f.get("judul").trim(), teks: f.get("teks").trim() };
-    if (lama) Object.assign(lama, isian);
-    else m.bacaan.push({ id: buatId(), ...isian });
-    simpan();
-    pergi("modul");
-  };
-
-  if (lama) {
-    document.getElementById("hapus").onclick = () => {
-      const dipakai = m.soal.filter(s => s.bacaanId === lama.id);
-      const pesan = dipakai.length
-        ? `Hapus teks ini? ${dipakai.length} soal yang memakainya tetap ada, cuma nggak punya teks bacaan lagi.`
-        : "Hapus teks bacaan ini?";
-      if (!confirm(pesan)) return;
-      for (const s of dipakai) s.bacaanId = null;
-      m.bacaan = m.bacaan.filter(x => x.id !== lama.id);
-      simpan();
-      pergi("modul");
-    };
-  }
-}
-
-// =====================================================
-//  SOAL
-// =====================================================
-
-// HTML satu kartu soal
-// o.mode "modul"   → tombol Edit & Hapus
-// o.mode "sumatif" → tombol Keluarkan + label asal modul
-function kartuSoal(s, o) {
-  const pg = s.jenis === "PG";
-  let html = `
-    <div class="soal">
-      <div class="soal-atas">
-        <span class="nomor">${o.nomor}</span>
-        <span class="jenis ${pg ? "jenis-pg" : "jenis-esai"}">${pg ? "Pilihan Ganda" : "Esai"}</span>
-        ${o.bacaan ? `<span class="label-bacaan">Teks: ${aman(potong(o.bacaan.judul || o.bacaan.teks, 28))}</span>` : ""}
-        ${o.asal ? `<span class="asal">${aman(o.asal)}</span>` : ""}
-      </div>
-      <p class="soal-teks">${aman(s.teks)}</p>`;
-
-  if (pg) {
-    html += `<ol class="pilihan">`;
-    s.pilihan.forEach((teks, i) => {
-      if (!teks) return;
-      html += `<li class="${i === s.kunci ? "benar" : ""}"><b>${HURUF[i]}.</b> ${aman(teks)}</li>`;
-    });
-    html += `</ol>`;
-  } else {
-    html += `<p class="pedoman"><b>Pedoman:</b> ${aman(s.pedoman || "-")}</p>`;
-  }
-
-  html += `
-      <div class="soal-aksi">
-        <button class="panah" data-naik="${o.indeks}" aria-label="Naikkan soal" ${o.indeks === 0 ? "disabled" : ""}>↑</button>
-        <button class="panah" data-turun="${o.indeks}" aria-label="Turunkan soal" ${o.indeks === o.jumlah - 1 ? "disabled" : ""}>↓</button>
-        <span class="spasi"></span>`;
-  if (o.mode === "modul") {
-    html += `
-        <button data-edit="${s.id}">Edit</button>
-        <button data-hapus="${s.id}" class="hapus">Hapus</button>`;
-  } else {
-    html += `<button data-lepas="${s.id}">Keluarkan</button>`;
-  }
-  html += `</div></div>`;
-  return html;
-}
-
-function hapusSoal(id) {
-  if (!confirm("Yakin hapus soal ini? Soal ini juga bakal hilang dari soal sumatif.")) return;
-  const m = modAktif();
-  m.soal = m.soal.filter(s => s.id !== id);
-  for (const sum of proAktif().sumatif) {
-    sum.soalId = sum.soalId.filter(x => x !== id);
-  }
-  simpan();
-  tampilkan(true);
-}
-
-function formSoal() {
-  const m = modAktif();
-  const lama = m.soal.find(s => s.id === posisi.soalId);
-  const s = lama || {
-    teks: "", jenis: "PG", pilihan: ["", "", "", "", ""], kunci: 0, pedoman: "",
-    bacaanId: posisi.bacaanPilih || null
-  };
-
-  judul.textContent = lama ? "Edit Soal" : "Tambah Soal Formatif";
-  jejak.textContent = m.judul;
-  tombolKembali.hidden = false;
-
-  let opsiHtml = "";
-  HURUF.forEach((h, i) => {
-    const isian = (s.pilihan && s.pilihan[i]) || "";
-    opsiHtml += `
-      <div class="opsi">
-        <input type="radio" name="kunci" value="${i}" id="kunci${i}" ${i === s.kunci ? "checked" : ""}>
-        <label for="kunci${i}" class="huruf" title="Jadikan kunci">${h}</label>
-        <input name="pilihan${i}" value="${aman(isian)}" placeholder="Jawaban ${h}${i === 4 ? " (opsional)" : ""}" aria-label="Jawaban ${h}">
+  if (toko.status === "gagal") {
+    isi.innerHTML = `
+      <div class="layar-status kartu-status">
+        <h2>Ada masalah</h2>
+        <p>${aman(toko.pesanGagal)}</p>
+        <div class="baris-tombol">
+          <button class="tombol-utama" id="muatUlang">Coba lagi</button>
+          <button class="tombol-kedua" id="keluar">Keluar</button>
+        </div>
       </div>`;
-  });
+    document.getElementById("muatUlang").onclick = () => location.reload();
+    document.getElementById("keluar").onclick = () => toko.backend.keluar();
+    return;
+  }
 
-  const opsiBacaan = m.bacaan
-    .map(b => `<option value="${b.id}" ${s.bacaanId === b.id ? "selected" : ""}>${aman(b.judul || potong(b.teks, 40))}</option>`)
-    .join("");
+  if (toko.status === "keluar") {
+    let h = `
+      <div class="layar-masuk">
+        <div class="masuk-atas"><button class="tombol-tema" aria-label="Ganti mode terang/gelap"></button></div>
+        <div class="masuk-isi">
+          <div class="logo-masuk">${LOGO}</div>
+          <p class="sambut">AHLAN WA SAHLAN</p>
+          <h2 class="judul-masuk">Bank <span class="gradasi">Soal</span></h2>
+          <p class="info">${aman(lembaga)} · khusus ustadz &amp; ustadzah</p>
+          <ul class="fitur-masuk">
+            <li><span class="fi"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/></svg></span>Modul ajar &amp; target tiap pertemuan</li>
+            <li><span class="fi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 12l2 2 4-4"/></svg></span>Soal lengkap dengan kunci jawaban</li>
+            <li><span class="fi"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4v-6h16v6h-2M6 14h12v7H6z"/></svg></span>Cetak ujian sekali klik</li>
+          </ul>
+        </div>
+        <div class="masuk-bawah">`;
+    if (coba) {
+      h += `
+          <p class="pemberitahuan coba">Mode coba: data contoh, tersimpan di perangkat ini saja. Pilih akun contoh untuk mencoba.</p>
+          <div class="daftar">`;
+      for (const a of toko.backend.akunContoh) {
+        h += htmlBaris({ attr: `data-akun="${a.uid}"`, judulBaris: aman(a.nama), sub: aman(a.ket) });
+      }
+      h += `</div>`;
+    } else {
+      h += `
+          <button class="tombol-utama tombol-google" id="masukGoogle">
+            <span class="g-bulat"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.3-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2z"/><path fill="#EA4335" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10c.8-2.4 3-4.1 5.6-4.1z"/></svg></span>
+            Masuk dengan Google
+          </button>
+          <p class="info tengah" id="pesanMasuk" role="status"></p>
+          <p class="info tengah">Dibuka dari WhatsApp dan tombolnya nggak jalan? Ketuk titik tiga di pojok kanan atas, lalu pilih <b>Buka di Chrome</b>.</p>`;
+    }
+    h += `</div>`;
+    h += `</div>`;
+    isi.innerHTML = h;
+    segarkanTandaTema();
+
+    if (coba) {
+      isi.querySelectorAll("[data-akun]").forEach(b => b.onclick = () => toko.backend.masuk(b.dataset.akun));
+    } else {
+      const tombol = document.getElementById("masukGoogle");
+      tombol.onclick = async () => {
+        tombol.disabled = true;
+        const pesan = document.getElementById("pesanMasuk");
+        pesan.textContent = "Membuka jendela Google...";
+        try {
+          await toko.backend.masuk();
+        } catch (err) {
+          pesan.textContent = pesanGagalMasuk(err);
+          tombol.disabled = false;
+        }
+      };
+    }
+    return;
+  }
+
+  // status "menunggu": sudah daftar, belum disetujui / ditolak / dinonaktifkan
+  const peran = toko.saya ? toko.saya.peran : "menunggu";
+  const teks = {
+    menunggu: ["Tinggal menunggu persetujuan", "Akunmu sudah terdaftar. Admin (TU) perlu menyetujuinya dulu. Setelah disetujui, halaman ini otomatis berubah, nggak perlu dibuka ulang."],
+    ditolak: ["Akun belum bisa dipakai", "Permintaan akunmu ditolak oleh admin (TU). Kalau ini keliru, hubungi admin (TU)."],
+    nonaktif: ["Akun dinonaktifkan", "Akunmu sedang dinonaktifkan oleh admin (TU). Hubungi admin (TU) kalau perlu diaktifkan lagi."]
+  }[peran] || ["Akun belum bisa dipakai", "Hubungi admin (TU)."];
 
   isi.innerHTML = `
-    <form id="form">
-      ${m.bacaan.length ? `
-        <label>Teks bacaan (opsional)
-          <select name="bacaanId">
-            <option value="">Tanpa teks bacaan</option>
-            ${opsiBacaan}
-          </select>
-        </label>
-        <p class="bacaan-pratinjau" id="pratinjauBacaan"></p>` : ""}
+    <div class="layar-status kartu-status">
+      <div class="masuk-atas"><button class="tombol-tema" aria-label="Ganti mode terang/gelap"></button></div>
+      <div class="masuk-merek">${LOGO}<div><h2>${aman(teks[0])}</h2><p>${aman(lembaga)}</p></div></div>
+      <p>${aman(teks[1])}</p>
+      <p class="info">Masuk sebagai <b>${aman(toko.auth ? toko.auth.email : "")}</b></p>
+      <button class="tombol-kedua" id="keluar">${coba ? "Ganti akun contoh" : "Keluar"}</button>
+    </div>`;
+  document.getElementById("keluar").onclick = () => toko.backend.keluar();
+  segarkanTandaTema();
+}
 
-      <label>Pertanyaan
-        <textarea name="teks" rows="4" required placeholder="Ketik soalnya di sini...">${aman(s.teks)}</textarea>
-      </label>
+function pesanGagalMasuk(err) {
+  const kode = (err && err.code) || "";
+  if (kode.includes("popup-closed") || kode.includes("cancelled-popup")) return "Jendela Google ditutup sebelum selesai. Coba lagi.";
+  if (kode.includes("network")) return "Nggak ada sinyal. Masuk pertama kali butuh internet.";
+  if (kode.includes("unauthorized-domain")) return "Alamat web ini belum didaftarkan di Firebase (Authorized domains).";
+  return "Gagal masuk. " + (err && err.message ? err.message : "");
+}
 
-      <div class="pilih-jenis">
-        <label class="radio"><input type="radio" name="jenis" value="PG" ${s.jenis === "PG" ? "checked" : ""}> Pilihan Ganda</label>
-        <label class="radio"><input type="radio" name="jenis" value="Esai" ${s.jenis === "Esai" ? "checked" : ""}> Esai</label>
+// tanda kecil di header: offline / mode coba
+function gambarTanda() {
+  const t = [];
+  if (!navigator.onLine) t.push(`<span class="tanda-sinyal" title="Perubahan disimpan di perangkat, dikirim otomatis waktu ada sinyal">Offline</span>`);
+  if (toko.backend && toko.backend.mode === "coba") t.push(`<span class="tanda-coba">Mode coba</span>`);
+  tandaHeader.innerHTML = t.join("");
+}
+window.addEventListener("online", gambarTanda);
+window.addEventListener("offline", gambarTanda);
+
+// =====================================================
+//  MENU SAMPING (laptop) & MENU BAWAH (HP)
+// =====================================================
+function kelompokLayar() {
+  const L = posisi.layar;
+  if (["cari"].includes(L)) return "cari";
+  if (["lainnya"].includes(L)) return "lainnya";
+  if (["pantauan"].includes(L)) return "pantauan";
+  if (["akun"].includes(L)) return "akun";
+  if (["santri"].includes(L) && !posisi.dariNilai) return "santri";
+  if (["rapor", "raporCetak"].includes(L)) return "rapor";
+  if (L === "bobot") return "bobot";
+  if (["kelolaMapel", "formMapel"].includes(L) && !posisi.dariMapel) return "kelola";
+  if (L === "beranda") return "beranda";
+  return "mapel";
+}
+
+function jumlahMenunggu() {
+  return toko.pengguna.filter(p => p.peran === "menunggu").length;
+}
+
+function gambarSamping() {
+  const grup = kelompokLayar();
+  const kur = sayaKurikulum();
+  const sem = semAktif();
+  let h = `
+    <div class="merek">
+      ${LOGO}
+      <div>
+        <strong>${aman(KONFIG.namaAplikasi)}</strong>
+        <span>${aman(toko.lembaga.nama || KONFIG.namaLembaga || "")}</span>
       </div>
+    </div>
+    <form class="cari-samping" id="cariSamping" role="search">
+      <input type="search" name="kata" placeholder="Cari soal" aria-label="Cari soal" value="${grup === "cari" ? aman(posisi.kata || "") : ""}">
+    </form>
+    <nav class="menu-samping">
+      <button class="menu-item ${grup === "beranda" ? "aktif" : ""}" data-ke="beranda">Beranda</button>`;
 
-      <div id="bagianPG">
-        <p class="info">Klik huruf untuk menandai kunci jawaban.</p>
-        ${opsiHtml}
-      </div>
-
-      <label id="bagianEsai">Pedoman jawaban
-        <textarea name="pedoman" rows="3" placeholder="Poin-poin jawaban yang diharapkan">${aman(s.pedoman || "")}</textarea>
-      </label>
-
-      <button type="submit" class="tombol-tambah">Simpan</button>
-    </form>`;
-
-  const form = document.getElementById("form");
-
-  function aturJenis() {
-    const pg = form.jenis.value === "PG";
-    document.getElementById("bagianPG").hidden = !pg;
-    document.getElementById("bagianEsai").hidden = pg;
+  if (kur) {
+    const n = jumlahMenunggu();
+    h += `
+      <button class="menu-item ${grup === "pantauan" ? "aktif" : ""}" data-ke="pantauan">Pantauan</button>
+      <button class="menu-item ${grup === "akun" ? "aktif" : ""}" data-ke="akun"><span>Akun</span>${n ? `<span class="lencana" aria-label="${n} menunggu">${n}</span>` : ""}</button>
+      <button class="menu-item ${grup === "kelola" ? "aktif" : ""}" data-ke="kelolaMapel">Mapel &amp; pengampu</button>
+      <button class="menu-item ${grup === "bobot" ? "aktif" : ""}" data-ke="bobot">Bobot nilai</button>
+      <button class="menu-item ${grup === "rapor" ? "aktif" : ""}" data-ke="rapor">Rapor</button>`;
   }
-  form.querySelectorAll('[name="jenis"]').forEach(r => r.onchange = aturJenis);
-  aturJenis();
+  h += `<button class="menu-item ${grup === "santri" ? "aktif" : ""}" data-ke="santri">Daftar santri</button>`;
 
-  // tampilkan cuplikan teks bacaan yang dipilih
-  const pilihBacaan = form.bacaanId;
-  function aturBacaan() {
-    const tempat = document.getElementById("pratinjauBacaan");
-    const b = m.bacaan.find(x => x.id === pilihBacaan.value);
-    tempat.hidden = !b;
-    tempat.textContent = b ? b.teks : "";
-  }
-  if (pilihBacaan) {
-    pilihBacaan.onchange = aturBacaan;
-    aturBacaan();
+  const daftar = mapelTerlihat();
+  h += `<p class="menu-judul">${kur ? "Semua mapel" : "Mapel kamu"}</p>`;
+  if (daftar.length === 0) h += `<p class="menu-kosong">${kur ? "Belum ada mapel" : "Belum ditugaskan ke mapel"}</p>`;
+
+  for (const m of daftar) {
+    const mapelIni = grup === "mapel" && m.id === posisi.mapelId;
+    h += `<button class="menu-item ${mapelIni && posisi.layar === "mapel" ? "aktif" : ""}" data-mapel="${m.id}">
+            <span>${aman(m.nama)}</span><small>${aman(m.kelas)}</small>
+          </button>`;
+    if (!mapelIni) continue;
+
+    // mapel yang lagi dibuka: tampilkan modul & sumatif semester yang dipilih
+    const modul = modulMapel(m.id).filter(x => samaSemester(x, sem));
+    const sumatif = sumatifMapel(m.id).filter(x => samaSemester(x, sem));
+    h += `<div class="menu-anak"><p class="menu-catatan">${aman(namaSemester(sem))}</p>`;
+    modul.forEach((x, i) => {
+      const ini = x.id === posisi.modId && (["modul", "formSoal", "formBacaan", "formModul"].includes(posisi.layar) || (posisi.layar === "aiSoal" && posisi.aiUntuk === "modul"));
+      h += `<button class="menu-item kecil ${ini ? "aktif" : ""}" data-mapel="${m.id}" data-mod="${x.id}">
+              <span class="menu-nomor">${i + 1}</span><span dir="auto">${aman(x.judul)}</span>
+            </button>`;
+    });
+    const sumIni = ["sumatif", "pilihSoal", "formSumatif", "formSoalUjian"].includes(posisi.layar) ||
+                   (posisi.layar === "aiSoal" && posisi.aiUntuk === "sumatif") ||
+                   (posisi.layar === "cetak" && posisi.cetakDari === "sumatif");
+    h += `<button class="menu-item kecil ${sumIni ? "aktif" : ""}" data-mapel="${m.id}" data-tab-ke="sumatif">Sumatif (${sumatif.length})</button>`;
+    h += `</div>`;
   }
 
-  form.onsubmit = (e) => {
+  h += `
+    </nav>
+    <div class="samping-bawah">
+      <button class="menu-item ${grup === "lainnya" ? "aktif" : ""}" data-ke="lainnya">
+        <span class="akun-mini"><strong>${aman(namaSaya())}</strong><small>${aman(namaPeran(toko.saya.peran))}</small></span>
+      </button>
+    </div>`;
+  samping.innerHTML = h;
+
+  const fc = samping.querySelector("#cariSamping");
+  if (fc) fc.onsubmit = (e) => {
     e.preventDefault();
-    const f = new FormData(form);
-    const baru = {
-      id: lama ? lama.id : buatId(),
-      teks: f.get("teks").trim(),
-      jenis: f.get("jenis"),
-      bacaanId: f.get("bacaanId") || null
-    };
-
-    if (baru.jenis === "PG") {
-      baru.pilihan = HURUF.map((h, i) => f.get("pilihan" + i).trim());
-      baru.kunci = Number(f.get("kunci"));
-      if (baru.pilihan.filter(x => x).length < 2) return alert("Isi minimal 2 pilihan jawaban.");
-      if (!baru.pilihan[baru.kunci]) return alert("Kunci jawaban yang dipilih masih kosong.");
-    } else {
-      baru.pedoman = f.get("pedoman").trim();
-    }
-
-    if (lama) {
-      m.soal[m.soal.indexOf(lama)] = baru;
-    } else if (baru.bacaanId) {
-      // soal baru dengan teks bacaan: taruh tepat setelah soal lain yang pakai teks sama
-      let posTerakhir = -1;
-      m.soal.forEach((x, i) => { if (x.bacaanId === baru.bacaanId) posTerakhir = i; });
-      if (posTerakhir >= 0) m.soal.splice(posTerakhir + 1, 0, baru);
-      else m.soal.push(baru);
-    } else {
-      m.soal.push(baru);
-    }
-    simpan();
-    pergi("modul");
+    pergi("cari", { kata: e.target.kata.value });
   };
+  samping.querySelectorAll(".menu-item").forEach(b => {
+    b.onclick = () => {
+      const d = b.dataset;
+      if (d.ke === "kelolaMapel") return pergi("kelolaMapel", { dariMapel: false });
+      if (d.ke === "santri") return pergi("santri", { dariNilai: false });
+      if (d.ke) return pergi(d.ke);
+      if (d.mod) return pergi("modul", { mapelId: d.mapel, modId: d.mod });
+      if (d.tabKe) return pergi("mapel", { mapelId: d.mapel, tab: d.tabKe });
+      const ganti = d.mapel !== posisi.mapelId;
+      pergi("mapel", { mapelId: d.mapel, tab: ganti ? "modul" : (posisi.tab || "modul"), semester: ganti ? null : posisi.semester });
+    };
+  });
+}
+
+function gambarNavBawah() {
+  const grup = kelompokLayar();
+  const item = sayaKurikulum()
+    ? [["beranda", "beranda", "Beranda"], ["pantauan", "pantauan", "Pantauan"], ["rapor", "rapor", "Rapor"], ["akun", "akun", "Akun"], ["lainnya", "lainnya", "Saya"]]
+    : [["beranda", "beranda", "Beranda"], ["cari", "cari", "Cari"], ["lainnya", "lainnya", "Saya"]];
+  const ikonDari = { beranda: "beranda", pantauan: "pantauan", akun: "akun", kelola: "mapel", lainnya: "lainnya", cari: "cari", rapor: "rapor", santri: "santri" };
+  navBawah.style.setProperty("--jumlah", item.length);
+  const n = sayaKurikulum() ? jumlahMenunggu() : 0;
+  navBawah.innerHTML = item.map(([ke, kunci, teks]) => {
+    const aktif = grup === kunci || (kunci === "beranda" && grup === "mapel");
+    const lencana = kunci === "akun" && n ? `<span class="lencana" aria-label="${n} menunggu">${n}</span>` : "";
+    return `<button data-ke="${ke}" class="${aktif ? "aktif" : ""}" ${aktif ? 'aria-current="page"' : ""}>${IKON[ikonDari[kunci]]}${lencana}<span>${teks}</span></button>`;
+  }).join("");
+  navBawah.querySelectorAll("button").forEach(b => {
+    b.onclick = () => b.dataset.ke === "kelolaMapel" ? pergi("kelolaMapel", { dariMapel: false })
+      : b.dataset.ke === "santri" ? pergi("santri", { dariNilai: false }) : pergi(b.dataset.ke);
+  });
 }
 
 // =====================================================
-//  SUMATIF
+//  BERANDA
 // =====================================================
-function formSumatif() {
-  const p = proAktif();
-  const lama = p.sumatif.find(s => s.id === posisi.sumEditId);
-  const s = lama || { nama: "", pelaksanaan: "" };
+function sapaan() {
+  const nama = namaSaya();
+  return `<p class="sapa">Assalamu'alaikum, ${aman(nama)}</p>`;
+}
 
-  judul.textContent = lama ? "Edit Soal Sumatif" : "Buat Soal Sumatif";
-  jejak.textContent = `Semester ${p.semester} ${p.tahun}`;
+function layarBeranda() {
+  judul.innerHTML = `<span class="judul-logo">${LOGO}${aman(KONFIG.namaAplikasi)}</span>`;
+  jejak.textContent = toko.lembaga.nama || KONFIG.namaLembaga || "";
+  const kur = sayaKurikulum();
+  const sem = semesterSekarang();
+  const diampu = mapelDiampu();
+
+  let utama = "";
+
+  // ---------- ringkasan buat admin ----------
+  if (kur) {
+    const n = jumlahMenunggu();
+    if (n) {
+      utama += `
+        <div class="pemberitahuan">
+          <p><b>${n} akun</b> menunggu persetujuan.</p>
+          <button class="tombol-teks" id="keAkun">Lihat</button>
+        </div>`;
+    }
+    const kelasKosong = daftarKelas().filter(x => santriKelas(x.jenjang, x.kelas).length === 0);
+    if (kelasKosong.length) {
+      utama += `
+        <div class="pemberitahuan">
+          <p><b>${kelasKosong.length} kelas</b> belum ada daftar santrinya: ${kelasKosong.map(x => aman(x.kelas)).join(", ")}.</p>
+          <button class="tombol-teks" data-kelas-kosong="${aman(`${kelasKosong[0].jenjang}|${kelasKosong[0].kelas}`)}">Isi sekarang</button>
+        </div>`;
+    }
+    const semuaModul = toko.mapel.flatMap(m => modulMapel(m.id)).filter(x => samaSemester(x, sem));
+    const aktif = toko.pengguna.filter(p => PERAN_AKTIF.includes(p.peran)).length;
+    utama += `
+      <section class="ringkasan">
+        <h2 class="subjudul">Semester ini <small>${aman(namaSemester(sem))}</small></h2>
+        <div class="angka-angka">
+          <div><b class="gradasi">${toko.mapel.length}</b><span>mapel</span></div>
+          <div><b class="gradasi">${aktif}</b><span>akun aktif</span></div>
+          <div><b class="gradasi">${semuaModul.length}</b><span>modul</span></div>
+          <div><b class="gradasi">${semuaModul.reduce((x, m) => x + jumlahSoal(m), 0)}</b><span>soal</span></div>
+        </div>
+        <div class="baris-tombol">
+          <button class="tombol-utama" id="kePantauan">Buka pantauan</button>
+          <button class="tombol-kedua" id="keKelola">Mapel &amp; pengampu</button>
+          <button class="tombol-kedua" id="keBobot">Bobot nilai</button>
+          <button class="tombol-kedua" id="keSantri">Daftar santri</button>
+        </div>
+      </section>`;
+
+    if (toko.mapel.length === 0) {
+      utama += `
+        <section class="panduan">
+          <h2>Mulai dari sini</h2>
+          <ol>
+            <li><strong>Setujui akun ustadz</strong><span>Minta ustadz dan ustadzah masuk pakai akun Google masing-masing, lalu setujui di halaman Akun.</span></li>
+            <li><strong>Tambah mapel dan pengampunya</strong><span>Misalnya Bahasa Indonesia Paket B kelas 7A1, diampu Ustadzah Aminah.</span></li>
+            <li><strong>Isi daftar santri tiap kelas</strong><span>No. absen, NIS, dan nama. Paling cepat: salin dari Excel lalu tempel di tabel.</span></li>
+            <li><strong>Pantau isinya</strong><span>Lihat modul, soal, dan nilai yang sudah diisi tiap ustadz, lalu cetak rapor.</span></li>
+          </ol>
+        </section>`;
+    }
+  }
+
+  // ---------- angka singkat punya sendiri (semester ini) ----------
+  if (diampu.length) {
+    const milikSem = diampu.flatMap(m => modulMapel(m.id)).filter(x => milikSaya(x) && samaSemester(x, sem));
+    utama += `
+      <section class="ringkasan">
+        <h2 class="subjudul">Isianmu semester ini <small>${aman(namaSemester(sem))}</small></h2>
+        <div class="angka-angka tiga">
+          <div><b class="gradasi">${milikSem.length}</b><span>modul</span></div>
+          <div><b class="gradasi">${milikSem.reduce((x, m) => x + (m.pertemuan || []).length, 0)}</b><span>pertemuan</span></div>
+          <div><b class="gradasi">${milikSem.reduce((x, m) => x + jumlahSoal(m), 0)}</b><span>soal</span></div>
+        </div>
+      </section>`;
+  }
+
+  // ---------- mapel yang diampu ----------
+  if (!kur || diampu.length) {
+    utama += `<h2 class="subjudul">Mapel yang kamu ampu <small>${diampu.length} mapel</small></h2>`;
+    if (diampu.length === 0) {
+      utama += `
+        <section class="panduan">
+          <h2>Belum ada mapel</h2>
+          <p>Kamu belum ditugaskan ke mapel mana pun. Minta admin (TU) menambahkanmu sebagai pengampu. Setelah ditambahkan, mapelnya otomatis muncul di sini.</p>
+        </section>`;
+    } else {
+      utama += `<div class="daftar">`;
+      for (const m of diampu) {
+        const milik = modulMapel(m.id).filter(x => milikSaya(x) && samaSemester(x, sem));
+        utama += htmlBaris({
+          attr: `data-mapel="${m.id}"`,
+          judulBaris: aman(m.nama),
+          sub: `${aman(m.kelas)}, ${aman(m.jenjang)}`,
+          kanan: isiMapelSiap(m.id) ? `${milik.length} modul` : ""
+        });
+      }
+      utama += `</div>`;
+    }
+  }
+
+  // ---------- kolom samping: lanjutkan ----------
+  let sisi = "";
+  const terakhir = ambilTerakhir().map(t => {
+    const m = cariMapel(t.mapelId);
+    if (!m) return null;
+    const x = t.jenis === "modul"
+      ? modulMapel(m.id).find(y => y.id === t.id)
+      : sumatifMapel(m.id).find(y => y.id === t.id);
+    return x ? { ...t, m, x } : null;
+  }).filter(Boolean).slice(0, 5);
+
+  if (terakhir.length) {
+    sisi += `<section class="lanjutkan"><h2 class="subjudul">Lanjutkan</h2><div class="daftar">`;
+    for (const t of terakhir) {
+      sisi += htmlBaris({
+        attr: `data-lanjut="${t.jenis}" data-mapel="${t.m.id}" data-isi="${t.x.id}"`,
+        judulBaris: aman(t.jenis === "modul" ? t.x.judul : t.x.nama),
+        arahJudul: true,
+        sub: `${t.jenis === "modul" ? "Modul" : "Ujian sumatif"}, ${aman(namaMapel(t.m))}`
+      });
+    }
+    sisi += `</div></section>`;
+  }
+
+  isi.innerHTML = sapaan() + `
+    <div class="beranda ${sisi ? "ada-samping" : ""}">
+      <div class="beranda-utama">${utama}</div>
+      ${sisi ? `<div class="beranda-samping">${sisi}</div>` : ""}
+    </div>`;
+
+  const klik = (id, f) => { const el = document.getElementById(id); if (el) el.onclick = f; };
+  klik("keAkun", () => pergi("akun"));
+  klik("kePantauan", () => pergi("pantauan"));
+  klik("keKelola", () => pergi("kelolaMapel", { dariMapel: false }));
+  klik("keSantri", () => pergi("santri", { dariNilai: false }));
+  klik("keBobot", () => pergi("bobot"));
+  klik("keRapor", () => pergi("rapor"));
+  isi.querySelectorAll("[data-kelas-kosong]").forEach(b => b.onclick = () => pergi("santri", { kelasSantri: b.dataset.kelasKosong, dariNilai: false }));
+
+  isi.querySelectorAll(".baris[data-mapel]:not([data-lanjut])").forEach(b => {
+    b.onclick = () => pergi("mapel", { mapelId: b.dataset.mapel, semester: null, tab: "modul" });
+  });
+  isi.querySelectorAll(".baris[data-lanjut]").forEach(b => {
+    const d = b.dataset;
+    b.onclick = () => {
+      const x = d.lanjut === "modul"
+        ? modulMapel(d.mapel).find(y => y.id === d.isi)
+        : sumatifMapel(d.mapel).find(y => y.id === d.isi);
+      const semester = x ? kunciSemester(x) : null;
+      if (d.lanjut === "modul") pergi("modul", { mapelId: d.mapel, modId: d.isi, semester });
+      else pergi("sumatif", { mapelId: d.mapel, sumId: d.isi, semester });
+    };
+  });
+}
+
+// =====================================================
+//  HALAMAN SATU MAPEL: pilih semester, tab Modul / Sumatif
+// =====================================================
+function layarMapel() {
+  const mp = mapelAktif();
+  const kur = sayaKurikulum();
+  const ampu = sayaPengampu(mp);
+  const sem = semAktif();
+  posisi.semester = kunciSemester(sem);
+  const tab = posisi.tab || "modul";
+
+  judul.textContent = mp.nama;
+  const namaAmpu = (mp.pengampu || []).map(u => (mp.namaPengampu || {})[u]).filter(Boolean);
+  jejak.textContent = `${mp.kelas}, ${mp.jenjang}${namaAmpu.length ? " · " + namaAmpu.join(", ") : ""}`;
   tombolKembali.hidden = false;
+
+  if (!isiMapelSiap(mp.id)) {
+    isi.innerHTML = `<p class="kosong">Memuat isi mapel...</p>`;
+    return;
+  }
+
+  const semuaModul = modulMapel(mp.id).filter(x => samaSemester(x, sem));
+  const semuaSum = sumatifMapel(mp.id).filter(x => samaSemester(x, sem));
+
+  // --- pilihan semester ---
+  let html = `<div class="pilih-semester" role="group" aria-label="Semester">`;
+  for (const x of daftarSemesterMapel(mp.id)) {
+    const ini = kunciSemester(x) === posisi.semester;
+    html += `<button class="chip ${ini ? "aktif" : ""}" data-sem="${aman(kunciSemester(x))}" aria-pressed="${ini}">${aman(namaSemester(x))}</button>`;
+  }
+  html += `<button class="chip chip-tambah" id="semesterLain">+ Semester lain</button></div>`;
+
+  if (kur && !ampu) {
+    html += `<p class="info">Kamu melihat mapel ini sebagai admin: semua modul kelihatan, termasuk yang belum dibagikan, tapi nggak bisa diubah dari sini.</p>`;
+  }
+
+  html += `
+    <div class="tab" role="tablist">
+      <button role="tab" data-tab="modul" class="${tab === "modul" ? "aktif" : ""}" aria-selected="${tab === "modul"}">Modul ajar <span>${semuaModul.length}</span></button>
+      <button role="tab" data-tab="sumatif" class="${tab === "sumatif" ? "aktif" : ""}" aria-selected="${tab === "sumatif"}">Sumatif <span>${semuaSum.length}</span></button>
+      <button role="tab" data-tab="nilai" class="${tab === "nilai" ? "aktif" : ""}" aria-selected="${tab === "nilai"}">Nilai</button>
+    </div>`;
+
+  const barisModul = (m, nomor, dariOrangLain) => htmlBaris({
+    attr: `data-mod="${m.id}"`,
+    nomor,
+    judulBaris: aman(m.judul),
+    arahJudul: true,
+    sub: `${(m.pertemuan || []).length} pertemuan, ${jumlahSoal(m)} soal${dariOrangLain ? ` · ${aman(m.namaPemilik)}` : ""}`,
+    tanda: dariOrangLain ? (m.dibagikan ? "" : "Tertutup") : (m.dibagikan ? "Dibagikan" : "Tertutup"),
+    tandaJenis: m.dibagikan ? "tanda-bagi" : "tanda-tutup"
+  });
+
+  if (tab === "modul") {
+    const milik = semuaModul.filter(milikSaya);
+    const lain = semuaModul.filter(m => !milikSaya(m));
+
+    if (ampu) {
+      html += `<h2 class="subjudul">Modul kamu <small>${milik.length} modul</small></h2>`;
+      if (milik.length === 0) html += `<p class="kosong">Belum ada modul ajar di semester ini.</p>`;
+      else html += `<div class="daftar">${milik.map((m, i) => barisModul(m, i + 1, false)).join("")}</div>`;
+      html += `<button class="tombol-utama" id="tambah">+ Tambah modul ajar</button>`;
+      if (milik.length) html += `<div class="aksi-teks"><button class="tombol-teks" id="salinSemua">Salin modul semester ini ke tahun ajaran lain</button></div>`;
+    }
+
+    if (ampu) {
+      html += `<h2 class="subjudul">${kur ? "Modul pengampu lain" : "Dibagikan pengampu lain"} <small>${lain.length} modul</small></h2>`;
+      if (lain.length === 0) html += `<p class="info">${kur ? "Belum ada modul dari pengampu lain." : "Belum ada modul yang dibagikan pengampu lain di mapel ini."}</p>`;
+      else html += `<div class="daftar">${lain.map(m => barisModul(m, undefined, true)).join("")}</div>`;
+    } else {
+      // kurikulum yang bukan pengampu: dikelompokkan per ustadz
+      if (semuaModul.length === 0) html += `<p class="kosong">Belum ada modul ajar di semester ini.</p>`;
+      const perOrang = new Map();
+      for (const m of semuaModul) {
+        if (!perOrang.has(m.pemilik)) perOrang.set(m.pemilik, []);
+        perOrang.get(m.pemilik).push(m);
+      }
+      for (const [, daftar] of perOrang) {
+        html += `<h2 class="subjudul">${aman(daftar[0].namaPemilik || "Tanpa nama")} <small>${daftar.length} modul</small></h2>`;
+        html += `<div class="daftar">${daftar.map((m, i) => barisModul(m, i + 1, false)).join("")}</div>`;
+      }
+    }
+  } else if (tab === "nilai") {
+    html += htmlTabNilai(mp, sem);
+  } else {
+    html += `<p class="info">Ujian sumatif disusun dari soal-soal modul semester ini: modul kamu sendiri dan modul yang dibagikan pengampu lain.</p>`;
+    const milik = semuaSum.filter(milikSaya);
+    const lain = semuaSum.filter(s => !milikSaya(s));
+    const barisSum = (s, denganNama) => htmlBaris({
+      attr: `data-sum="${s.id}"`,
+      judulBaris: aman(s.nama),
+      sub: `${aman(s.pelaksanaan || "Pelaksanaan belum diisi")}, ${(s.butir || []).length} soal${denganNama ? ` · ${aman(s.namaPemilik)}` : ""}`
+    });
+    if (ampu) {
+      if (milik.length === 0) html += `<p class="kosong">Belum ada ujian sumatif.</p>`;
+      else html += `<div class="daftar">${milik.map(s => barisSum(s, false)).join("")}</div>`;
+      html += `<button class="tombol-utama" id="tambah">+ Buat ujian sumatif</button>`;
+    }
+    if (kur && lain.length) {
+      html += `<h2 class="subjudul">Sumatif pengampu lain <small>${lain.length}</small></h2><div class="daftar">${lain.map(s => barisSum(s, true)).join("")}</div>`;
+    } else if (!ampu && lain.length === 0) {
+      html += `<p class="kosong">Belum ada ujian sumatif.</p>`;
+    }
+  }
+
+  if (kur) {
+    html += `<div class="aksi-teks aksi-bawah"><button class="tombol-teks" id="ubahMapel">Ubah mapel &amp; pengampu</button></div>`;
+  }
+  isi.innerHTML = html;
+
+  // --- tombol-tombol ---
+  isi.querySelectorAll(".chip[data-sem]").forEach(b => {
+    b.onclick = () => pergi("mapel", { semester: b.dataset.sem });
+  });
+  document.getElementById("semesterLain").onclick = () => pergi("formSemester");
+  isi.querySelectorAll(".tab button").forEach(b => {
+    b.onclick = () => pergi("mapel", { tab: b.dataset.tab });
+  });
+  const tambah = document.getElementById("tambah");
+  if (tambah) {
+    tambah.onclick = () => tab === "modul" ? pergi("formModul", { modEditId: null }) : pergi("formSumatif", { sumEditId: null });
+  }
+  isi.querySelectorAll(".baris[data-mod]").forEach(b => {
+    b.onclick = () => pergi("modul", { modId: b.dataset.mod });
+  });
+  isi.querySelectorAll(".baris[data-sum]").forEach(b => {
+    b.onclick = () => pergi("sumatif", { sumId: b.dataset.sum });
+  });
+  const salinSemua = document.getElementById("salinSemua");
+  if (salinSemua) salinSemua.onclick = () => pergi("formSalin", { salinDari: "mapel", salinModul: null });
+  const isiNilai = document.getElementById("isiNilai");
+  if (isiNilai) isiNilai.onclick = () => pergi("nilai");
+  const ubah = document.getElementById("ubahMapel");
+  if (ubah) ubah.onclick = () => pergi("formMapel", { mapelEditId: mp.id, dariMapel: true });
+}
+
+// ====== PILIH SEMESTER LAIN ======
+function formSemester() {
+  const mp = mapelAktif();
+  const sem = semAktif();
+  judul.textContent = "Pilih semester";
+  jejak.textContent = namaMapel(mp);
+  tombolKembali.hidden = false;
+
+  const opsiSemester = ["Ganjil", "Genap"]
+    .map(s => `<option ${sem.semester === s ? "selected" : ""}>${s}</option>`).join("");
 
   isi.innerHTML = `
     <form id="form">
-      <label>Nama ujian <input name="nama" value="${aman(s.nama)}" placeholder="Sumatif Tengah Semester" required></label>
-      <label>Pelaksanaan <input name="pelaksanaan" value="${aman(s.pelaksanaan || "")}" placeholder="Minggu 9"></label>
-      <button type="submit" class="tombol-tambah tombol-sumatif">${lama ? "Simpan" : "Lanjut pilih soal"}</button>
-      ${lama ? `<button type="button" class="tombol-hapus" id="hapus">Hapus sumatif ini</button>` : ""}
+      <div class="dua-kolom">
+        <label>Semester <select name="semester">${opsiSemester}</select></label>
+        <label>Tahun ajaran <input name="tahun" value="${aman(sem.tahun)}" placeholder="2026/2027" required pattern="\\d{4}/\\d{4}" title="Contoh: 2026/2027"></label>
+      </div>
+      <p class="info">Semester baru otomatis muncul di daftar setelah ada modul atau ujian di dalamnya.</p>
+      <button type="submit" class="tombol-utama">Buka semester ini</button>
     </form>`;
 
   document.getElementById("form").onsubmit = (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
-    const isian = { nama: f.get("nama"), pelaksanaan: f.get("pelaksanaan") };
-    if (lama) {
-      Object.assign(lama, isian);
-      simpan();
-      pergi("sumatif");
-    } else {
-      const baru = { id: buatId(), ...isian, soalId: [] };
-      p.sumatif.push(baru);
-      simpan();
-      pergi("pilihSoal", { sumId: baru.id });
-    }
+    pergi("mapel", { semester: kunciSemester({ semester: f.get("semester"), tahun: f.get("tahun").trim() }) });
   };
-
-  if (lama) {
-    document.getElementById("hapus").onclick = () => {
-      if (!confirm(`Hapus "${lama.nama}"? Soal-soalnya tetap aman di modul masing-masing.`)) return;
-      p.sumatif = p.sumatif.filter(x => x.id !== lama.id);
-      simpan();
-      pergi("isiPromes", { tab: "sumatif" });
-    };
-  }
 }
 
-function layarSumatif() {
-  const p = proAktif();
-  const sum = sumAktif();
-  judul.textContent = sum.nama;
-  jejak.textContent = `Semester ${p.semester} ${p.tahun} › Sumatif`;
-  tombolKembali.hidden = false;
+// =====================================================
+//  SAYA (profil, lembaga, keluar)
+// =====================================================
+function layarLainnya() {
+  judul.textContent = "Saya";
+  const kur = sayaKurikulum();
+  const coba = toko.backend.mode === "coba";
+  const s = toko.saya || {};
 
-  // bersihin id soal yang udah nggak ada, biar nomor urut & tombol geser pas
-  const bersih = sum.soalId.filter(id => cariSoal(id));
-  if (bersih.length !== sum.soalId.length) {
-    sum.soalId = bersih;
-    simpan();
+  let h = `
+    <section class="bagian">
+      <h2>Profil</h2>
+      <form id="formProfil">
+        <label>Nama yang tampil <input name="nama" value="${aman(s.nama || "")}" required placeholder="Ustadzah Aminah"></label>
+        <p class="info">Muncul di modul dan ujian yang kamu buat, dan di daftar pengampu.</p>
+        <div class="baris-tombol">
+          <button type="submit" class="tombol-utama">Simpan</button>
+          <span class="tersimpan" id="tersimpanProfil" role="status"></span>
+        </div>
+      </form>
+      <p class="info">Akun Google: <b>${aman(s.email || "")}</b> · ${aman(namaPeran(s.peran))}</p>
+    </section>`;
+
+  if (kur) {
+    h += `
+      <section class="bagian">
+        <h2>Lembaga</h2>
+        <form id="formLembaga">
+          <label>Nama lembaga <input name="nama" value="${aman(toko.lembaga.nama || KONFIG.namaLembaga || "")}" placeholder="PKBM ..."></label>
+          <label>Lama ujian bawaan <input name="waktu" value="${aman(toko.lembaga.waktu || "")}" placeholder="60 menit"></label>
+          <p class="info">Dipakai di kop lembar soal semua ustadz. Masih bisa diganti tiap mau nyetak.</p>
+          <div class="baris-tombol">
+            <button type="submit" class="tombol-utama">Simpan</button>
+            <span class="tersimpan" id="tersimpanLembaga" role="status"></span>
+          </div>
+        </form>
+      </section>`;
   }
 
-  const daftar = sum.soalId.map(cariSoal);
-  const jumlahPG = daftar.filter(x => x.soal.jenis === "PG").length;
+  const pilih = pilihanTema();
+  h += `
+    <section class="bagian">
+      <h2>Tampilan</h2>
+      <div class="pilih-jenis tiga" role="radiogroup" aria-label="Mode tampilan">
+        <label class="radio"><input type="radio" name="tema" value="" ${pilih === "" ? "checked" : ""}> Ikut HP</label>
+        <label class="radio"><input type="radio" name="tema" value="terang" ${pilih === "terang" ? "checked" : ""}> Terang</label>
+        <label class="radio"><input type="radio" name="tema" value="gelap" ${pilih === "gelap" ? "checked" : ""}> Gelap</label>
+      </div>
+      <p class="info">Bisa juga lewat tombol bulan/matahari di pojok kanan atas.</p>
+    </section>`;
 
-  let html = `
-    <div class="kotak-info kotak-sumatif">
-      <span>${aman(sum.pelaksanaan || "Pelaksanaan belum diisi")}</span>
-      <strong>${daftar.length} soal · ${jumlahPG} PG · ${daftar.length - jumlahPG} esai</strong>
-      <button class="tombol-kecil" id="editSum">Edit nama ujian</button>
-    </div>
-    <button class="tombol-garis" id="pilih">Pilih / ubah soal</button>`;
+  let teksPasang;
+  if (sudahTerpasang()) teksPasang = `<p class="info">Aplikasi sudah terpasang di perangkat ini.</p>`;
+  else if (diIPhone()) teksPasang = `<p class="info">Di iPhone: buka lewat Safari, ketuk tombol <b>Bagikan</b> (kotak dengan panah ke atas), lalu pilih <b>Tambahkan ke Layar Utama</b>.</p>`;
+  else teksPasang = `<p class="info">Pasang biar Bank Soal muncul di layar HP kayak aplikasi biasa, dan tetap bisa dibuka tanpa sinyal.</p>
+      <div class="baris-tombol"><button class="tombol-kedua" id="pasang">Pasang di perangkat ini</button></div>
+      <p class="info" id="pesanPasang" role="status"></p>`;
+  h += `
+    <section class="bagian">
+      <h2>Pasang aplikasi</h2>
+      ${teksPasang}
+    </section>`;
 
-  if (daftar.length === 0) {
-    html += `<p class="kosong">Belum ada soal. Klik "Pilih / ubah soal" buat nyentang soal dari modul.</p>`;
-  } else {
-    html += `<p class="info">Atur urutan pakai tombol ↑ ↓. Di lembar cetak, soal PG dikumpulin di bagian A dan esai di bagian B.</p>`;
-  }
-  daftar.forEach((x, i) => {
-    html += kartuSoal(x.soal, {
-      nomor: i + 1,
-      indeks: i,
-      jumlah: daftar.length,
-      mode: "sumatif",
-      asal: x.asal,
-      bacaan: x.bacaan
-    });
-  });
-  if (daftar.length > 0) {
-    html += `<button class="tombol-tambah tombol-sumatif" id="cetak">Cetak soal</button>`;
-  }
-  isi.innerHTML = html;
+  h += `
+    <section class="bagian">
+      <h2>Data</h2>
+      <p class="info">${coba
+        ? "Mode coba: semua data contoh tersimpan di perangkat ini saja dan nggak dikirim ke mana-mana."
+        : "Soal tersimpan online, jadi bisa dibuka dari HP atau laptop mana pun pakai akun Google yang sama. Tanpa sinyal pun tetap bisa dipakai; perubahan dikirim otomatis waktu ada sinyal lagi."}</p>
+      <div class="baris-tombol">
+        <button class="tombol-kedua" id="keluar">${coba ? "Ganti akun contoh" : "Keluar"}</button>
+        ${coba ? `<button class="tombol-teks merah" id="resetCoba">Kembalikan data contoh</button>` : ""}
+      </div>
+    </section>`;
+  isi.innerHTML = h;
 
-  document.getElementById("editSum").onclick = () => pergi("formSumatif", { sumEditId: sum.id });
-  document.getElementById("pilih").onclick = () => pergi("pilihSoal");
-  const tombolCetak = document.getElementById("cetak");
-  if (tombolCetak) tombolCetak.onclick = () => pergi("cetak", { cetakDari: "sumatif" });
-
-  isi.querySelectorAll("[data-lepas]").forEach(b => {
-    b.onclick = () => {
-      sum.soalId = sum.soalId.filter(id => id !== b.dataset.lepas);
-      simpan();
-      tampilkan(true);
-    };
-  });
-  pasangGeser(sum.soalId);
-}
-
-function layarPilihSoal() {
-  const p = proAktif();
-  const sum = sumAktif();
-  judul.textContent = "Pilih Soal";
-  jejak.textContent = sum.nama;
-  tombolKembali.hidden = false;
-
-  const terpilih = new Set(sum.soalId);
-  let html = `<p class="info">Centang soal yang mau dimasukin ke ${aman(sum.nama)}.</p>`;
-
-  if (p.modul.length === 0) {
-    html += `<p class="kosong">Belum ada modul. Bikin modul dan soal formatif dulu ya.</p>`;
-  }
-  p.modul.forEach((m, i) => {
-    html += `<h3 class="grup">Modul ${i + 1} · ${aman(m.judul)}</h3>`;
-    if (m.soal.length === 0) html += `<p class="info">Belum ada soal di modul ini.</p>`;
-    for (const s of m.soal) {
-      const b = m.bacaan.find(x => x.id === s.bacaanId);
-      html += `
-        <label class="pilih-soal">
-          <input type="checkbox" value="${s.id}" ${terpilih.has(s.id) ? "checked" : ""}>
-          <span>
-            <span class="pilih-teks">${aman(s.teks)}</span>
-            <small>${s.jenis === "PG" ? "Pilihan Ganda" : "Esai"}${b ? ` · Teks: ${aman(potong(b.judul || b.teks, 28))}` : ""}</small>
-          </span>
-        </label>`;
-    }
-  });
-  html += `
-    <div class="bawah-lengket">
-      <button class="tombol-tambah tombol-sumatif" id="simpanPilihan"></button>
-    </div>`;
-  isi.innerHTML = html;
-
-  const tombol = document.getElementById("simpanPilihan");
-  const kotak = [...isi.querySelectorAll(".pilih-soal input")];
-
-  function hitung() {
-    const n = kotak.filter(k => k.checked).length;
-    tombol.textContent = `Simpan (${n} soal)`;
-  }
-  kotak.forEach(k => k.onchange = hitung);
-  hitung();
-
-  tombol.onclick = () => {
-    const dicentang = kotak.filter(k => k.checked).map(k => k.value);
-    const tetap = sum.soalId.filter(id => dicentang.includes(id));     // yang lama, urutannya dijaga
-    const tambahan = dicentang.filter(id => !sum.soalId.includes(id)); // yang baru, di belakang
-    sum.soalId = [...tetap, ...tambahan];
-    simpan();
-    pergi("sumatif");
+  document.getElementById("formProfil").onsubmit = (e) => {
+    e.preventDefault();
+    const nama = new FormData(e.target).get("nama").trim();
+    if (!nama) return;
+    const { id, ...lama } = toko.saya;
+    simpanPengguna(uidSaya(), { ...lama, nama });
+    document.getElementById("tersimpanProfil").textContent = "Tersimpan";
   };
+  const fl = document.getElementById("formLembaga");
+  if (fl) {
+    fl.onsubmit = (e) => {
+      e.preventDefault();
+      const f = new FormData(fl);
+      simpanLembaga({ ...toko.lembaga, nama: f.get("nama").trim(), waktu: f.get("waktu").trim() });
+      document.getElementById("tersimpanLembaga").textContent = "Tersimpan";
+    };
+  }
+  document.getElementById("keluar").onclick = () => {
+    if (!coba && !confirm("Keluar dari akun ini?")) return;
+    toko.backend.keluar();
+  };
+  isi.querySelectorAll('[name="tema"]').forEach(r => r.onchange = () => pasangTema(r.value));
+  const pasang = document.getElementById("pasang");
+  if (pasang) {
+    pasang.onclick = async () => {
+      if (!ajakanPasang) {
+        document.getElementById("pesanPasang").innerHTML = `Buka menu browser (titik tiga di pojok kanan atas), lalu pilih <b>Tambahkan ke layar utama</b> atau <b>Instal aplikasi</b>.`;
+        return;
+      }
+      ajakanPasang.prompt();
+      const hasil = await ajakanPasang.userChoice;
+      ajakanPasang = null;
+      if (hasil.outcome === "accepted") tampilkan(true);
+    };
+  }
+  const reset = document.getElementById("resetCoba");
+  if (reset) {
+    reset.onclick = () => {
+      if (!confirm("Semua perubahan di mode coba dihapus dan data contoh dikembalikan seperti semula. Lanjut?")) return;
+      toko.backend.reset();
+      pergi("beranda");
+    };
+  }
 }
 
 // =====================================================
 //  CARI SOAL
 // =====================================================
-
-// tandai kata yang dicari pakai <mark>, tetap aman dari HTML
 function sorot(teks, kata) {
   const kecil = teks.toLowerCase();
   const k = kata.toLowerCase();
@@ -1124,12 +941,11 @@ function sorot(teks, kata) {
 }
 
 function layarCari() {
-  judul.textContent = "Cari Soal";
-  jejak.textContent = "Semua kurikulum";
-  tombolKembali.hidden = false;
+  judul.textContent = "Cari soal";
+  jejak.textContent = sayaKurikulum() ? "Di semua mapel" : "Di mapel yang kamu ampu";
 
   isi.innerHTML = `
-    <input type="search" id="kataCari" value="${aman(posisi.kata || "")}" placeholder="Ketik kata yang ada di soal..." aria-label="Kata yang dicari">
+    <input type="search" id="kataCari" value="${aman(posisi.kata || "")}" placeholder="Ketik kata yang ada di soal" aria-label="Kata yang dicari">
     <div id="hasilCari" class="kolom"></div>`;
 
   const input = document.getElementById("kataCari");
@@ -1142,49 +958,51 @@ function layarCari() {
       tempat.innerHTML = `<p class="info">Ketik minimal 2 huruf.</p>`;
       return;
     }
-
     const kecil = kata.toLowerCase();
     const hasil = [];
-    for (const k of data.kurikulum) {
-      for (const p of k.promes) {
-        p.modul.forEach((m, i) => {
-          for (const s of m.soal) {
-            const semuaTeks = [s.teks, ...(s.pilihan || []), s.pedoman || ""].join(" ").toLowerCase();
-            if (semuaTeks.includes(kecil)) hasil.push({ k, p, m, i, s });
+    for (const mp of mapelTerlihat()) {
+      for (const m of modulMapel(mp.id)) {
+        for (const s of m.soal || []) {
+          const semuaTeks = [s.teks, ...(s.pilihan || []), s.pedoman || ""].join(" ").toLowerCase();
+          if (!semuaTeks.includes(kecil)) continue;
+          // kata yang dicari ada di jawaban / pedoman (bukan di pertanyaannya): tunjukkan juga
+          let lain = null;
+          if (!s.teks.toLowerCase().includes(kecil)) {
+            const i = (s.pilihan || []).findIndex(x => (x || "").toLowerCase().includes(kecil));
+            lain = i >= 0 ? { label: `Jawaban ${HURUF[i]}`, teks: s.pilihan[i] } : { label: "Pedoman", teks: s.pedoman || "" };
           }
-        });
+          hasil.push({ mp, m, s, lain });
+        }
       }
     }
-
     if (hasil.length === 0) {
       tempat.innerHTML = `<p class="kosong">Nggak ada soal yang mengandung "${aman(kata)}".</p>`;
       return;
     }
-
-    let h = `<p class="info">${hasil.length} soal ketemu${hasil.length > 100 ? " (ditampilkan 100 pertama)" : ""}</p>`;
+    let h = `<p class="info">${hasil.length} soal ketemu${hasil.length > 100 ? ", ditampilkan 100 pertama" : ""}</p><div class="daftar">`;
     for (const x of hasil.slice(0, 100)) {
       h += `
-        <button class="kartu" data-kur="${x.k.id}" data-pro="${x.p.id}" data-mod="${x.m.id}">
-          <span>${aman(x.k.mapel)} ${aman(x.k.kelas)} › ${aman(x.p.semester)} ${aman(x.p.tahun)} › Modul ${x.i + 1}</span>
-          <span class="teks-hasil">${sorot(x.s.teks, kata)}</span>
+        <button class="baris hasil" data-mapel="${x.mp.id}" data-mod="${x.m.id}">
+          <span class="baris-isi">
+            <span class="teks-hasil" dir="auto">${x.lain ? aman(potong(x.s.teks, 120)) : sorot(x.s.teks, kata)}</span>
+            ${x.lain ? `<span class="baris-sub">${x.lain.label}: <span dir="auto">${sorot(potong(x.lain.teks, 120), kata)}</span></span>` : ""}
+            <span class="baris-sub">${aman(namaMapel(x.mp))}, ${aman(namaSemester(x.m))}, <span dir="auto">${aman(x.m.judul)}</span>${milikSaya(x.m) ? "" : ` · ${aman(x.m.namaPemilik)}`}</span>
+          </span>
+          <span class="baris-panah" aria-hidden="true">›</span>
         </button>`;
     }
-    tempat.innerHTML = h;
-
-    tempat.querySelectorAll(".kartu").forEach(kartu => {
-      kartu.onclick = () => pergi("modul", {
-        kurId: kartu.dataset.kur,
-        proId: kartu.dataset.pro,
-        modId: kartu.dataset.mod,
-        tab: "modul"
-      });
+    tempat.innerHTML = h + `</div>`;
+    tempat.querySelectorAll(".baris").forEach(b => {
+      b.onclick = () => {
+        const m = modulMapel(b.dataset.mapel).find(y => y.id === b.dataset.mod);
+        pergi("modul", { mapelId: b.dataset.mapel, modId: b.dataset.mod, semester: m ? kunciSemester(m) : null, tab: "modul" });
+      };
     });
   }
-
   input.oninput = cari;
   cari();
   input.focus();
 }
 
-// ====== MULAI! ======
-tampilkan();
+// nilai yang belum sempat terkirim, dikirim waktu halaman ditutup
+window.addEventListener("pagehide", () => { if (typeof kirimNilaiTertunda === "function") kirimNilaiTertunda(); });

@@ -1,0 +1,120 @@
+rules_version = '2';
+
+// =====================================================
+//  ATURAN KEAMANAN DATABASE — Bank Soal
+//
+//  Ditempel di Firebase Console → Firestore Database → Rules → Publish.
+//  Aturan ini yang beneran ngunci data: walau orang luar (atau santri)
+//  berhasil masuk pakai akun Google, mereka nggak bisa baca apa pun
+//  sebelum disetujui bagian kurikulum.
+//
+//  Salinan aturan ini dalam bentuk JavaScript ada di js/aturan.js
+//  (dipakai mode coba). Kalau ngubah di sini, ubah di sana juga.
+// =====================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Email Google bagian kurikulum yang pertama (huruf kecil semua).
+    // Sama dengan "adminAwal" di js/konfig.js.
+    function emailAdminAwal() {
+      return ['isi.email.kurikulum@gmail.com'];
+    }
+
+    function masuk() {
+      return request.auth != null;
+    }
+    function jalurProfil() {
+      return /databases/$(database)/documents/pengguna/$(request.auth.uid);
+    }
+    function aktif() {
+      return masuk() && exists(jalurProfil())
+        && get(jalurProfil()).data.peran in ['ustadz', 'kurikulum'];
+    }
+    function kurikulum() {
+      return aktif() && get(jalurProfil()).data.peran == 'kurikulum';
+    }
+    function pengampu(idMapel) {
+      return request.auth.uid in get(/databases/$(database)/documents/mapel/$(idMapel)).data.pengampu;
+    }
+
+    // ---------- akun ----------
+    match /pengguna/{uid} {
+      allow read: if masuk() && (request.auth.uid == uid || kurikulum());
+
+      // daftar pertama kali: selalu "menunggu", kecuali email admin awal
+      allow create: if masuk() && request.auth.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && (request.resource.data.peran == 'menunggu'
+            || (request.resource.data.peran == 'kurikulum'
+                && request.auth.token.email_verified == true
+                && request.auth.token.email in emailAdminAwal()));
+
+      // ubah profil sendiri boleh, tapi nggak boleh ngubah peran & email sendiri.
+      // Kurikulum boleh ngubah akun siapa pun (setujui, tolak, nonaktifkan).
+      allow update: if masuk() && (
+        (request.auth.uid == uid
+          && request.resource.data.peran == resource.data.peran
+          && request.resource.data.email == resource.data.email)
+        || kurikulum());
+
+      allow delete: if kurikulum();
+    }
+
+    // ---------- pengaturan lembaga (nama lembaga, lama ujian bawaan) ----------
+    match /pengaturan/{id} {
+      allow read: if aktif();
+      allow write: if kurikulum();
+    }
+
+    // ---------- santri ----------
+    // semua akun aktif boleh nambah & ubah; menghapus cuma kurikulum
+    match /santri/{id} {
+      allow read, create, update: if aktif();
+      allow delete: if kurikulum();
+    }
+
+    // ---------- mapel ----------
+    match /mapel/{idMapel} {
+      allow read: if aktif();
+      allow write: if kurikulum();
+
+      // modul: pemiliknya + kurikulum selalu bisa lihat;
+      // pengampu lain mapel ini bisa lihat kalau modulnya dibagikan
+      match /modul/{id} {
+        allow read: if aktif() && (
+          kurikulum()
+          || resource.data.pemilik == request.auth.uid
+          || (resource.data.dibagikan == true && pengampu(idMapel)));
+        allow create: if aktif()
+          && request.resource.data.pemilik == request.auth.uid
+          && pengampu(idMapel);
+        allow update: if aktif()
+          && resource.data.pemilik == request.auth.uid
+          && request.resource.data.pemilik == request.auth.uid;
+        allow delete: if aktif()
+          && (resource.data.pemilik == request.auth.uid || kurikulum());
+      }
+
+      // lembar nilai satu semester: diisi pengampu mapel ini, atau kurikulum/TU
+      match /nilai/{id} {
+        allow read, write: if aktif() && (kurikulum() || pengampu(idMapel));
+      }
+
+      // ujian sumatif: cuma pemiliknya + kurikulum
+      match /sumatif/{id} {
+        allow read: if aktif() && (
+          kurikulum()
+          || resource.data.pemilik == request.auth.uid);
+        allow create: if aktif()
+          && request.resource.data.pemilik == request.auth.uid
+          && pengampu(idMapel);
+        allow update: if aktif()
+          && resource.data.pemilik == request.auth.uid
+          && request.resource.data.pemilik == request.auth.uid;
+        allow delete: if aktif()
+          && (resource.data.pemilik == request.auth.uid || kurikulum());
+      }
+    }
+  }
+}

@@ -81,6 +81,17 @@ function baris(teks) {
   return aman(teks).replace(/\n/g, "<br>");
 }
 
+// paragraf Arab di lembar cetak: rata kanan, arah kanan-ke-kiri.
+// Ditulis lengkap (dir + style) karena Word nggak ngerti dir="auto".
+function atributArah(teks) {
+  return arah(teks) === "rtl" ? ` dir="rtl" lang="ar" style="text-align:right"` : "";
+}
+function spanArah(teks) {
+  return arah(teks) === "rtl"
+    ? `<span dir="rtl" lang="ar">${aman(teks)}</span>`
+    : aman(teks);
+}
+
 // pilihan kosong dilewati, jadi hurufnya diurutkan ulang A, B, C, ...
 function daftarPilihan(s) {
   return s.pilihan.filter(t => t);
@@ -90,13 +101,27 @@ function hurufKunci(s) {
   return HURUF[sebelum];
 }
 
-function htmlKop(info, tambahan) {
+// pakai kop resmi (kop.js) kalau ada, kecuali dimatikan di konfig.js
+function pakaiKopResmi() {
+  return typeof KOP_RESMI !== "undefined" && KONFIG.kopResmi !== false;
+}
+
+function htmlKopResmi() {
   return `
-    <div class="kop">
-      <p class="kop-sekolah">${aman(info.sekolah || "NAMA SEKOLAH")}</p>
-      <p class="kop-ujian">${aman(info.namaUjian.toUpperCase())}${info.paket ? ` (PAKET ${info.paket})` : ""}${tambahan}</p>
+    <table class="kop-resmi" width="100%"><tr>
+      <td class="kop-logo" width="80"><img src="data:image/jpeg;base64,${KOP_RESMI.logo}" alt="Logo" width="76" height="75"></td>
+      <td class="kop-tulisan">${KOP_RESMI.baris.map(b => `<p class="kop-${b.gaya}">${aman(b.teks)}</p>`).join("")}</td>
+    </tr></table>`;
+}
+
+function htmlKop(info, tambahan) {
+  const resmi = pakaiKopResmi();
+  return `
+    <div class="kop${resmi ? " ada-resmi" : ""}">
+      ${resmi ? htmlKopResmi() : `<p class="kop-sekolah">${aman(info.sekolah || "NAMA LEMBAGA")}</p>`}
+      <p class="kop-ujian">${spanArah(info.namaUjian.toUpperCase())}${info.paket ? ` (PAKET ${info.paket})` : ""}${tambahan}</p>
       <table class="kop-info" align="center">
-        <tr><td>Mata pelajaran</td><td>: ${aman(info.mapel)}</td><td>Kelas</td><td>: ${aman(info.kelas)}</td></tr>
+        <tr><td>Mata pelajaran</td><td>: ${aman(info.mapel)}</td><td>Kelas</td><td>: ${aman(info.kelas.replace(/^Kelas\s*/i, ""))} (${aman(info.jenjang)})</td></tr>
         <tr><td>Semester</td><td>: ${aman(info.semester)}</td><td>Waktu</td><td>: ${aman(info.waktu || "-")}</td></tr>
       </table>
     </div>`;
@@ -117,19 +142,21 @@ function htmlTabelSoal(items, denganKunci) {
       h += `
         <tr><td colspan="2" class="sel-bacaan">
           <p class="petunjuk">Bacalah teks berikut untuk menjawab soal ${rentang}!</p>
-          ${b.judul ? `<p class="bacaan-judul">${aman(b.judul)}</p>` : ""}
-          <p class="bacaan-teks">${baris(b.teks)}</p>
+          ${b.judul ? `<p class="bacaan-judul">${spanArah(b.judul)}</p>` : ""}
+          <p class="bacaan-teks"${atributArah(b.teks)}>${baris(b.teks)}</p>
         </td></tr>`;
     }
 
-    let sel = `<p class="teks-soal">${baris(it.soal.teks)}</p>`;
+    let sel = `<p class="teks-soal"${atributArah(it.soal.teks)}>${baris(it.soal.teks)}</p>`;
     if (it.soal.jenis === "PG" && !denganKunci) {
+      // arah tiap pilihan ikut isinya sendiri: jawaban Arab rata kanan,
+      // jawaban Indonesia rata kiri (walau soalnya pakai huruf Arab)
       sel += daftarPilihan(it.soal)
-        .map((t, j) => `<p class="opsi-cetak">${HURUF[j]}. ${aman(t)}</p>`)
+        .map((t, j) => `<p class="opsi-cetak"${atributArah(t)}><span dir="ltr">${HURUF[j]}.</span> ${spanArah(t)}</p>`)
         .join("");
     }
     if (it.soal.jenis !== "PG" && denganKunci) {
-      sel += `<p class="pedoman-cetak">${baris(it.soal.pedoman || "-")}</p>`;
+      sel += `<p class="pedoman-cetak"${atributArah(it.soal.pedoman)}>${baris(it.soal.pedoman || "-")}</p>`;
     }
     h += `<tr><td class="no" width="28">${i + 1}.</td><td>${sel}</td></tr>`;
   });
@@ -181,71 +208,61 @@ function htmlLembarKunci(info, pg, esai, halamanBaru) {
   return h;
 }
 
-// ====== EXPORT KE WORD ======
-// Trik lama tapi ampuh: Word bisa buka file HTML yang dinamai .doc
-const GAYA_WORD = `
-  @page Section1 { size: 21cm 29.7cm; margin: 2cm; }
-  div.Section1 { page: Section1; }
-  body { font-family: "Times New Roman", serif; font-size: 12pt; }
-  p { margin: 0 0 4pt; }
-  .kop { text-align: center; border-bottom: 3px double #000; padding-bottom: 6pt; margin-bottom: 10pt; }
-  .kop-sekolah { font-size: 14pt; font-weight: bold; text-transform: uppercase; }
-  .kop-ujian { font-weight: bold; }
-  .kop-info td { padding: 0 6pt; text-align: left; }
-  .identitas td { border-bottom: 1px dotted #000; padding-top: 8pt; }
-  .judul-bagian { font-weight: bold; margin-top: 10pt; }
-  .petunjuk { font-style: italic; }
-  .tabel-soal td { vertical-align: top; padding-bottom: 8pt; }
-  .bacaan-judul { font-weight: bold; text-align: center; }
-  .opsi-cetak { margin-left: 6pt; }
-  .pedoman-cetak { border-left: 2pt solid #000; padding-left: 6pt; }
-  .tabel-kunci td { padding: 2pt 18pt 2pt 0; }
-`;
-
+// ====== EXPORT KE WORD (.docx asli, lihat docx.js) ======
 function namaFileAman(teks) {
   return teks.replace(/[\\/:*?"<>|]/g, "-").trim();
 }
 
-async function unduhWord(namaFile, isiHtml) {
-  const dok = `
-    <html xmlns:o="urn:schemas-microsoft-com:office:office"
-          xmlns:w="urn:schemas-microsoft-com:office:word"
-          xmlns="http://www.w3.org/TR/REC-html40">
-    <head><meta charset="utf-8"><title>${aman(namaFile)}</title><style>${GAYA_WORD}</style></head>
-    <body><div class="Section1">${isiHtml}</div></body>
-    </html>`;
-  // "﻿" = penanda UTF-8, biar huruf seperti "–" nggak jadi aneh di Word
-  const berkas = new File(["﻿", dok], namaFileAman(namaFile) + ".doc", { type: "application/msword" });
-  await berikanFile(berkas);
-}
-
 // ====== LAYAR: CETAK SOAL ======
+const KUNCI_CETAK = "banksoal-cetak";
+
 function layarCetak() {
-  const k = kurAktif();
-  const p = proAktif();
+  const mp = mapelAktif();
 
   // ambil soal + teks bacaannya: dari modul (formatif) atau dari sumatif
-  let namaUjian, items, benih;
+  let namaUjian, items, benih, sem;
   if (posisi.cetakDari === "modul") {
     const m = modAktif();
-    namaUjian = `Soal Formatif: ${m.judul}`;
+    sem = m;
+    const bacaan = m.bacaan || [];
+    let soal = m.soal || [];
     benih = m.id;
-    items = m.soal.map(s => ({ soal: s, bacaan: m.bacaan.find(b => b.id === s.bacaanId) || null }));
+    namaUjian = `Soal Formatif: ${m.judul}`;
+    if (posisi.cetakPertemuan) {
+      const i = (m.pertemuan || []).findIndex(p => p.id === posisi.cetakPertemuan);
+      if (i >= 0) {
+        soal = soal.filter(s => s.pertemuanId === posisi.cetakPertemuan);
+        namaUjian += ` (Pertemuan ${i + 1})`;
+        benih += "-" + posisi.cetakPertemuan;
+      }
+    }
+    items = soal.map(s => ({ soal: s, bacaan: bacaan.find(b => b.id === s.bacaanId) || null }));
   } else {
     const sum = sumAktif();
+    sem = sum;
     namaUjian = sum.nama;
     benih = sum.id;
-    items = sum.soalId.map(cariSoal).filter(Boolean).map(x => ({ soal: x.soal, bacaan: x.bacaan }));
+    items = butirSumatif(mp.id, sum).map(x => ({ soal: x.soal, bacaan: x.bacaan }));
   }
 
-  judul.textContent = "Cetak Soal";
+  judul.textContent = "Cetak soal";
   jejak.textContent = namaUjian;
   tombolKembali.hidden = false;
 
+  // nama lembaga & lama ujian: terakhir dipakai di perangkat ini, atau bawaan dari kurikulum
+  const kunciIngat = `${KUNCI_CETAK}-${uidSaya()}`;
+  const ingat = bacaLokal(kunciIngat, {});
+  const lembagaAwal = ingat.sekolah || toko.lembaga.nama || KONFIG.namaLembaga || "";
+  const waktuAwal = ingat.waktu || toko.lembaga.waktu || "";
+
+  // di laptop: pengaturan di kiri, lembar soal di kanan
   isi.innerHTML = `
+    <div class="layar-cetak">
     <div class="panel-cetak jangan-cetak">
-      <label>Nama sekolah <input id="sekolah" value="${aman(data.sekolah || "")}" placeholder="SMP Negeri 1 ..."></label>
-      <label>Waktu pengerjaan <input id="waktu" value="${aman(data.waktu || "")}" placeholder="90 menit"></label>
+      ${pakaiKopResmi()
+        ? `<p class="info">Pakai kop resmi PKBM Imam Syafi'i.</p><input id="sekolah" type="hidden" value="${aman(lembagaAwal)}">`
+        : `<label>Nama lembaga di kop <input id="sekolah" value="${aman(lembagaAwal)}" placeholder="PKBM ..."></label>`}
+      <label>Lama ujian <input id="waktu" value="${aman(waktuAwal)}" placeholder="60 menit"></label>
       <label>Paket soal
         <select id="paket">
           <option value="">Tanpa paket (urutan asli)</option>
@@ -259,18 +276,22 @@ function layarCetak() {
         <input type="checkbox" id="acakPilihan" checked>
         Acak juga urutan pilihan jawaban
       </label>
-      <div class="pilih-jenis tiga">
-        <label class="radio"><input type="radio" name="mode" value="soal" checked> Soal</label>
-        <label class="radio"><input type="radio" name="mode" value="kunci"> Kunci</label>
-        <label class="radio"><input type="radio" name="mode" value="dua"> Dua-duanya</label>
+      <fieldset>
+        <legend>Yang dicetak</legend>
+        <div class="pilih-jenis tiga">
+          <label class="radio"><input type="radio" name="mode" value="soal" checked> Soal</label>
+          <label class="radio"><input type="radio" name="mode" value="kunci"> Kunci</label>
+          <label class="radio"><input type="radio" name="mode" value="dua"> Keduanya</label>
+        </div>
+      </fieldset>
+      <div class="baris-tombol">
+        <button class="tombol-utama" id="print">Cetak / PDF</button>
+        <button class="tombol-kedua" id="word">Download Word</button>
       </div>
-      <div class="pilih-jenis">
-        <button class="tombol-tambah tombol-sumatif" id="print">Cetak / PDF</button>
-        <button class="tombol-garis" id="word">Download Word</button>
-      </div>
-      <p class="info">Mau jadi PDF? Di jendela cetak, pilih tujuan "Simpan sebagai PDF". File Word bisa diedit lagi, misal buat ganti kop sekolah.</p>
+      <p class="info">Mau jadi PDF? Di jendela cetak, pilih tujuan "Simpan sebagai PDF". File Word bisa diedit lagi, misalnya buat ganti kop.</p>
     </div>
-    <div id="lembar"></div>`;
+    <div id="lembar"></div>
+    </div>`;
 
   const lembar = document.getElementById("lembar");
   const inputSekolah = document.getElementById("sekolah");
@@ -285,29 +306,31 @@ function layarCetak() {
     };
   }
 
-  // bikin HTML lembar sesuai pilihan sekarang
-  function htmlSekarang() {
-    const { paket, mode } = pengaturan();
-    const info = {
+  function infoSekarang() {
+    const { paket } = pengaturan();
+    return {
       sekolah: inputSekolah.value,
       waktu: inputWaktu.value,
       namaUjian,
       paket,
-      mapel: k.mapel,
-      kelas: k.kelas,
-      semester: `${p.semester} ${p.tahun}`
+      mapel: mp.nama,
+      kelas: mp.kelas,
+      jenjang: mp.jenjang,
+      semester: namaSemester(sem)
     };
-    const { pg, esai } = siapkanLembar(items, paket, centangAcak.checked, benih);
+  }
 
+  function htmlSekarang() {
+    const { paket, mode } = pengaturan();
+    const info = infoSekarang();
+    const { pg, esai } = siapkanLembar(items, paket, centangAcak.checked, benih);
     if (mode === "soal") return htmlLembarSoal(info, pg, esai);
     if (mode === "kunci") return htmlLembarKunci(info, pg, esai, false);
     return htmlLembarSoal(info, pg, esai) + htmlLembarKunci(info, pg, esai, true);
   }
 
   function gambar() {
-    // pilihan "acak jawaban" cuma muncul buat paket yang diacak
     document.getElementById("bagianAcakPilihan").hidden = !["B", "C", "D"].includes(pilihPaket.value);
-
     if (items.length === 0) {
       lembar.innerHTML = `<p class="kosong">Belum ada soal yang bisa dicetak.</p>`;
       return;
@@ -315,22 +338,25 @@ function layarCetak() {
     lembar.innerHTML = htmlSekarang();
   }
 
-  // nama sekolah & waktu diingat buat cetakan berikutnya
   inputSekolah.oninput = inputWaktu.oninput = () => {
-    data.sekolah = inputSekolah.value;
-    data.waktu = inputWaktu.value;
-    simpan();
+    tulisLokal(kunciIngat, { sekolah: inputSekolah.value, waktu: inputWaktu.value });
     gambar();
   };
   pilihPaket.onchange = centangAcak.onchange = gambar;
   document.querySelectorAll('[name="mode"]').forEach(r => r.onchange = gambar);
 
-  document.getElementById("print").onclick = () => window.print();
+  document.getElementById("print").onclick = () => {
+    if (items.length === 0) return alert("Belum ada soal yang bisa dicetak.");
+    window.print();
+  };
   document.getElementById("word").onclick = () => {
     if (items.length === 0) return alert("Belum ada soal yang bisa didownload.");
     const { paket, mode } = pengaturan();
     const bagian = { soal: "Soal", kunci: "Kunci", dua: "Soal dan Kunci" }[mode];
-    unduhWord(`${namaUjian}${paket ? " Paket " + paket : ""} - ${bagian}`, htmlSekarang());
+    const { pg, esai } = siapkanLembar(items, paket, centangAcak.checked, benih);
+    const nama = namaFileAman(`${namaUjian}${paket ? " Paket " + paket : ""} - ${bagian}`);
+    const blob = buatDocx(infoSekarang(), pg, esai, mode, pakaiKopResmi());
+    berikanFile(new File([blob], nama + ".docx", { type: blob.type }));
   };
 
   gambar();

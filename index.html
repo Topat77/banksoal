@@ -4,22 +4,62 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bank Soal</title>
+  <!-- ikon di tab browser: lembar soal dengan jawaban dilingkari merah -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='3' width='20' height='26' rx='3' fill='%23fff' stroke='%232F6B4F' stroke-width='2'/%3E%3Cpath d='M11 10h10M11 15h10M17 22h4' stroke='%232F6B4F' stroke-width='2' stroke-linecap='round'/%3E%3Cellipse cx='12.5' cy='22' rx='3.3' ry='2.7' transform='rotate(-14 12.5 22)' fill='none' stroke='%23B23A2E' stroke-width='2'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#EDF5F1">
+  <!-- pasang mode terang/gelap secepatnya, biar layar nggak kedip -->
+  <script>
+    try {
+      var t = localStorage.getItem("banksoal-tema");
+      if (t === "terang" || t === "gelap") document.documentElement.dataset.tema = t;
+    } catch (e) {}
+  </script>
+  <!-- biar bisa dipasang di HP kayak aplikasi -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="ikon-apple-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Bank Soal">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <header>
-    <button id="tombolKembali" aria-label="Kembali" hidden>‹</button>
-    <div>
-      <p id="jejak"></p>
-      <h1 id="judul">Bank Soal</h1>
+<body data-status="memuat">
+  <div class="aplikasi">
+    <!-- menu samping: cuma kelihatan di laptop -->
+    <aside id="samping" class="samping" aria-label="Menu"></aside>
+
+    <div class="utama">
+      <header>
+        <button id="tombolKembali" aria-label="Kembali" hidden>‹</button>
+        <div class="judul-header">
+          <p id="jejak"></p>
+          <h1 id="judul">Bank Soal</h1>
+        </div>
+        <div id="tandaHeader" class="tanda-header" aria-live="polite"></div>
+        <button id="tombolTema" class="tombol-tema" aria-label="Ganti mode terang/gelap"></button>
+      </header>
+
+      <main id="isi"><p class="kosong">Memuat...</p></main>
     </div>
-  </header>
+  </div>
 
-  <main id="isi"></main>
+  <!-- menu bawah: cuma kelihatan di HP -->
+  <nav id="navBawah" class="nav-bawah" aria-label="Menu utama"></nav>
 
-  <!-- urutannya penting: data dulu, terus cetak, terakhir layar -->
-  <script src="js/data.js"></script>
-  <script src="js/cetak.js"></script>
+  <!-- urutannya penting -->
+  <script src="js/konfig.js"></script>
+  <script src="js/alat.js"></script>
+  <script src="js/aturan.js"></script>
+  <script src="js/coba.js"></script>
+  <script src="js/toko.js"></script>
   <script src="js/layar.js"></script>
+  <script src="js/modul.js"></script>
+  <script src="js/sumatif.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/kop.js"></script>
+  <script src="js/docx.js"></script>
+  <script src="js/cetak.js"></script>
+  <script src="js/kurikulum.js"></script>
+  <script src="js/nilai.js"></script>
+  <script src="js/rapor.js"></script>
+  <script type="module" src="js/mulai.js"></script>
 </body>
 </html>
