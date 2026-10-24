@@ -123,28 +123,34 @@ function noAbsen(santri, urutan) {
 
 function layarSantri() {
   const boleh = sayaKurikulum();    // admin: isi, ubah, hapus. Ustadz: lihat aja
-  const semua = kelasBolehDilihat();
+  // admin: kalau dibuka ke kelas tertentu (dari lembar nilai / beranda), ikut pindah jenjangnya
+  if (boleh && posisi.kelasSantri) {
+    const j = posisi.kelasSantri.split("|")[0];
+    if (daftarJenjang().includes(j) && j !== jenjangAktif()) pilihJenjang(j);
+  }
+  const semua = boleh ? kelasBolehDilihat().filter(x => x.jenjang === jenjangAktif()) : kelasBolehDilihat();
   const adaTerpilih = posisi.kelasSantri && semua.some(x => `${x.jenjang}|${x.kelas}` === posisi.kelasSantri);
   const kunci = adaTerpilih ? posisi.kelasSantri : (semua[0] ? `${semua[0].jenjang}|${semua[0].kelas}` : "");
   const [jenjang, kelas] = kunci.split("|");
   posisi.kelasSantri = kunci;
 
   judul.textContent = "Daftar santri";
-  jejak.textContent = kelas ? `${kelas}, ${jenjang}` : "";
+  jejak.textContent = kelas ? `${kelas}, ${jenjang}` : (boleh ? jenjangAktif() : "");
   tombolKembali.hidden = !posisi.dariNilai;
 
-  let h = `<div class="pilih-semester" role="group" aria-label="Kelas">`;
+  let h = (boleh ? htmlTabJenjang() : "") + `<div class="pilih-semester" role="group" aria-label="Kelas">`;
   for (const x of semua) {
     const k = `${x.jenjang}|${x.kelas}`;
-    h += `<button class="chip ${k === kunci ? "aktif" : ""}" data-kelas="${aman(k)}" aria-pressed="${k === kunci}">${aman(x.kelas)} · ${aman(x.jenjang)}</button>`;
+    h += `<button class="chip ${k === kunci ? "aktif" : ""}" data-kelas="${aman(k)}" aria-pressed="${k === kunci}">${aman(x.kelas)}${boleh ? "" : ` · ${aman(x.jenjang)}`}</button>`;
   }
   h += `</div>`;
 
   if (!kelas) {
     h += boleh
-      ? `<p class="kosong">Belum ada kelas. Kelas muncul otomatis setelah ada mapel (dibuat admin).</p>`
+      ? `<p class="kosong">Belum ada kelas ${aman(jenjangAktif())}. Kelas muncul otomatis setelah ada mapel (dibuat admin).</p>`
       : `<p class="kosong">Kamu belum mengajar di kelas mana pun, jadi belum ada daftar santri yang bisa dilihat.</p>`;
     isi.innerHTML = h;
+    if (boleh) pasangTabJenjang("santri", { kelasSantri: null });
     return;
   }
 
@@ -169,6 +175,7 @@ function layarSantri() {
   }
 
   // ---------- admin: tabel bisa diketik ----------
+  const pasangTab = () => pasangTabJenjang("santri", { kelasSantri: null });
   const barisKosong = 3;
   const tombolHapus = (x) => `<button class="tombol-hapus-kecil" data-hapus-santri="${x.id}" aria-label="Hapus ${aman(x.nama)}" title="Hapus santri">×</button>`;
   const htmlBarisSantri = (x) => `
@@ -193,6 +200,7 @@ function layarSantri() {
       <span class="info" id="pesanSantri" role="status"></span>
     </div>`;
   isi.innerHTML = h;
+  pasangTab();
 
   isi.querySelectorAll("[data-kelas]").forEach(b => b.onclick = () => pergi("santri", { kelasSantri: b.dataset.kelas }));
   const badan = document.getElementById("badanSantri");

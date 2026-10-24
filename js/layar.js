@@ -403,11 +403,20 @@ function gambarSamping() {
   }
   h += `<button class="menu-item ${grup === "santri" ? "aktif" : ""}" data-ke="santri">Daftar santri</button>`;
 
-  const daftar = mapelTerlihat();
-  h += `<p class="menu-judul">${kur ? "Semua mapel" : "Mapel kamu"}</p>`;
+  const urutJ = Object.keys(KELAS_PER_JENJANG);
+  const daftar = kur
+    ? [...mapelTerlihat()].sort((a, b) => (urutJ.indexOf(a.jenjang) - urutJ.indexOf(b.jenjang)) || bandingKelas(a, b) || a.nama.localeCompare(b.nama, "id"))
+    : mapelTerlihat();
+  if (!kur) h += `<p class="menu-judul">Mapel kamu</p>`;
   if (daftar.length === 0) h += `<p class="menu-kosong">${kur ? "Belum ada mapel" : "Belum ditugaskan ke mapel"}</p>`;
 
+  let jenjangTadi = null;
   for (const m of daftar) {
+    // admin: mapel dikelompokkan per jenjang (Paket B, Paket C)
+    if (kur && m.jenjang !== jenjangTadi) {
+      jenjangTadi = m.jenjang;
+      h += `<p class="menu-judul">${aman(m.jenjang)}</p>`;
+    }
     const mapelIni = grup === "mapel" && m.id === posisi.mapelId;
     h += `<button class="menu-item ${mapelIni && posisi.layar === "mapel" ? "aktif" : ""}" data-mapel="${m.id}">
             <span>${aman(m.nama)}</span><small>${aman(m.kelas)}</small>
@@ -541,6 +550,29 @@ function layarBeranda() {
         </div>
       </section>`;
 
+    // panel per jenjang
+    utama += `<div class="panel-jenjang">${daftarJenjang().map(j => {
+      const mp = toko.mapel.filter(m => m.jenjang === j);
+      const kelas = daftarKelas().filter(x => x.jenjang === j);
+      const santri = toko.santri.filter(x => x.jenjang === j && x.aktif !== false).length;
+      const tanpaAmpu = mp.filter(m => !(m.pengampu || []).length).length;
+      return `
+        <section class="kartu-jenjang">
+          <h2>${aman(j)}</h2>
+          <dl>
+            <div><dt>Mapel</dt><dd>${mp.length}</dd></div>
+            <div><dt>Kelas</dt><dd>${kelas.length}</dd></div>
+            <div><dt>Santri</dt><dd>${santri}</dd></div>
+          </dl>
+          ${tanpaAmpu ? `<p class="info">${tanpaAmpu} mapel belum ada pengampunya.</p>` : ""}
+          <div class="baris-tombol">
+            <button class="tombol-teks" data-panel-jenjang="${aman(j)}" data-ke="kelolaMapel">Mapel</button>
+            <button class="tombol-teks" data-panel-jenjang="${aman(j)}" data-ke="santri">Santri</button>
+            <button class="tombol-teks" data-panel-jenjang="${aman(j)}" data-ke="rapor">Rapor</button>
+          </div>
+        </section>`;
+    }).join("")}</div>`;
+
     if (toko.mapel.length === 0) {
       utama += `
         <section class="panduan">
@@ -629,6 +661,10 @@ function layarBeranda() {
   klik("keKelola", () => pergi("kelolaMapel", { dariMapel: false }));
   klik("keSantri", () => pergi("santri", { dariNilai: false }));
   klik("keBobot", () => pergi("bobot"));
+  isi.querySelectorAll("[data-panel-jenjang]").forEach(b => b.onclick = () => {
+    pilihJenjang(b.dataset.panelJenjang);
+    pergi(b.dataset.ke, { dariMapel: false, dariNilai: false, kelasSantri: null, kelasRapor: null });
+  });
   klik("cadanganBeranda", async () => {
     const b = document.getElementById("cadanganBeranda");
     if (await unduhCadangan(b, null)) tampilkan(true);
@@ -831,6 +867,11 @@ function layarLainnya() {
       <form id="formProfil">
         <label>Nama yang tampil <input name="nama" value="${aman(s.nama || "")}" required placeholder="Ustadzah Aminah"></label>
         <p class="info">Muncul di modul dan ujian yang kamu buat, dan di daftar pengampu.</p>
+        <p class="label-sapaan">Saya seorang</p>
+        <div class="pilih-jenis" role="radiogroup" aria-label="Ustadz atau ustadzah">
+          <label class="radio"><input type="radio" name="sapaan" value="ustadz" ${sapaanPengguna(s) === "ustadz" ? "checked" : ""}> Ustadz</label>
+          <label class="radio"><input type="radio" name="sapaan" value="ustadzah" ${sapaanPengguna(s) === "ustadzah" ? "checked" : ""}> Ustadzah</label>
+        </div>
         <div class="baris-tombol">
           <button type="submit" class="tombol-utama">Simpan</button>
           <span class="tersimpan" id="tersimpanProfil" role="status"></span>
@@ -894,10 +935,11 @@ function layarLainnya() {
 
   document.getElementById("formProfil").onsubmit = (e) => {
     e.preventDefault();
-    const nama = new FormData(e.target).get("nama").trim();
+    const f = new FormData(e.target);
+    const nama = f.get("nama").trim();
     if (!nama) return;
     const { id, ...lama } = toko.saya;
-    simpanPengguna(uidSaya(), { ...lama, nama });
+    simpanPengguna(uidSaya(), { ...lama, nama, sapaan: f.get("sapaan") || lama.sapaan || null });
     document.getElementById("tersimpanProfil").textContent = "Tersimpan";
   };
   const uc = document.getElementById("unduhCadangan");

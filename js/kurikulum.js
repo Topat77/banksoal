@@ -22,6 +22,15 @@ function layarAkun() {
 
   const mapelOrang = (uid) => toko.mapel.filter(m => (m.pengampu || []).includes(uid)).map(namaMapel);
 
+
+  const pilihSapaan = (p) => `
+          <label class="pilih-peran">Sapaan
+            <select data-sapaan="${p.id}">
+              <option value="" ${!sapaanPengguna(p) ? "selected" : ""}>Belum diatur</option>
+              <option value="ustadz" ${sapaanPengguna(p) === "ustadz" ? "selected" : ""}>Ustadz</option>
+              <option value="ustadzah" ${sapaanPengguna(p) === "ustadzah" ? "selected" : ""}>Ustadzah</option>
+            </select>
+          </label>`;
   let h = `<h2 class="subjudul">Menunggu persetujuan <small>${menunggu.length} akun</small></h2>`;
   if (menunggu.length === 0) {
     h += `<p class="info">Nggak ada yang menunggu. Akun baru muncul di sini setelah ustadz/ustadzah masuk pakai akun Google-nya.</p>`;
@@ -36,6 +45,7 @@ function layarAkun() {
             <small>Daftar ${aman(waktuRapi(p.dibuat))}</small>
           </div>
           <div class="baris-tombol">
+            ${pilihSapaan(p)}
             <button class="tombol-utama" data-setujui="${p.id}">Setujui</button>
             <button class="tombol-teks merah" data-tolak="${p.id}">Tolak</button>
           </div>
@@ -54,8 +64,9 @@ function layarAkun() {
           <span>${aman(p.email)}</span>
           <small>${ampu.length ? "Mengampu " + aman(ampu.join(", ")) : "Belum mengampu mapel"} · Terakhir masuk ${aman(waktuRapi(p.terakhirMasuk))}</small>
         </div>
-        ${diriSendiri ? "" : `
+        ${diriSendiri ? `<div class="baris-tombol">${pilihSapaan(p)}</div>` : `
         <div class="baris-tombol">
+          ${pilihSapaan(p)}
           <label class="pilih-peran">Peran
             <select data-peran="${p.id}">
               <option value="ustadz" ${p.peran === "ustadz" ? "selected" : ""}>Ustadz/ustadzah</option>
@@ -93,6 +104,14 @@ function layarAkun() {
     tampilkan(true);
   };
   isi.querySelectorAll("[data-setujui]").forEach(b => b.onclick = () => ubahPeran(b.dataset.setujui, "ustadz"));
+  isi.querySelectorAll("[data-sapaan]").forEach(sel => {
+    sel.onchange = () => {
+      const p = toko.pengguna.find(x => x.id === sel.dataset.sapaan);
+      if (!p) return;
+      const { id, ...data } = p;
+      simpanPengguna(p.id, { ...data, sapaan: sel.value || null });
+    };
+  });
   isi.querySelectorAll("[data-aktifkan]").forEach(b => b.onclick = () => ubahPeran(b.dataset.aktifkan, "ustadz"));
   isi.querySelectorAll("[data-tolak]").forEach(b => {
     b.onclick = () => {
@@ -127,31 +146,71 @@ const KELAS_PER_JENJANG = {
   "Paket A": KELAS_SD, "Paket B": KELAS_SMP, "Paket C": KELAS_SMA,
   "SD": KELAS_SD, "SMP": KELAS_SMP, "SMA": KELAS_SMA
 };
+// jenjang yang ada di PKBM Imam Syafi'i
+const JENJANG_PKBM = ["Paket B", "Paket C"];
+
+// =====================================================
+//  PANEL JENJANG (khusus admin): Paket B dan Paket C dipisah
+//  Pilihan jenjang diingat, jadi pindah ke layar lain tetap di jenjang yang sama.
+// =====================================================
+const KUNCI_JENJANG = "banksoal-jenjang-admin";
+function daftarJenjang() {
+  const ada = new Set([...toko.mapel.map(m => m.jenjang), ...toko.santri.map(x => x.jenjang)].filter(Boolean));
+  const urut = Object.keys(KELAS_PER_JENJANG);
+  return [...new Set([...JENJANG_PKBM, ...ada])].sort((a, b) => urut.indexOf(a) - urut.indexOf(b));
+}
+function jenjangAktif() {
+  const semua = daftarJenjang();
+  const pilih = posisi.jenjangAdmin || bacaLokal(KUNCI_JENJANG, "");
+  return semua.includes(pilih) ? pilih : semua[0];
+}
+function pilihJenjang(j) {
+  posisi.jenjangAdmin = j;
+  tulisLokal(KUNCI_JENJANG, j);
+}
+// tab Paket B | Paket C; ke = nama layar yang digambar ulang
+function htmlTabJenjang() {
+  const aktif = jenjangAktif();
+  return `<div class="tab-jenjang" role="tablist" aria-label="Jenjang">${daftarJenjang().map(j => {
+    const n = toko.mapel.filter(m => m.jenjang === j).length;
+    return `<button role="tab" data-jenjang="${aman(j)}" class="${j === aktif ? "aktif" : ""}" aria-selected="${j === aktif}">${aman(j)}<small>${n} mapel</small></button>`;
+  }).join("")}</div>`;
+}
+function pasangTabJenjang(ke, tambahan = {}) {
+  isi.querySelectorAll(".tab-jenjang [data-jenjang]").forEach(b => {
+    b.onclick = () => { pilihJenjang(b.dataset.jenjang); pergi(ke, tambahan); };
+  });
+}
 
 function layarKelolaMapel() {
   wajibKurikulum();
   judul.textContent = "Mapel & pengampu";
   jejak.textContent = toko.lembaga.nama || KONFIG.namaLembaga || "";
 
-  let h = `<p class="info">Mapel dibuat di sini, lalu tentukan ustadz/ustadzah pengampunya. Satu mapel boleh diampu lebih dari satu orang.</p>`;
-  if (toko.mapel.length === 0) {
-    h += `<p class="kosong">Belum ada mapel.</p>`;
+  const jenjang = jenjangAktif();
+  const daftar = toko.mapel.filter(m => m.jenjang === jenjang)
+    .sort((a, b) => bandingKelas(a, b) || a.nama.localeCompare(b.nama, "id"));
+  jejak.textContent = jenjang;
+  let h = htmlTabJenjang() + `<p class="info">Mapel dibuat di sini, lalu tentukan ustadz/ustadzah pengampunya. Satu mapel boleh diampu lebih dari satu orang.</p>`;
+  if (daftar.length === 0) {
+    h += `<p class="kosong">Belum ada mapel ${aman(jenjang)}.</p>`;
   } else {
     h += `<div class="daftar">`;
-    for (const m of toko.mapel) {
+    for (const m of daftar) {
       const nama = (m.pengampu || []).map(u => namaPengguna(u) || (m.namaPengampu || {})[u]).filter(Boolean);
       h += htmlBaris({
         attr: `data-mapel="${m.id}"`,
         judulBaris: aman(m.nama),
-        sub: `${aman(m.kelas)}, ${aman(m.jenjang)} · ${namaJenis(jenisMapel(m))} · ${nama.length ? aman(nama.join(", ")) : "<em>belum ada pengampu</em>"}`,
+        sub: `${aman(m.kelas)} · ${namaJenis(jenisMapel(m))} · ${nama.length ? aman(nama.join(", ")) : "<em>belum ada pengampu</em>"}`,
         tanda: nama.length ? "" : "Belum ada pengampu",
         tandaJenis: "tanda-tutup"
       });
     }
     h += `</div>`;
   }
-  h += `<button class="tombol-utama" id="tambah">+ Tambah mapel</button>`;
+  h += `<button class="tombol-utama" id="tambah">+ Tambah mapel ${aman(jenjang)}</button>`;
   isi.innerHTML = h;
+  pasangTabJenjang("kelolaMapel", { dariMapel: false });
 
   document.getElementById("tambah").onclick = () => pergi("formMapel", { mapelEditId: null, dariMapel: false });
   isi.querySelectorAll(".baris[data-mapel]").forEach(b => {
@@ -163,28 +222,32 @@ function formMapel() {
   wajibKurikulum();
   const lama = posisi.mapelEditId ? butuh(cariMapel(posisi.mapelEditId)) : null;
   const terakhir = toko.mapel[toko.mapel.length - 1];
-  const m = lama ? salin(lama) : { nama: "", jenjang: terakhir ? terakhir.jenjang : "Paket B", kelas: "", jenis: "umum", pengampu: [] };
+  const m = lama ? salin(lama) : { nama: "", jenjang: jenjangAktif() || (terakhir ? terakhir.jenjang : "Paket B"), kelas: "", jenis: "umum", pengampu: [] };
 
   judul.textContent = lama ? "Ubah mapel" : "Tambah mapel";
   jejak.textContent = lama ? namaMapel(lama) : "";
   tombolKembali.hidden = false;
 
-  const opsiJenjang = Object.keys(KELAS_PER_JENJANG)
-    .map(j => `<option ${m.jenjang === j ? "selected" : ""}>${j}</option>`).join("");
+  // cuma jenjang PKBM (plus jenjang lama mapel ini kalau beda)
+  const opsiJenjang = [...new Set([...JENJANG_PKBM, m.jenjang].filter(Boolean))]
+    .map(j => `<label class="radio"><input type="radio" name="jenjang" value="${aman(j)}" ${m.jenjang === j ? "checked" : ""} required> ${aman(j)}</label>`).join("");
 
   const calon = toko.pengguna.filter(p => PERAN_AKTIF.includes(p.peran))
     .sort((a, b) => (a.nama || "").localeCompare(b.nama || "", "id"));
   const pilihPengampu = calon.length ? calon.map(p => `
       <label class="centang">
         <input type="checkbox" name="pengampu" value="${p.id}" ${(m.pengampu || []).includes(p.id) ? "checked" : ""}>
-        <span>${aman(p.nama)} <small>${aman(p.email)}</small></span>
+        <span class="isi-centang"><b>${aman(p.nama)}</b><small>${aman(p.email)}</small></span>
       </label>`).join("") : `<p class="info">Belum ada akun aktif. Setujui akun ustadz dulu di halaman Akun.</p>`;
 
   isi.innerHTML = `
     <form id="form">
       <label>Mata pelajaran <input name="nama" value="${aman(m.nama)}" placeholder="Bahasa Indonesia" required></label>
-      <div class="dua-kolom">
-        <label>Jenjang <select name="jenjang">${opsiJenjang}</select></label>
+      <fieldset>
+        <legend>Jenjang</legend>
+        <div class="pilih-jenis">${opsiJenjang}</div>
+      </fieldset>
+      <div>
         <label>Kelas / rombel <input name="kelas" list="saranKelas" value="${aman(m.kelas)}" placeholder="7A1" required autocomplete="off"><datalist id="saranKelas"></datalist></label>
       </div>
       <p class="info">Tulis kelas dan rombelnya, misal 7A1 (A putra, B putri). Daftar santri, lembar nilai, dan rapor dikelompokkan per kelas ini.</p>
@@ -205,20 +268,25 @@ function formMapel() {
     </form>`;
 
   const form = document.getElementById("form");
-  const pilihJenjang = form.jenjang;
+  const isianJenjang = form.jenjang;
   const pilihKelas = form.kelas;
   // saran kelas: yang sudah dipakai di jenjang ini, lalu pola rombel (A = putra, B = putri)
-  function aturSaranKelas() {
-    const j = pilihJenjang.value;
+  function aturSaranKelas(gantiJenjang) {
+    const j = isianJenjang.value;
     const dipakai = daftarKelas().filter(x => x.jenjang === j).map(x => x.kelas);
     const pola = (KELAS_PER_JENJANG[j] || []).flatMap(k => {
       const n = k.replace(/\D/g, "");
       return [`${n}A1`, `${n}A2`, `${n}B1`, `${n}B2`];
     });
-    const saran = [...new Set([...dipakai, ...pola])];
+    const saran = [...new Set([...dipakai, ...pola])].sort((a, b) => a.localeCompare(b, "id", { numeric: true }));
     document.getElementById("saranKelas").innerHTML = saran.map(k => `<option value="${aman(k)}">`).join("");
+    pilihKelas.placeholder = pola[0] || "Nama kelas";
+    // kelas yang udah diketik tapi nggak cocok sama jenjang (misal 7A1 di Paket C) → dikosongin
+    const angka = parseInt(pilihKelas.value, 10);
+    const rentang = (KELAS_PER_JENJANG[j] || []).map(k => parseInt(k.replace(/\D/g, ""), 10));
+    if (gantiJenjang === true && pilihKelas.value && rentang.length && !Number.isNaN(angka) && !rentang.includes(angka)) pilihKelas.value = "";
   }
-  pilihJenjang.onchange = aturSaranKelas;
+  form.querySelectorAll("[name=jenjang]").forEach(r => r.onchange = () => aturSaranKelas(true));
   aturSaranKelas();
   pilihKelas.onchange = () => { pilihKelas.value = pilihKelas.value.trim().replace(/\s+/g, " "); };
 
@@ -240,6 +308,7 @@ function formMapel() {
       nama, jenjang: f.get("jenjang"), kelas, jenis: f.get("jenis") || "umum",
       pengampu, namaPengampu
     });
+    pilihJenjang(baru.jenjang);   // daftar mapel langsung nunjukin jenjang mapel yang barusan disimpan
     if (posisi.dariMapel) pergi("mapel", { mapelId: baru.id });
     else pergi("kelolaMapel");
   };
@@ -275,31 +344,61 @@ function layarPantauan() {
   }
   const kunci = posisi.semPantau && semuaSem.has(posisi.semPantau) ? posisi.semPantau : kunciSemester(semesterSekarang());
   const sem = dariKunciSemester(kunci);
-  jejak.textContent = `Isi modul & soal, ${namaSemester(sem)}`;
+  const jenjang = jenjangAktif();
+  const mapelJenjang = toko.mapel.filter(m => m.jenjang === jenjang)
+    .sort((a, b) => bandingKelas(a, b) || a.nama.localeCompare(b.nama, "id"));
+  jejak.textContent = `${jenjang} · ${namaSemester(sem)}`;
 
-  let h = `<div class="pilih-semester" role="group" aria-label="Semester">`;
+  // siapa saja yang muncul di pantauan jenjang ini, dikelompokkan ustadz / ustadzah
+  const isiPantau = mapelJenjang.filter(mp => isiMapelSiap(mp.id)).map(mp => {
+    const modul = modulMapel(mp.id).filter(x => samaSemester(x, sem));
+    const sumatif = sumatifMapel(mp.id).filter(x => samaSemester(x, sem));
+    // baris: semua pengampu + siapa pun yang punya modul di mapel ini
+    const orang = [...new Set([...(mp.pengampu || []), ...modul.map(m => m.pemilik), ...sumatif.map(s => s.pemilik)])];
+    return { mp, modul, sumatif, orang };
+  });
+  const sapaanUid = (uid, mp, modul) => {
+    const p = toko.pengguna.find(x => x.id === uid);
+    const nama = (p && p.nama) || (mp.namaPengampu || {})[uid] || ((modul.find(m => m.pemilik === uid) || {}).namaPemilik) || "";
+    return sapaanPengguna({ ...(p || {}), nama }) || "belum";
+  };
+  const hitung = { ustadz: new Set(), ustadzah: new Set(), belum: new Set() };
+  for (const x of isiPantau) for (const uid of x.orang) hitung[sapaanUid(uid, x.mp, x.modul)].add(uid);
+  const KELOMPOK = [["ustadz", "Ustadz"], ["ustadzah", "Ustadzah"], ["belum", "Belum diatur"]];
+  let kelompok = posisi.kelompokPantau || "ustadz";
+  if (hitung[kelompok].size === 0) kelompok = KELOMPOK.map(k => k[0]).find(k => hitung[k].size) || "ustadz";
+
+  let h = htmlTabJenjang();
+  h += `<div class="pilih-kelompok" role="group" aria-label="Ustadz atau ustadzah">`;
+  for (const [k, label] of KELOMPOK) {
+    if (k === "belum" && hitung.belum.size === 0) continue;
+    h += `<button class="${k === kelompok ? "aktif" : ""}" data-kelompok="${k}" aria-pressed="${k === kelompok}">${label} <small>${hitung[k].size}</small></button>`;
+  }
+  h += `</div>`;
+  if (kelompok === "belum") h += `<p class="info">Atur sapaannya di halaman Akun biar masuk ke kelompok Ustadz atau Ustadzah.</p>`;
+  h += `<div class="pilih-semester" role="group" aria-label="Semester">`;
   for (const x of [...semuaSem.values()].sort(bandingSemester)) {
     const k = kunciSemester(x);
     h += `<button class="chip ${k === kunci ? "aktif" : ""}" data-sem="${aman(k)}" aria-pressed="${k === kunci}">${aman(namaSemester(x))}</button>`;
   }
   h += `</div>`;
 
-  if (toko.mapel.length === 0) {
-    h += `<p class="kosong">Belum ada mapel. Tambahkan dulu di halaman Mapel &amp; pengampu.</p>`;
+  if (mapelJenjang.length === 0) {
+    h += `<p class="kosong">Belum ada mapel ${aman(jenjang)}. Tambahkan dulu di halaman Mapel &amp; pengampu.</p>`;
   }
 
-  let belumSiap = false;
-  for (const mp of toko.mapel) {
-    if (!isiMapelSiap(mp.id)) { belumSiap = true; continue; }
-    const modul = modulMapel(mp.id).filter(x => samaSemester(x, sem));
-    const sumatif = sumatifMapel(mp.id).filter(x => samaSemester(x, sem));
-    // baris: semua pengampu + siapa pun yang punya modul di mapel ini
-    const orang = [...new Set([...(mp.pengampu || []), ...modul.map(m => m.pemilik), ...sumatif.map(s => s.pemilik)])];
+  const belumSiap = isiPantau.length < mapelJenjang.length;
+  let adaKartu = false;
+  for (const { mp, modul, sumatif, orang: semua } of isiPantau) {
+    const orang = semua.filter(uid => sapaanUid(uid, mp, modul) === kelompok);
+    // mapel tanpa pengampu tetap tampil (biar ketahuan), mapel yang diampu kelompok lain disembunyikan
+    if (orang.length === 0 && semua.length > 0) continue;
+    adaKartu = true;
 
     h += `
       <section class="kartu-pantau">
         <button class="kartu-pantau-judul" data-mapel="${mp.id}">
-          <span><strong>${aman(mp.nama)}</strong><small>${aman(mp.kelas)}, ${aman(mp.jenjang)}</small></span>
+          <span><strong>${aman(mp.nama)}</strong><small>${aman(mp.kelas)}</small></span>
           <span class="baris-panah" aria-hidden="true">›</span>
         </button>`;
     if (orang.length === 0) {
@@ -330,9 +429,14 @@ function layarPantauan() {
     }
     h += `</section>`;
   }
+  if (!adaKartu && isiPantau.length > 0) {
+    h += `<p class="kosong">Belum ada ${kelompok === "ustadzah" ? "ustadzah" : kelompok === "ustadz" ? "ustadz" : "pengampu tanpa sapaan"} yang ngampu mapel ${aman(jenjang)}.</p>`;
+  }
   if (belumSiap) h += `<p class="info">Sebagian data masih dimuat...</p>`;
   isi.innerHTML = h;
 
+  pasangTabJenjang("pantauan");
+  isi.querySelectorAll("[data-kelompok]").forEach(b => b.onclick = () => pergi("pantauan", { kelompokPantau: b.dataset.kelompok }));
   isi.querySelectorAll(".chip[data-sem]").forEach(b => b.onclick = () => pergi("pantauan", { semPantau: b.dataset.sem }));
   isi.querySelectorAll("[data-mapel]").forEach(b => {
     b.onclick = () => pergi("mapel", { mapelId: b.dataset.mapel, semester: kunci, tab: "modul" });

@@ -36,8 +36,13 @@ function semesterRapor() {
 // ====== DAFTAR RAPOR SATU KELAS ======
 function layarRapor() {
   wajibKurikulum();
-  const kelasAda = daftarKelas();
-  const kunciKelas = posisi.kelasRapor || (kelasAda[0] ? `${kelasAda[0].jenjang}|${kelasAda[0].kelas}` : "");
+  if (posisi.kelasRapor) {
+    const j = posisi.kelasRapor.split("|")[0];
+    if (daftarJenjang().includes(j) && j !== jenjangAktif()) pilihJenjang(j);
+  }
+  const kelasAda = daftarKelas().filter(x => x.jenjang === jenjangAktif());
+  const kunciKelas = posisi.kelasRapor && kelasAda.some(x => `${x.jenjang}|${x.kelas}` === posisi.kelasRapor)
+    ? posisi.kelasRapor : (kelasAda[0] ? `${kelasAda[0].jenjang}|${kelasAda[0].kelas}` : "");
   posisi.kelasRapor = kunciKelas;
   const [jenjang, kelas] = kunciKelas.split("|");
   const semAda = semesterRapor();
@@ -46,12 +51,12 @@ function layarRapor() {
   const sem = dariKunciSemester(kunciSem);
 
   judul.textContent = "Rapor";
-  jejak.textContent = kelas ? `${kelas}, ${jenjang} · ${namaSemester(sem)}` : "";
+  jejak.textContent = kelas ? `${kelas}, ${jenjang} · ${namaSemester(sem)}` : jenjangAktif();
 
-  let h = `<div class="pilih-semester" role="group" aria-label="Kelas">`;
+  let h = htmlTabJenjang() + `<div class="pilih-semester" role="group" aria-label="Kelas">`;
   for (const x of kelasAda) {
     const k = `${x.jenjang}|${x.kelas}`;
-    h += `<button class="chip ${k === kunciKelas ? "aktif" : ""}" data-kelas="${aman(k)}" aria-pressed="${k === kunciKelas}">${aman(x.kelas)} · ${aman(x.jenjang)}</button>`;
+    h += `<button class="chip ${k === kunciKelas ? "aktif" : ""}" data-kelas="${aman(k)}" aria-pressed="${k === kunciKelas}">${aman(x.kelas)}</button>`;
   }
   h += `</div><div class="pilih-semester" role="group" aria-label="Semester">`;
   for (const x of semAda) {
@@ -61,7 +66,7 @@ function layarRapor() {
   h += `</div>`;
 
   if (!kelas) {
-    isi.innerHTML = h + `<p class="kosong">Belum ada kelas.</p>`;
+    isi.innerHTML = h + `<p class="kosong">Belum ada kelas ${aman(jenjangAktif())}.</p>`;
     return pasangPilihRapor();
   }
   const santri = santriKelas(jenjang, kelas);
@@ -96,6 +101,7 @@ function layarRapor() {
 }
 
 function pasangPilihRapor() {
+  pasangTabJenjang("rapor", { kelasRapor: null });
   isi.querySelectorAll("[data-kelas]").forEach(b => b.onclick = () => pergi("rapor", { kelasRapor: b.dataset.kelas }));
   isi.querySelectorAll("[data-sem]").forEach(b => b.onclick = () => pergi("rapor", { semRapor: b.dataset.sem }));
 }

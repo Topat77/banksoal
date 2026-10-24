@@ -2,8 +2,8 @@
 //  sw.js — "pelayan" yang nyimpen file aplikasi di HP,
 //  biar aplikasinya tetap kebuka walau nggak ada sinyal.
 //
-//  • File aplikasi sendiri: ambil yang terbaru dari internet dulu
-//    (jadi kalau kodenya di-update, langsung kepakai). Kalau sinyal
+//  • File aplikasi sendiri: ambil yang terbaru dari internet dulu, selalu
+//    dicek ulang ke server (jadi kalau kodenya di-update, langsung kepakai). Kalau sinyal
 //    nggak ada / kelamaan, pakai simpanan di HP.
 //  • File Firebase & huruf (font) dari Google: pakai simpanan di HP,
 //    karena isinya nggak pernah berubah.
@@ -11,7 +11,7 @@
 //
 //  Kalau nambah file baru di aplikasi, tambahkan juga ke daftar INTI.
 // =====================================================
-const VERSI = "banksoal-v5";
+const VERSI = "banksoal-v6";
 const INTI = [
   "./", "index.html", "style.css", "manifest.webmanifest",
   "ikon-192.png", "ikon-512.png", "ikon-maskable-512.png", "ikon-apple-180.png",
@@ -43,7 +43,10 @@ function denganBatas(janji, ms) {
 
 async function internetDulu(req) {
   const cache = await caches.open(VERSI);
-  const ambil = fetch(req).then(res => {
+  // "no-cache": selalu tanya server dulu apakah file-nya berubah (cepat, cuma cek),
+  // biar update aplikasi langsung kepakai, nggak ketahan simpanan browser 10 menit
+  const segar = req.mode === "navigate" ? new Request(req.url, { cache: "no-cache" }) : new Request(req, { cache: "no-cache" });
+  const ambil = fetch(segar).then(res => {
     if (res.ok) cache.put(req, res.clone());
     return res;
   });

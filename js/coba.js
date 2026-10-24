@@ -24,8 +24,8 @@ function dataAwalCoba() {
   const hari = 86400000;
   const db = {};
 
-  db["pengguna/u-aminah"] = { nama: "Ustadzah Aminah", email: "aminah@contoh.id", foto: "", peran: "ustadz", dibuat: jam - 30 * hari, terakhirMasuk: jam - 2 * hari };
-  db["pengguna/u-hasan"]  = { nama: "Ustadz Hasan", email: "hasan@contoh.id", foto: "", peran: "ustadz", dibuat: jam - 29 * hari, terakhirMasuk: jam - 5 * hari };
+  db["pengguna/u-aminah"] = { nama: "Ustadzah Aminah", email: "aminah@contoh.id", foto: "", sapaan: "ustadzah", peran: "ustadz", dibuat: jam - 30 * hari, terakhirMasuk: jam - 2 * hari };
+  db["pengguna/u-hasan"]  = { nama: "Ustadz Hasan", email: "hasan@contoh.id", foto: "", sapaan: "ustadz", peran: "ustadz", dibuat: jam - 29 * hari, terakhirMasuk: jam - 5 * hari };
   db["pengguna/u-kur"]    = { nama: "Admin TU", email: "kurikulum@contoh.id", foto: "", peran: "kurikulum", dibuat: jam - 31 * hari, terakhirMasuk: jam - hari };
 
   db["pengaturan/lembaga"] = { nama: "PKBM Imam Syafi'i", waktu: "60 menit" };

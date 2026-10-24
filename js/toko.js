@@ -393,6 +393,18 @@ function namaSaya() {
   return (toko.saya && toko.saya.nama) || (toko.auth && toko.auth.nama) || "";
 }
 
+// ustadz (laki-laki) atau ustadzah (perempuan). Diatur admin di halaman Akun
+// atau sendiri di halaman Saya; kalau belum diatur, ditebak dari nama.
+const SAPAAN = { ustadz: "Ustadz", ustadzah: "Ustadzah" };
+function sapaanPengguna(p) {
+  if (!p) return null;
+  if (p.sapaan === "ustadz" || p.sapaan === "ustadzah") return p.sapaan;
+  const n = (p.nama || "").trim().toLowerCase();
+  if (/^(ustadzah|ustazah|ustdzh|ustzh|ustz|bu|ibu|umi|ummi)\b/.test(n)) return "ustadzah";
+  if (/^(ustadz|ustaz|ustd|ust|pak|bapak|abi)\b/.test(n)) return "ustadz";
+  return null;
+}
+
 function namaPengguna(uid) {
   const p = toko.pengguna.find(x => x.id === uid);
   return p ? p.nama : "";
