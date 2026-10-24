@@ -6,7 +6,7 @@ rules_version = '2';
 //  Ditempel di Firebase Console → Firestore Database → Rules → Publish.
 //  Aturan ini yang beneran ngunci data: walau orang luar (atau santri)
 //  berhasil masuk pakai akun Google, mereka nggak bisa baca apa pun
-//  sebelum disetujui bagian kurikulum.
+//  sebelum disetujui admin (TU).
 //
 //  Salinan aturan ini dalam bentuk JavaScript ada di js/aturan.js
 //  (dipakai mode coba). Kalau ngubah di sini, ubah di sana juga.
@@ -15,10 +15,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Email Google bagian kurikulum yang pertama (huruf kecil semua).
+    // Email Google admin (TU) yang pertama (huruf kecil semua).
     // Sama dengan "adminAwal" di js/konfig.js.
     function emailAdminAwal() {
-      return ['isi.email.kurikulum@gmail.com'];
+      return ['topatvanjava@gmail.com'];
     }
 
     function masuk() {
@@ -51,7 +51,7 @@ service cloud.firestore {
                 && request.auth.token.email in emailAdminAwal()));
 
       // ubah profil sendiri boleh, tapi nggak boleh ngubah peran & email sendiri.
-      // Kurikulum boleh ngubah akun siapa pun (setujui, tolak, nonaktifkan).
+      // Admin boleh ngubah akun siapa pun (setujui, tolak, nonaktifkan).
       allow update: if masuk() && (
         (request.auth.uid == uid
           && request.resource.data.peran == resource.data.peran
@@ -61,17 +61,17 @@ service cloud.firestore {
       allow delete: if kurikulum();
     }
 
-    // ---------- pengaturan lembaga (nama lembaga, lama ujian bawaan) ----------
+    // ---------- pengaturan (lembaga: nama & lama ujian; bobot: bobot nilai per jenis mapel) ----------
     match /pengaturan/{id} {
       allow read: if aktif();
       allow write: if kurikulum();
     }
 
     // ---------- santri ----------
-    // semua akun aktif boleh nambah & ubah; menghapus cuma kurikulum
+    // semua akun aktif boleh lihat; yang ngisi, ngubah, ngehapus cuma admin
     match /santri/{id} {
-      allow read, create, update: if aktif();
-      allow delete: if kurikulum();
+      allow read: if aktif();
+      allow write: if kurikulum();
     }
 
     // ---------- mapel ----------
@@ -96,9 +96,13 @@ service cloud.firestore {
           && (resource.data.pemilik == request.auth.uid || kurikulum());
       }
 
-      // lembar nilai satu semester: diisi pengampu mapel ini, atau kurikulum/TU
+      // lembar nilai satu semester: diisi pengampu mapel ini aja;
+      // admin cuma bisa lihat (buat pantauan dan rapor)
       match /nilai/{id} {
-        allow read, write: if aktif() && (kurikulum() || pengampu(idMapel));
+        allow read: if aktif() && (kurikulum() || pengampu(idMapel));
+        allow create, update: if aktif() && pengampu(idMapel);
+        // admin boleh menghapus, buat ngebersihin waktu mapelnya dihapus
+        allow delete: if aktif() && (pengampu(idMapel) || kurikulum());
       }
 
       // ujian sumatif: cuma pemiliknya + kurikulum

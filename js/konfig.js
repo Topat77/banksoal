@@ -24,16 +24,16 @@ const KONFIG = {
   namaLembaga: "PKBM Imam Syafi'i",
 
   firebase: {
-    apiKey: "",
-    authDomain: "",
-    projectId: "",
-    storageBucket: "",
-    messagingSenderId: "",
-    appId: ""
+    apiKey: "AIzaSyBgw48X7LE7TqHLaBdY3UF-BCGHCspRYrI",
+    authDomain: "banksoal-pkbm.firebaseapp.com",
+    projectId: "banksoal-pkbm",
+    storageBucket: "banksoal-pkbm.firebasestorage.app",
+    messagingSenderId: "519937223717",
+    appId: "1:519937223717:web:52650988d9fa21242ae3cc"
   },
 
   adminAwal: [
-    // "email.kurikulum@gmail.com"
+    "topatvanjava@gmail.com"
   ],
 
   ai: {
