@@ -1209,9 +1209,9 @@ textarea:dir(rtl), input:dir(rtl) {
 .tombol-kedua.tombol-ai {
   border: 1.5px solid transparent;
   background:
-    linear-gradient(var(--isian), var(--isian)) padding-box,
+    linear-gradient(var(--kertas), var(--kertas)) padding-box,
     linear-gradient(90deg, var(--hijau), var(--hijau-2)) border-box;
-  color: var(--hijau-tua);
+  color: var(--hijau);
 }
 .tombol-kedua.tombol-ai:hover { color: var(--hijau); box-shadow: var(--pendar); }
 .ajakan-ai {
@@ -1220,7 +1220,7 @@ textarea:dir(rtl), input:dir(rtl) {
   background: var(--hijau-muda); border: 1px dashed var(--garis-tebal);
 }
 .ajakan-ai > div { flex: 1 1 240px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ajakan-ai span { font-size: 13.5px; color: var(--tinta-redup); }
+.ajakan-ai > div span { font-size: 13.5px; color: var(--tinta-redup); }
 .layar-ai { display: flex; flex-direction: column; gap: 16px; max-width: 860px; }
 .layar-ai .bagian { display: flex; flex-direction: column; gap: 12px; }
 .layar-ai label[for="ringkasanAI"] { margin-top: 4px; }
