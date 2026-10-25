@@ -316,15 +316,8 @@ body:not([data-status="aktif"]) header { display: none; }
 }
 .masuk-isi { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
 .masuk-bawah { display: flex; flex-direction: column; gap: 12px; margin-bottom: auto; }
-.logo-masuk {
-  width: 66px; height: 66px; margin-bottom: 6px;
-  display: grid; place-items: center;
-  border-radius: 20px;
-  background: var(--lembar);
-  border: 1.5px solid var(--hijau);
-  box-shadow: var(--pendar);
-}
-.logo-masuk .logo { width: 40px; height: 40px; }
+.logo-masuk { width: 66px; height: 66px; margin-bottom: 6px; }
+.logo-masuk .logo { width: 66px; height: 66px; border-radius: 22.5%; box-shadow: 0 10px 26px rgba(8, 90, 80, .28); }
 .sambut { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: .16em; color: var(--hijau); }
 .judul-masuk { margin: 0; font-size: 42px; line-height: 1.05; font-weight: 700; }
 .fitur-masuk {

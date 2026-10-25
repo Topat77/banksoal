@@ -198,11 +198,11 @@ function daftarSemesterMapel(idMapel) {
 }
 
 // ====== POTONGAN HTML YANG SERING DIPAKAI ======
-const LOGO = `<svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
-  <rect class="logo-kertas" x="6" y="3" width="20" height="26" rx="3" stroke-width="2"/>
-  <path class="logo-garis" d="M11 10h10M11 15h10M17 22h4" fill="none" stroke-width="2" stroke-linecap="round"/>
-  <ellipse class="logo-lingkar" cx="12.5" cy="22" rx="3.3" ry="2.7" transform="rotate(-14 12.5 22)" fill="none" stroke-width="2"/>
-</svg>`;
+// logo: huruf B dilingkari pulpen merah (sama kayak ikon aplikasi)
+let nomorLogo = 0;
+// tiap logo butuh id gradasi sendiri: kalau satu logo lagi disembunyikan (misal menu samping di HP),
+// logo lain yang numpang id-nya ikut nggak kelihatan
+const logo = () => { const id = `gLogo${++nomorLogo}`; return `<svg class="logo" aria-hidden="true" viewBox="0 0 512 512"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0B8C63"/><stop offset="1" stop-color="#13719F"/></linearGradient></defs><rect width="512" height="512" rx="115" fill="url(#${id})"/><g transform="translate(256 256) scale(1.0) translate(-256 -256)"><path d="M170 132 H284 C326 132 352 156 352 194 C352 216 341 233 322 242 C347 251 362 273 362 304 C362 346 331 376 286 376 H170 Z M228 180 V230 H276 C292 230 300 221 300 205 C300 189 292 180 276 180 Z M228 274 V328 H281 C299 328 308 318 308 301 C308 284 299 274 281 274 Z" fill="#fff" fill-rule="evenodd" transform="translate(256 258) scale(.84) translate(-266 -254)"/><path d="M372 150 C330 96 186 96 136 170 C86 246 120 398 254 410 C376 420 420 318 398 238" fill="none" stroke="#E0442E" stroke-width="16" stroke-linecap="round"/></g></svg>`; };
 
 const IKON = {
   beranda: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>`,
@@ -235,7 +235,7 @@ function htmlBaris({ attr, nomor, judulBaris, sub, kanan, tanda, tandaJenis, ara
 // =====================================================
 function gambarStatus() {
   const lembaga = KONFIG.namaLembaga || "";
-  judul.innerHTML = `<span class="judul-logo">${LOGO}${aman(KONFIG.namaAplikasi)}</span>`;
+  judul.innerHTML = `<span class="judul-logo">${logo()}${aman(KONFIG.namaAplikasi)}</span>`;
   const coba = toko.backend && toko.backend.mode === "coba";
 
   if (toko.status === "memuat") {
@@ -263,7 +263,7 @@ function gambarStatus() {
       <div class="layar-masuk">
         <div class="masuk-atas"><button class="tombol-tema" aria-label="Ganti mode terang/gelap"></button></div>
         <div class="masuk-isi">
-          <div class="logo-masuk">${LOGO}</div>
+          <div class="logo-masuk">${logo()}</div>
           <p class="sambut">AHLAN WA SAHLAN</p>
           <h2 class="judul-masuk">Bank <span class="gradasi">Soal</span></h2>
           <p class="info">${aman(lembaga)} · khusus ustadz &amp; ustadzah</p>
@@ -326,7 +326,7 @@ function gambarStatus() {
   isi.innerHTML = `
     <div class="layar-status kartu-status">
       <div class="masuk-atas"><button class="tombol-tema" aria-label="Ganti mode terang/gelap"></button></div>
-      <div class="masuk-merek">${LOGO}<div><h2>${aman(teks[0])}</h2><p>${aman(lembaga)}</p></div></div>
+      <div class="masuk-merek">${logo()}<div><h2>${aman(teks[0])}</h2><p>${aman(lembaga)}</p></div></div>
       <p>${aman(teks[1])}</p>
       <p class="info">Masuk sebagai <b>${aman(toko.auth ? toko.auth.email : "")}</b></p>
       <button class="tombol-kedua" id="keluar">${coba ? "Ganti akun contoh" : "Keluar"}</button>
@@ -380,7 +380,7 @@ function gambarSamping() {
   const sem = semAktif();
   let h = `
     <div class="merek">
-      ${LOGO}
+      ${logo()}
       <div>
         <strong>${aman(KONFIG.namaAplikasi)}</strong>
         <span>${aman(toko.lembaga.nama || KONFIG.namaLembaga || "")}</span>
@@ -496,7 +496,7 @@ function sapaan() {
 }
 
 function layarBeranda() {
-  judul.innerHTML = `<span class="judul-logo">${LOGO}${aman(KONFIG.namaAplikasi)}</span>`;
+  judul.innerHTML = `<span class="judul-logo">${logo()}${aman(KONFIG.namaAplikasi)}</span>`;
   jejak.textContent = toko.lembaga.nama || KONFIG.namaLembaga || "";
   const kur = sayaKurikulum();
   const sem = semesterSekarang();
