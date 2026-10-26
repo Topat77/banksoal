@@ -649,5 +649,10 @@ function htmlBagianCadangan() {
         <button class="tombol-kedua" id="unduhCadangan">Unduh cadangan (.json)</button>
         <span class="info" id="pesanCadangan" role="status"></span>
       </div>
+    </section>
+    <section class="bagian">
+      <h2>Bersihkan data</h2>
+      <p class="info">Hapus data trial atau yang udah nggak dipakai: mapel beserta isinya, siswa per kelas, dan akun guru. Kamu pilih sendiri yang mau dihapus.</p>
+      <div class="baris-tombol"><button class="tombol-kedua" id="keBersihkan">Bersihkan data…</button></div>
     </section>`;
 }

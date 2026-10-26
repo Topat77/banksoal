@@ -50,13 +50,14 @@ const daftarLayar = {
   daftarUAS: "layarDaftarUAS",
   pilihMapel: "layarPilihMapel",
   formGuru: "formGuru",
-  aiGenerator: "layarAIGenerator"
+  aiGenerator: "layarAIGenerator",
+  bersihkanData: "layarBersihkanData"
 };
 
 // layar yang nggak boleh digambar ulang sendiri waktu data berubah
 // (lagi ngetik / milih sesuatu, nanti isiannya hilang)
 const LAYAR_DIAM = ["formSemester", "formModul", "formBacaan", "formSoal", "formSumatif",
-                    "pilihSoal", "cetak", "cari", "lainnya", "formMapel", "formGuru", "aiGenerator", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal"];
+                    "pilihSoal", "cetak", "cari", "lainnya", "formMapel", "formGuru", "aiGenerator", "bersihkanData", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal"];
 
 // data hilang (misal dihapus dari perangkat lain) → dilempar biar balik ke layar aman
 class DataHilang extends Error {}
@@ -164,6 +165,7 @@ function layarInduk() {
   if (L === "aiSoal") return posisi.aiUntuk === "sumatif" ? "sumatif" : "modul";
   if (L === "pilihSoal") return "sumatif";
   if (L === "formGuru") return "akun";
+  if (L === "bersihkanData") return "lainnya";
   if (L === "sumatif" && posisi.uasGrup && sayaKurikulum() && !sayaPengampu(cariMapel(posisi.mapelId))) return "daftarUAS";
   return {
     mapel: "beranda",
@@ -388,7 +390,7 @@ window.addEventListener("offline", gambarTanda);
 function kelompokLayar() {
   const L = posisi.layar;
   if (["cari"].includes(L)) return "cari";
-  if (["lainnya"].includes(L)) return "lainnya";
+  if (["lainnya", "bersihkanData"].includes(L)) return "lainnya";
   if (["pantauan"].includes(L)) return "pantauan";
   if (["akun", "formGuru"].includes(L)) return "akun";
   if (["santri"].includes(L) && !posisi.dariNilai) return "santri";
@@ -809,6 +811,8 @@ function layarLainnya() {
     simpanPengguna(uidSaya(), { ...lama, nama });
     document.getElementById("tersimpanProfil").textContent = "Tersimpan";
   };
+  const kb = document.getElementById("keBersihkan");
+  if (kb) kb.onclick = () => pergi("bersihkanData");
   const uc = document.getElementById("unduhCadangan");
   if (uc) uc.onclick = () => unduhCadangan(uc, document.getElementById("pesanCadangan"));
   const fl = document.getElementById("formLembaga");
