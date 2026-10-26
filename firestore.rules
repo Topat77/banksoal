@@ -83,10 +83,21 @@ service cloud.firestore {
       allow write: if kurikulum();
     }
 
-    // ---------- santri ----------
-    // semua akun aktif boleh lihat; yang ngisi, ngubah, ngehapus cuma admin
-    match /santri/{id} {
+    // ---------- kelas ----------
+    // daftar pengampu semua mapel di satu kelas (misal Paket B 7A1).
+    // Diperbarui otomatis dari perangkat admin; dipakai aturan santri di bawah.
+    match /kelas/{idKelas} {
       allow read: if aktif();
+      allow write: if kurikulum();
+    }
+
+    // ---------- santri ----------
+    // admin lihat semua; ustadz cuma santri di kelas yang dia ajar.
+    // Yang ngisi, ngubah, ngehapus cuma admin.
+    match /santri/{id} {
+      allow read: if aktif() && (
+        kurikulum()
+        || request.auth.uid in get(/databases/$(database)/documents/kelas/$(resource.data.kelasId)).data.pengampu);
       allow write: if kurikulum();
     }
 
