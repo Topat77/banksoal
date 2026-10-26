@@ -15,14 +15,19 @@ const toko = {
   lembaga: {},        // { nama, waktu }
   bobot: {},          // bobot nilai per jenis mapel: { umum: {...}, diniah: {...} } (diatur admin)
   mapel: [],          // semua mapel
-  isi: {},            // id mapel → { modulSaya, modulBagi, modulSemua, sumatif, nilai, siap }
+  isi: {},            // id mapel → { modulSaya, modulBagi, modulSemua, sumatif, sumatifBagi, nilai, siap, tetangga }
+  grup: [],           // grup mapel (mapel + jenjang + tingkat): pengampu semua kelasnya & koordinator UAS
+  grupSiap: false,
+  uas: {},            // id grup → [UAS bersama per semester]
+  usulan: {},         // id grup → [usulan soal UAS dari pengampu]
   santri: [],         // semua santri (buat lembar nilai & rapor)
   pengguna: []        // semua akun (cuma buat admin)
 };
 
 let langgananProfil = null;
 let langgananData = [];
-let langgananMapel = {};      // id mapel → [fungsi berhenti]
+let langgananMapel = {};      // id mapel → { tanda, henti: [fungsi berhenti] }
+let langgananGrup = {};       // id grup → { tanda, henti: [fungsi berhenti] }
 let peranTerpasang = null;    // peran waktu langganan data dipasang
 let sudahCatatMasuk = false;
 
@@ -133,9 +138,21 @@ function pasangData(peran) {
 
   langgananData.push(b.pantauKoleksi("mapel", [], daftar => {
     toko.mapel = daftar.sort((a, c) => (a.nama + a.kelas).localeCompare(c.nama + c.kelas, "id"));
+    toko.mapelSiap = true;
     aturLanggananMapel();
+    aturLanggananGrup();
+    sinkronGrup();
     berubah();
   }, laporGagal("mapel")));
+
+  langgananData.push(b.pantauKoleksi("grup", [], daftar => {
+    toko.grup = daftar;
+    toko.grupSiap = true;
+    aturLanggananMapel();
+    aturLanggananGrup();
+    sinkronGrup();
+    berubah();
+  }, laporGagal("grup")));
 
   langgananData.push(b.pantauKoleksi("santri", [], daftar => {
     toko.santri = daftar.sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
@@ -150,20 +167,29 @@ function pasangData(peran) {
   }
 }
 
-// tiap mapel yang kelihatan dipantau isinya (modul & sumatif)
+// tiap mapel yang kelihatan dipantau isinya (modul & sumatif).
+// Mapel "tetangga" (kelas lain di grup yang sama, yang nggak diampu) cuma dipantau
+// modul & sumatif yang dibagikan.
 function aturLanggananMapel() {
-  const perlu = new Set(mapelTerlihat().map(m => m.id));
+  const perlu = new Map();
+  for (const m of mapelTerlihat()) perlu.set(m.id, "ampu");
+  for (const m of mapelTetangga()) {
+    // aturan database baru ngizinin kalau grupnya udah mencatat akun ini sebagai pengampu
+    const g = dataGrup(idGrup(m));
+    const terdaftar = !!g && (g.pengampu || []).includes(uidSaya()) && m.grup === idGrup(m);
+    if (terdaftar) perlu.set(m.id, "tetangga");
+  }
   for (const id of Object.keys(langgananMapel)) {
-    if (!perlu.has(id)) {
-      langgananMapel[id].forEach(berhenti => berhenti());
+    if (perlu.get(id) !== langgananMapel[id].tanda) {
+      langgananMapel[id].henti.forEach(berhenti => berhenti());
       delete langgananMapel[id];
       delete toko.isi[id];
     }
   }
-  for (const id of perlu) {
+  for (const [id, tanda] of perlu) {
     if (langgananMapel[id]) continue;
-    toko.isi[id] = { modulSaya: [], modulBagi: [], modulSemua: null, sumatif: [], nilai: [], siap: false };
-    langgananMapel[id] = pantauIsiMapel(id);
+    toko.isi[id] = { modulSaya: [], modulBagi: [], modulSemua: null, sumatif: [], sumatifBagi: [], nilai: [], siap: false, tetangga: tanda === "tetangga" };
+    langgananMapel[id] = { tanda, henti: tanda === "tetangga" ? pantauIsiTetangga(id) : pantauIsiMapel(id) };
   }
 }
 
@@ -174,7 +200,7 @@ function pantauIsiMapel(id) {
   const jalur = `mapel/${id}`;
   const urut = (d) => d.sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0));
   let jumlahSiap = 0;
-  const perluSiap = sayaKurikulum() ? 3 : 4;
+  const perluSiap = sayaKurikulum() ? 3 : 5;
   const tandaiSiap = () => { if (++jumlahSiap >= perluSiap && wadah()) wadah().siap = true; };
   const sekali = (f) => { let sudah = false; return (...x) => { f(...x); if (!sudah) { sudah = true; tandaiSiap(); } }; };
 
@@ -190,8 +216,55 @@ function pantauIsiMapel(id) {
   return [nilai,
     b.pantauKoleksi(`${jalur}/modul`, [["pemilik", "==", uid]], sekali(d => { if (wadah()) { wadah().modulSaya = urut(d); berubah(); } }), laporGagal("modul saya")),
     b.pantauKoleksi(`${jalur}/modul`, [["dibagikan", "==", true]], sekali(d => { if (wadah()) { wadah().modulBagi = urut(d); berubah(); } }), laporGagal("modul dibagikan")),
-    b.pantauKoleksi(`${jalur}/sumatif`, [["pemilik", "==", uid]], sekali(d => { if (wadah()) { wadah().sumatif = urut(d); berubah(); } }), laporGagal("sumatif"))
+    b.pantauKoleksi(`${jalur}/sumatif`, [["pemilik", "==", uid]], sekali(d => { if (wadah()) { wadah().sumatif = urut(d); berubah(); } }), laporGagal("sumatif")),
+    b.pantauKoleksi(`${jalur}/sumatif`, [["dibagikan", "==", true]], sekali(d => { if (wadah()) { wadah().sumatifBagi = urut(d).filter(s => s.pemilik !== uid); berubah(); } }), laporGagal("sumatif dibagikan"))
   ];
+}
+
+// kelas lain di grup yang sama: cuma yang dibagikan
+function pantauIsiTetangga(id) {
+  const b = toko.backend;
+  const wadah = () => toko.isi[id];
+  const jalur = `mapel/${id}`;
+  const urut = (d) => d.sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0));
+  let jumlahSiap = 0;
+  const sekali = (f) => { let sudah = false; return (...x) => { f(...x); if (!sudah) { sudah = true; if (++jumlahSiap >= 2 && wadah()) wadah().siap = true; } }; };
+  return [
+    b.pantauKoleksi(`${jalur}/modul`, [["dibagikan", "==", true]], sekali(d => { if (wadah()) { wadah().modulBagi = urut(d); berubah(); } }), laporGagal("modul kelas lain")),
+    b.pantauKoleksi(`${jalur}/sumatif`, [["dibagikan", "==", true]], sekali(d => { if (wadah()) { wadah().sumatifBagi = urut(d); berubah(); } }), laporGagal("sumatif kelas lain"))
+  ];
+}
+
+// UAS bersama & usulan soalnya: per grup yang diampu (admin: semua grup)
+function aturLanggananGrup() {
+  const perlu = new Set();
+  if (sayaKurikulum()) toko.grup.forEach(g => perlu.add(g.id));
+  else {
+    for (const m of mapelDiampu()) {
+      const g = dataGrup(idGrup(m));
+      if (g && (g.pengampu || []).includes(uidSaya())) perlu.add(g.id);
+    }
+  }
+  for (const id of Object.keys(langgananGrup)) {
+    if (!perlu.has(id)) {
+      langgananGrup[id].henti.forEach(berhenti => berhenti());
+      delete langgananGrup[id];
+      delete toko.uas[id];
+      delete toko.usulan[id];
+    }
+  }
+  const b = toko.backend;
+  for (const id of perlu) {
+    if (langgananGrup[id]) continue;
+    toko.uas[id] = [];
+    toko.usulan[id] = [];
+    langgananGrup[id] = { henti: [
+      b.pantauKoleksi(`grup/${id}/uas`, [], d => { if (toko.uas[id]) { toko.uas[id] = d; berubah(); } }, laporGagal("UAS")),
+      b.pantauKoleksi(`grup/${id}/usulan`, [], d => {
+        if (toko.usulan[id]) { toko.usulan[id] = d.sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0)); berubah(); }
+      }, laporGagal("usulan UAS"))
+    ] };
+  }
 }
 
 function laporGagal(apa) {
@@ -201,10 +274,17 @@ function laporGagal(apa) {
 function hentikanData() {
   langgananData.forEach(berhenti => berhenti());
   langgananData = [];
-  for (const id of Object.keys(langgananMapel)) langgananMapel[id].forEach(berhenti => berhenti());
+  for (const id of Object.keys(langgananMapel)) langgananMapel[id].henti.forEach(berhenti => berhenti());
   langgananMapel = {};
+  for (const id of Object.keys(langgananGrup)) langgananGrup[id].henti.forEach(berhenti => berhenti());
+  langgananGrup = {};
   toko.isi = {};
   toko.mapel = [];
+  toko.mapelSiap = false;
+  toko.grup = [];
+  toko.grupSiap = false;
+  toko.uas = {};
+  toko.usulan = {};
   toko.santri = [];
   toko.pengguna = [];
   toko.lembaga = {};
@@ -277,6 +357,139 @@ function milikSaya(x) {
   return !!x && x.pemilik === uidSaya();
 }
 
+// ====== GRUP MAPEL ======
+// Mapel yang sama di jenjang & tingkat yang sama satu grup, misal
+// Bahasa Indonesia 7A1, 7A2, 7B1, 7B2 (Paket B). Modul, soal, dan sumatif yang
+// dibagikan bisa dipakai semua pengampu di grupnya, biar soalnya terstandar.
+// Daftar pengampu tiap grup disimpan di grup/{id} (diperbarui otomatis dari
+// perangkat admin), karena aturan database butuh daftar itu buat ngasih izin.
+function tingkatKelas(kelas) {
+  const cocok = String(kelas || "").match(/^\s*(\d+)/);
+  return cocok ? cocok[1] : String(kelas || "").trim();
+}
+function idGrup(mp) {
+  const teks = `${mp.jenjang || ""}-${tingkatKelas(mp.kelas)}-${mp.nama || ""}`
+    .toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
+  return teks || "tanpa-nama";
+}
+function namaGrup(mp) {
+  return `${mp.nama} kelas ${tingkatKelas(mp.kelas)}`;
+}
+function dataGrup(gid) {
+  return toko.grup.find(g => g.id === gid) || null;
+}
+// kelas lain yang satu grup dengan mapel ini
+function mapelSegrup(mp) {
+  const g = idGrup(mp);
+  return toko.mapel.filter(x => x.id !== mp.id && idGrup(x) === g);
+}
+function mapelGrup(gid) {
+  return toko.mapel.filter(x => idGrup(x) === gid).sort(bandingKelasMapel);
+}
+function bandingKelasMapel(a, b) {
+  return String(a.kelas).localeCompare(String(b.kelas), "id", { numeric: true });
+}
+// kelas lain di grup yang mapelnya nggak diampu akun ini (cuma buat ustadz)
+function mapelTetangga() {
+  if (sayaKurikulum()) return [];
+  const saya = mapelDiampu();
+  const idSaya = new Set(saya.map(m => m.id));
+  const grupSaya = new Set(saya.map(idGrup));
+  return toko.mapel.filter(m => !idSaya.has(m.id) && grupSaya.has(idGrup(m)));
+}
+function koordinatorGrup(gid) {
+  const g = dataGrup(gid);
+  return g && g.koordinator ? g.koordinator : null;
+}
+function sayaKoordinator(gid) {
+  return !!uidSaya() && koordinatorGrup(gid) === uidSaya();
+}
+
+// semua modul yang bisa dipakai di satu mapel: modul mapel ini
+// + modul kelas lain di grupnya (punya sendiri, atau yang dibagikan)
+function modulGrup(idMapel) {
+  const mp = cariMapel(idMapel);
+  if (!mp) return modulMapel(idMapel);
+  const hasil = new Map();
+  for (const x of [mp, ...mapelSegrup(mp)]) {
+    for (const m of modulMapel(x.id)) if (!hasil.has(m.id)) hasil.set(m.id, m);
+  }
+  return [...hasil.values()];
+}
+// mapel tempat modul / sumatif ini disimpan
+function mapelAsal(idIsi) {
+  for (const [idMapel, w] of Object.entries(toko.isi)) {
+    const semua = [...(w.modulSemua || []), ...w.modulSaya, ...w.modulBagi, ...w.sumatif, ...(w.sumatifBagi || [])];
+    if (semua.some(x => x.id === idIsi)) return cariMapel(idMapel);
+  }
+  return null;
+}
+function sumatifBagiMapel(idMapel) {
+  const w = toko.isi[idMapel];
+  return w ? (w.sumatifBagi || []) : [];
+}
+// sumatif orang lain (atau milik sendiri di kelas lain) yang bisa dilihat & disalin dari mapel ini
+function sumatifGrup(idMapel) {
+  const mp = cariMapel(idMapel);
+  if (!mp) return [];
+  const sendiri = new Set(sumatifMapel(idMapel).map(s => s.id));
+  const hasil = new Map();
+  for (const x of [mp, ...mapelSegrup(mp)]) {
+    for (const s of [...sumatifMapel(x.id), ...sumatifBagiMapel(x.id)]) {
+      if (!sendiri.has(s.id) && !hasil.has(s.id)) hasil.set(s.id, s);
+    }
+  }
+  return [...hasil.values()].sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0));
+}
+// modul / sumatif yang boleh diubah dari mapel ini: punya sendiri DAN disimpan di mapel ini
+function bisaDiubahDi(idMapel, x, daftar) {
+  return milikSaya(x) && daftar.some(y => y.id === x.id);
+}
+
+// UAS bersama satu grup di satu semester (id dokumennya sama kayak lembar nilai: "2026-2027_Ganjil")
+function uasGrup(gid, sem) {
+  return (toko.uas[gid] || []).find(u => u.id === idLembarNilai(sem)) || null;
+}
+function usulanGrup(gid, sem) {
+  return (toko.usulan[gid] || []).filter(u => samaSemester(u, sem));
+}
+
+// ---- dari perangkat admin: catat grup tiap mapel & daftar pengampu tiap grup ----
+let jadwalSinkron = null;
+function sinkronGrup() {
+  if (!sayaKurikulum() || !toko.mapelSiap || !toko.grupSiap) return;
+  clearTimeout(jadwalSinkron);
+  jadwalSinkron = setTimeout(jalankanSinkronGrup, 300);
+}
+function jalankanSinkronGrup() {
+  if (!sayaKurikulum()) return;
+  const b = toko.backend;
+  const peta = new Map();
+  for (const m of toko.mapel) {
+    const gid = idGrup(m);
+    if (m.grup !== gid) b.tulis(`mapel/${m.id}`, tanpaId({ ...m, grup: gid })).catch(gagalSimpan);
+    if (!peta.has(gid)) peta.set(gid, { nama: m.nama, jenjang: m.jenjang, tingkat: tingkatKelas(m.kelas), pengampu: new Set() });
+    (m.pengampu || []).forEach(u => peta.get(gid).pengampu.add(u));
+  }
+  const semuaId = new Set([...peta.keys(), ...toko.grup.map(g => g.id)]);
+  for (const gid of semuaId) {
+    const lama = dataGrup(gid);
+    const x = peta.get(gid);
+    const pengampu = x ? [...x.pengampu].sort() : [];
+    // koordinator yang udah nggak ngampu di grup ini dilepas
+    const koordinator = lama && lama.koordinator && pengampu.includes(lama.koordinator) ? lama.koordinator : null;
+    const baru = {
+      ...(lama ? tanpaId(lama) : {}),
+      ...(x ? { nama: x.nama, jenjang: x.jenjang, tingkat: x.tingkat } : {}),
+      pengampu, koordinator
+    };
+    if (!lama || JSON.stringify([lama.nama, lama.jenjang, lama.tingkat, lama.pengampu, lama.koordinator || null]) !==
+                 JSON.stringify([baru.nama, baru.jenjang, baru.tingkat, baru.pengampu, baru.koordinator])) {
+      b.tulis(`grup/${gid}`, baru).catch(gagalSimpan);
+    }
+  }
+}
+
 // ====== TULIS DATA ======
 // Perubahan langsung dipasang di memori (biar layar cepat),
 // terus dikirim ke backend. Kalau backend nolak, dikasih tau.
@@ -346,9 +559,47 @@ function hapusSumatif(idMapel, idSum) {
   berubah();
 }
 
+// ---- UAS bersama ----
+function simpanUAS(gid, uas) {
+  const baru = { ...salin(uas), diubah: Date.now(), diubahOleh: uidSaya(), namaPengubah: namaSaya() };
+  if (!baru.dibuat) baru.dibuat = Date.now();
+  if (toko.uas[gid]) pasangDiDaftar(toko.uas[gid], baru);
+  toko.backend.tulis(`grup/${gid}/uas/${baru.id}`, tanpaId(baru)).catch(gagalSimpan);
+  berubah();
+  return baru;
+}
+function hapusUAS(gid, id) {
+  if (toko.uas[gid]) toko.uas[gid] = toko.uas[gid].filter(u => u.id !== id);
+  toko.backend.hapus(`grup/${gid}/uas/${id}`).catch(gagalSimpan);
+  berubah();
+}
+function simpanUsulan(gid, usulan) {
+  const baru = { ...salin(usulan), pemilik: uidSaya(), namaPemilik: namaSaya() };
+  if (!baru.dibuat) baru.dibuat = Date.now();
+  if (toko.usulan[gid]) pasangDiDaftar(toko.usulan[gid], baru);
+  toko.backend.tulis(`grup/${gid}/usulan/${baru.id}`, tanpaId(baru)).catch(gagalSimpan);
+  berubah();
+  return baru;
+}
+function hapusUsulan(gid, id) {
+  if (toko.usulan[gid]) toko.usulan[gid] = toko.usulan[gid].filter(u => u.id !== id);
+  toko.backend.hapus(`grup/${gid}/usulan/${id}`).catch(gagalSimpan);
+  berubah();
+}
+// khusus admin: atur koordinator UAS grup
+function simpanKoordinator(gid, uid) {
+  const lama = dataGrup(gid);
+  if (!lama) return;
+  const baru = { ...lama, koordinator: uid || null };
+  pasangDiDaftar(toko.grup, baru);
+  toko.backend.tulis(`grup/${gid}`, tanpaId(baru)).catch(gagalSimpan);
+  berubah();
+}
+
 // ---- khusus kurikulum ----
 function simpanMapelData(mapel) {
   const baru = salin(mapel);
+  baru.grup = idGrup(baru);
   if (!baru.dibuat) baru.dibuat = Date.now();
   pasangDiDaftar(toko.mapel, baru);
   aturLanggananMapel();

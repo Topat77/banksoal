@@ -221,6 +221,7 @@ function layarCetak() {
 
   // ambil soal + teks bacaannya: dari modul (formatif) atau dari sumatif
   let namaUjian, items, benih, sem;
+  let kelasCetak = mp.kelas;
   if (posisi.cetakDari === "modul") {
     const m = modAktif();
     sem = m;
@@ -239,8 +240,12 @@ function layarCetak() {
     items = soal.map(s => ({ soal: s, bacaan: bacaan.find(b => b.id === s.bacaanId) || null }));
   } else {
     const sum = sumAktif();
+    // UAS bersama cuma dicetak TU
+    if (posisi.uasGrup && !sayaKurikulum()) throw new DataHilang();
     sem = sum;
     namaUjian = sum.nama;
+    // UAS bersama: berlaku untuk semua kelas di grupnya
+    if (posisi.uasGrup) kelasCetak = `${tingkatKelas(mp.kelas)} (${mapelGrup(posisi.uasGrup).map(x => x.kelas).join(", ")})`;
     benih = sum.id;
     items = butirSumatif(mp.id, sum).map(x => ({ soal: x.soal, bacaan: x.bacaan }));
   }
@@ -314,7 +319,7 @@ function layarCetak() {
       namaUjian,
       paket,
       mapel: mp.nama,
-      kelas: mp.kelas,
+      kelas: kelasCetak,
       jenjang: mp.jenjang,
       semester: namaSemester(sem)
     };

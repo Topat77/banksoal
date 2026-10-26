@@ -46,7 +46,8 @@ const daftarLayar = {
   rapor: "layarRapor",
   raporCetak: "layarRaporCetak",
   bobot: "layarBobot",
-  aiSoal: "layarAISoal"
+  aiSoal: "layarAISoal",
+  daftarUAS: "layarDaftarUAS"
 };
 
 // layar yang nggak boleh digambar ulang sendiri waktu data berubah
@@ -111,10 +112,14 @@ function tampilkan(tetapDiTempat = false) {
   if (!tetapDiTempat) window.scrollTo(0, 0);
 }
 
+// layar-layar yang bisa dipakai buat UAS bersama (selain itu, mode UAS dilepas)
+const LAYAR_UAS = ["sumatif", "pilihSoal", "formSoalUjian", "formSumatif", "aiSoal", "cetak"];
+
 function pergi(layar, tambahan = {}) {
   // nilai yang baru diketik langsung disimpan sebelum pindah layar
   if (typeof kirimNilaiTertunda === "function") kirimNilaiTertunda();
   posisi = { ...posisi, ...tambahan, layar };
+  if (!LAYAR_UAS.includes(layar)) posisi.uasGrup = null;
   tampilkan();
 }
 
@@ -154,6 +159,8 @@ function layarInduk() {
   if (L === "formSalin") return posisi.salinDari === "modul" ? "modul" : "mapel";
   if (L === "santri") return posisi.dariNilai ? "nilai" : "beranda";
   if (L === "aiSoal") return posisi.aiUntuk === "sumatif" ? "sumatif" : "modul";
+  if (L === "pilihSoal") return "sumatif";
+  if (L === "sumatif" && posisi.uasGrup && sayaKurikulum() && !sayaPengampu(cariMapel(posisi.mapelId))) return "daftarUAS";
   return {
     mapel: "beranda",
     formSemester: "mapel",
@@ -180,8 +187,14 @@ tombolKembali.onclick = () => {
 function mapelBisaDibuka(id) { return mapelTerlihat().find(m => m.id === id) || null; }
 function mapelAktif() { return butuh(mapelBisaDibuka(posisi.mapelId)); }
 function semAktif() { return posisi.semester ? dariKunciSemester(posisi.semester) : semesterSekarang(); }
-function modAktif() { return butuh(modulMapel(posisi.mapelId).find(m => m.id === posisi.modId)); }
-function sumAktif() { return butuh(sumatifMapel(posisi.mapelId).find(s => s.id === posisi.sumId)); }
+// modul bisa dari mapel ini, atau dari kelas lain di grupnya (yang dibagikan)
+function modAktif() { return butuh(modulGrup(posisi.mapelId).find(m => m.id === posisi.modId)); }
+// ujian yang lagi dibuka: UAS bersama grup (posisi.uasGrup), atau sumatif biasa
+function sumAktif() {
+  if (posisi.uasGrup) return butuh(uasGrup(posisi.uasGrup, dariKunciSemester(posisi.uasSem)));
+  return butuh(sumatifMapel(posisi.mapelId).find(s => s.id === posisi.sumId) ||
+               sumatifGrup(posisi.mapelId).find(s => s.id === posisi.sumId));
+}
 
 function jumlahSoal(m) { return (m.soal || []).length; }
 function namaMapel(m) { return `${m.nama} ${m.kelas}`; }
@@ -365,6 +378,7 @@ function kelompokLayar() {
   if (["santri"].includes(L) && !posisi.dariNilai) return "santri";
   if (["rapor", "raporCetak"].includes(L)) return "rapor";
   if (L === "bobot") return "bobot";
+  if (L === "daftarUAS" || (posisi.uasGrup && sayaKurikulum() && !sayaPengampu(cariMapel(posisi.mapelId)))) return "uas";
   if (["kelolaMapel", "formMapel"].includes(L) && !posisi.dariMapel) return "kelola";
   if (L === "beranda") return "beranda";
   return "mapel";
@@ -372,6 +386,9 @@ function kelompokLayar() {
 
 function jumlahMenunggu() {
   return toko.pengguna.filter(p => p.peran === "menunggu").length;
+}
+function jumlahUASDiajukan() {
+  return Object.values(toko.uas).flat().filter(u => u.status === "diajukan").length;
 }
 
 function gambarSamping() {
@@ -399,23 +416,28 @@ function gambarSamping() {
       <button class="menu-item ${grup === "akun" ? "aktif" : ""}" data-ke="akun"><span>Akun</span>${n ? `<span class="lencana" aria-label="${n} menunggu">${n}</span>` : ""}</button>
       <button class="menu-item ${grup === "kelola" ? "aktif" : ""}" data-ke="kelolaMapel">Mapel &amp; pengampu</button>
       <button class="menu-item ${grup === "bobot" ? "aktif" : ""}" data-ke="bobot">Bobot nilai</button>
+      <button class="menu-item ${grup === "uas" ? "aktif" : ""}" data-ke="daftarUAS"><span>UAS bersama</span>${jumlahUASDiajukan() ? `<span class="lencana" aria-label="${jumlahUASDiajukan()} diajukan">${jumlahUASDiajukan()}</span>` : ""}</button>
       <button class="menu-item ${grup === "rapor" ? "aktif" : ""}" data-ke="rapor">Rapor</button>`;
   }
   h += `<button class="menu-item ${grup === "santri" ? "aktif" : ""}" data-ke="santri">Daftar santri</button>`;
 
   const urutJ = Object.keys(KELAS_PER_JENJANG);
-  const daftar = kur
-    ? [...mapelTerlihat()].sort((a, b) => (urutJ.indexOf(a.jenjang) - urutJ.indexOf(b.jenjang)) || bandingKelas(a, b) || a.nama.localeCompare(b.nama, "id"))
-    : mapelTerlihat();
+  // admin: per jenjang, lalu per jenis; ustadz: per jenis (diniah dulu, lalu umum)
+  const daftar = [...mapelTerlihat()].sort((a, b) => (kur ? urutJ.indexOf(a.jenjang) - urutJ.indexOf(b.jenjang) : 0) || urutMapelJenis(a, b));
   if (!kur) h += `<p class="menu-judul">Mapel kamu</p>`;
   if (daftar.length === 0) h += `<p class="menu-kosong">${kur ? "Belum ada mapel" : "Belum ditugaskan ke mapel"}</p>`;
 
-  let jenjangTadi = null;
+  let jenjangTadi = null, jenisTadi = null;
   for (const m of daftar) {
     // admin: mapel dikelompokkan per jenjang (Paket B, Paket C)
     if (kur && m.jenjang !== jenjangTadi) {
       jenjangTadi = m.jenjang;
+      jenisTadi = null;
       h += `<p class="menu-judul">${aman(m.jenjang)}</p>`;
+    }
+    if (jenisMapel(m) !== jenisTadi) {
+      jenisTadi = jenisMapel(m);
+      h += `<p class="menu-jenis">${namaJenis(jenisTadi)}</p>`;
     }
     const mapelIni = grup === "mapel" && m.id === posisi.mapelId;
     h += `<button class="menu-item ${mapelIni && posisi.layar === "mapel" ? "aktif" : ""}" data-mapel="${m.id}">
@@ -514,6 +536,14 @@ function layarBeranda() {
           <button class="tombol-teks" id="keAkun">Lihat</button>
         </div>`;
     }
+    const uasDiajukan = jumlahUASDiajukan();
+    if (uasDiajukan) {
+      utama += `
+        <div class="pemberitahuan">
+          <p><b>${uasDiajukan} UAS bersama</b> sudah diajukan koordinator dan menunggu diperiksa.</p>
+          <button class="tombol-teks" id="keUASDiajukan">Periksa</button>
+        </div>`;
+    }
     const hariCadangan = hariSejakCadangan();
     const adaIsi = toko.mapel.length > 0 || toko.santri.length > 0;
     if (adaIsi && (hariCadangan === null || hariCadangan >= BATAS_HARI_CADANGAN)) {
@@ -546,6 +576,7 @@ function layarBeranda() {
           <button class="tombol-utama" id="kePantauan">Buka pantauan</button>
           <button class="tombol-kedua" id="keKelola">Mapel &amp; pengampu</button>
           <button class="tombol-kedua" id="keBobot">Bobot nilai</button>
+          <button class="tombol-kedua" id="keUAS">UAS bersama</button>
           <button class="tombol-kedua" id="keSantri">Daftar santri</button>
         </div>
       </section>`;
@@ -587,6 +618,23 @@ function layarBeranda() {
     }
   }
 
+  // ---------- koordinator UAS bersama ----------
+  if (!kur) {
+    const grupKoor = [...new Map(diampu.filter(m => sayaKoordinator(idGrup(m))).map(m => [idGrup(m), m])).values()];
+    for (const m of grupKoor) {
+      const u = uasGrup(idGrup(m), sem);
+      const usul = usulanGrup(idGrup(m), sem).length;
+      const pesan = !u ? "belum mulai disusun"
+        : u.status === "draf" ? `masih draf, ${(u.butir || []).length} soal${usul ? `, ${usul} usulan masuk` : ""}`
+        : u.status === "diajukan" ? "sudah diajukan, menunggu TU" : "sudah dikunci TU";
+      utama += `
+        <section class="kartu-tugas">
+          <p><b>Tugas kamu:</b> koordinator UAS ${aman(namaGrup(m))}. UAS-nya ${pesan}.</p>
+          <button class="tombol-utama" data-koor-mapel="${m.id}">${!u ? "Mulai susun UAS" : "Buka UAS"}</button>
+        </section>`;
+    }
+  }
+
   // ---------- angka singkat punya sendiri (semester ini) ----------
   if (diampu.length) {
     const milikSem = diampu.flatMap(m => modulMapel(m.id)).filter(x => milikSaya(x) && samaSemester(x, sem));
@@ -611,17 +659,19 @@ function layarBeranda() {
           <p>Kamu belum ditugaskan ke mapel mana pun. Minta admin (TU) menambahkanmu sebagai pengampu. Setelah ditambahkan, mapelnya otomatis muncul di sini.</p>
         </section>`;
     } else {
-      utama += `<div class="daftar">`;
-      for (const m of diampu) {
-        const milik = modulMapel(m.id).filter(x => milikSaya(x) && samaSemester(x, sem));
-        utama += htmlBaris({
-          attr: `data-mapel="${m.id}"`,
-          judulBaris: aman(m.nama),
-          sub: `${aman(m.kelas)}, ${aman(m.jenjang)}`,
-          kanan: isiMapelSiap(m.id) ? `${milik.length} modul` : ""
-        });
+      for (const k of kelompokJenis(diampu)) {
+        utama += `<p class="label-kelompok">Mapel ${namaJenis(k.jenis).toLowerCase()}</p><div class="daftar">`;
+        for (const m of k.mapel) {
+          const milik = modulMapel(m.id).filter(x => milikSaya(x) && samaSemester(x, sem));
+          utama += htmlBaris({
+            attr: `data-mapel="${m.id}"`,
+            judulBaris: aman(m.nama),
+            sub: `${aman(m.kelas)}, ${aman(m.jenjang)}`,
+            kanan: isiMapelSiap(m.id) ? `${milik.length} modul` : ""
+          });
+        }
+        utama += `</div>`;
       }
-      utama += `</div>`;
     }
   }
 
@@ -631,8 +681,8 @@ function layarBeranda() {
     const m = cariMapel(t.mapelId);
     if (!m) return null;
     const x = t.jenis === "modul"
-      ? modulMapel(m.id).find(y => y.id === t.id)
-      : sumatifMapel(m.id).find(y => y.id === t.id);
+      ? modulGrup(m.id).find(y => y.id === t.id)
+      : sumatifMapel(m.id).find(y => y.id === t.id) || sumatifGrup(m.id).find(y => y.id === t.id);
     return x ? { ...t, m, x } : null;
   }).filter(Boolean).slice(0, 5);
 
@@ -661,6 +711,11 @@ function layarBeranda() {
   klik("keKelola", () => pergi("kelolaMapel", { dariMapel: false }));
   klik("keSantri", () => pergi("santri", { dariNilai: false }));
   klik("keBobot", () => pergi("bobot"));
+  klik("keUAS", () => pergi("daftarUAS"));
+  isi.querySelectorAll("[data-koor-mapel]").forEach(b => {
+    b.onclick = () => pergi("mapel", { mapelId: b.dataset.koorMapel, tab: "sumatif", semester: kunciSemester(sem) });
+  });
+  klik("keUASDiajukan", () => pergi("daftarUAS"));
   isi.querySelectorAll("[data-panel-jenjang]").forEach(b => b.onclick = () => {
     pilihJenjang(b.dataset.panelJenjang);
     pergi(b.dataset.ke, { dariMapel: false, dariNilai: false, kelasSantri: null, kelasRapor: null });
@@ -683,7 +738,7 @@ function layarBeranda() {
         : sumatifMapel(d.mapel).find(y => y.id === d.isi);
       const semester = x ? kunciSemester(x) : null;
       if (d.lanjut === "modul") pergi("modul", { mapelId: d.mapel, modId: d.isi, semester });
-      else pergi("sumatif", { mapelId: d.mapel, sumId: d.isi, semester });
+      else pergi("sumatif", { mapelId: d.mapel, sumId: d.isi, semester, uasGrup: null });
     };
   });
 }
@@ -731,12 +786,17 @@ function layarMapel() {
       <button role="tab" data-tab="nilai" class="${tab === "nilai" ? "aktif" : ""}" aria-selected="${tab === "nilai"}">Nilai</button>
     </div>`;
 
-  const barisModul = (m, nomor, dariOrangLain) => htmlBaris({
+  // modul & sumatif dari kelas lain di grup yang sama (misal 7A2, 7B1 buat 7A1)
+  const segrup = mapelSegrup(mp);
+  const modulLuar = ampu ? modulGrup(mp.id).filter(x => samaSemester(x, sem) && !semuaModul.some(y => y.id === x.id)) : [];
+  const kelasDari = (x) => { const asal = mapelAsal(x.id); return asal ? asal.kelas : ""; };
+
+  const barisModul = (m, nomor, dariOrangLain, denganKelas) => htmlBaris({
     attr: `data-mod="${m.id}"`,
     nomor,
     judulBaris: aman(m.judul),
     arahJudul: true,
-    sub: `${(m.pertemuan || []).length} pertemuan, ${jumlahSoal(m)} soal${dariOrangLain ? ` · ${aman(m.namaPemilik)}` : ""}`,
+    sub: `${denganKelas ? `${aman(kelasDari(m))} · ` : ""}${(m.pertemuan || []).length} pertemuan, ${jumlahSoal(m)} soal${dariOrangLain ? ` · ${aman(m.namaPemilik)}` : ""}`,
     tanda: dariOrangLain ? (m.dibagikan ? "" : "Tertutup") : (m.dibagikan ? "Dibagikan" : "Tertutup"),
     tandaJenis: m.dibagikan ? "tanda-bagi" : "tanda-tutup"
   });
@@ -755,8 +815,14 @@ function layarMapel() {
 
     if (ampu) {
       html += `<h2 class="subjudul">${kur ? "Modul pengampu lain" : "Dibagikan pengampu lain"} <small>${lain.length} modul</small></h2>`;
-      if (lain.length === 0) html += `<p class="info">${kur ? "Belum ada modul dari pengampu lain." : "Belum ada modul yang dibagikan pengampu lain di mapel ini."}</p>`;
+      if (lain.length === 0) html += `<p class="info">${kur ? "Belum ada modul dari pengampu lain." : `Belum ada modul yang dibagikan pengampu lain di ${aman(mp.kelas)}.`}</p>`;
       else html += `<div class="daftar">${lain.map(m => barisModul(m, undefined, true)).join("")}</div>`;
+
+      if (segrup.length) {
+        html += `<h2 class="subjudul">Dari kelas lain · ${aman(namaGrup(mp))} <small>${modulLuar.length} modul</small></h2>`;
+        html += `<p class="info">Grup ${aman(namaGrup(mp))}: ${aman(segrup.map(x => x.kelas).join(", "))}. Modul yang dibagikan di kelas-kelas ini bisa kamu lihat, cetak, dan soalnya dipakai buat sumatif.</p>`;
+        if (modulLuar.length) html += `<div class="daftar">${modulLuar.map(m => barisModul(m, undefined, !milikSaya(m), true)).join("")}</div>`;
+      }
     } else {
       // kurikulum yang bukan pengampu: dikelompokkan per ustadz
       if (semuaModul.length === 0) html += `<p class="kosong">Belum ada modul ajar di semester ini.</p>`;
@@ -773,18 +839,25 @@ function layarMapel() {
   } else if (tab === "nilai") {
     html += htmlTabNilai(mp, sem);
   } else {
-    html += `<p class="info">Ujian sumatif disusun dari soal-soal modul semester ini: modul kamu sendiri dan modul yang dibagikan pengampu lain.</p>`;
+    html += htmlKartuUAS(mp, sem);
+    html += `<p class="info">Ujian sumatif disusun dari soal-soal modul semester ini: modul kamu sendiri dan modul yang dibagikan pengampu lain, termasuk dari kelas lain di grupnya.</p>`;
     const milik = semuaSum.filter(milikSaya);
     const lain = semuaSum.filter(s => !milikSaya(s));
-    const barisSum = (s, denganNama) => htmlBaris({
+    const barisSum = (s, denganNama, denganKelas) => htmlBaris({
       attr: `data-sum="${s.id}"`,
       judulBaris: aman(s.nama),
-      sub: `${aman(s.pelaksanaan || "Pelaksanaan belum diisi")}, ${(s.butir || []).length} soal${denganNama ? ` · ${aman(s.namaPemilik)}` : ""}`
+      sub: `${denganKelas ? `${aman(kelasDari(s))} · ` : ""}${aman(s.pelaksanaan || "Pelaksanaan belum diisi")}, ${(s.butir || []).length} soal${denganNama ? ` · ${aman(s.namaPemilik)}` : ""}`,
+      tanda: !denganNama && s.dibagikan ? "Dibagikan" : "",
+      tandaJenis: "tanda-bagi"
     });
     if (ampu) {
       if (milik.length === 0) html += `<p class="kosong">Belum ada ujian sumatif.</p>`;
       else html += `<div class="daftar">${milik.map(s => barisSum(s, false)).join("")}</div>`;
       html += `<button class="tombol-utama" id="tambah">+ Buat ujian sumatif</button>`;
+      const luar = sumatifGrup(mp.id).filter(x => samaSemester(x, sem));
+      html += `<h2 class="subjudul">Dibagikan guru lain <small>${luar.length} ujian</small></h2>`;
+      if (luar.length === 0) html += `<p class="info">Belum ada ujian sumatif yang dibagikan di ${aman(namaGrup(mp))}. Ujian yang dibagikan bisa dilihat lalu disalin jadi ujianmu sendiri.</p>`;
+      else html += `<div class="daftar">${luar.map(s => barisSum(s, !milikSaya(s), true)).join("")}</div>`;
     }
     if (kur && lain.length) {
       html += `<h2 class="subjudul">Sumatif pengampu lain <small>${lain.length}</small></h2><div class="daftar">${lain.map(s => barisSum(s, true)).join("")}</div>`;
@@ -811,10 +884,20 @@ function layarMapel() {
     tambah.onclick = () => tab === "modul" ? pergi("formModul", { modEditId: null }) : pergi("formSumatif", { sumEditId: null });
   }
   isi.querySelectorAll(".baris[data-mod]").forEach(b => {
-    b.onclick = () => pergi("modul", { modId: b.dataset.mod });
+    b.onclick = () => {
+      // modul sendiri di kelas lain: dibuka di mapel asalnya biar bisa diubah
+      const asal = mapelAsal(b.dataset.mod);
+      const keAsal = asal && asal.id !== mp.id && sayaPengampu(asal);
+      pergi("modul", { modId: b.dataset.mod, ...(keAsal ? { mapelId: asal.id } : {}) });
+    };
   });
+  pasangKartuUAS(mp, sem);
   isi.querySelectorAll(".baris[data-sum]").forEach(b => {
-    b.onclick = () => pergi("sumatif", { sumId: b.dataset.sum });
+    b.onclick = () => {
+      const asal = mapelAsal(b.dataset.sum);
+      const keAsal = asal && asal.id !== posisi.mapelId && sayaPengampu(asal);
+      pergi("sumatif", { sumId: b.dataset.sum, uasGrup: null, ...(keAsal ? { mapelId: asal.id } : {}) });
+    };
   });
   const salinSemua = document.getElementById("salinSemua");
   if (salinSemua) salinSemua.onclick = () => pergi("formSalin", { salinDari: "mapel", salinModul: null });
@@ -867,11 +950,7 @@ function layarLainnya() {
       <form id="formProfil">
         <label>Nama yang tampil <input name="nama" value="${aman(s.nama || "")}" required placeholder="Ustadzah Aminah"></label>
         <p class="info">Muncul di modul dan ujian yang kamu buat, dan di daftar pengampu.</p>
-        <p class="label-sapaan">Saya seorang</p>
-        <div class="pilih-jenis" role="radiogroup" aria-label="Ustadz atau ustadzah">
-          <label class="radio"><input type="radio" name="sapaan" value="ustadz" ${sapaanPengguna(s) === "ustadz" ? "checked" : ""}> Ustadz</label>
-          <label class="radio"><input type="radio" name="sapaan" value="ustadzah" ${sapaanPengguna(s) === "ustadzah" ? "checked" : ""}> Ustadzah</label>
-        </div>
+        <p class="info"><b>Sapaan:</b> ${sapaanPengguna(s) ? SAPAAN[sapaanPengguna(s)] : "belum diatur"} · diatur TU di halaman Akun, karena ngaruh ke kelas putra/putri yang boleh diajar.</p>
         <div class="baris-tombol">
           <button type="submit" class="tombol-utama">Simpan</button>
           <span class="tersimpan" id="tersimpanProfil" role="status"></span>
@@ -939,7 +1018,7 @@ function layarLainnya() {
     const nama = f.get("nama").trim();
     if (!nama) return;
     const { id, ...lama } = toko.saya;
-    simpanPengguna(uidSaya(), { ...lama, nama, sapaan: f.get("sapaan") || lama.sapaan || null });
+    simpanPengguna(uidSaya(), { ...lama, nama });
     document.getElementById("tersimpanProfil").textContent = "Tersimpan";
   };
   const uc = document.getElementById("unduhCadangan");
@@ -1063,3 +1142,112 @@ function layarCari() {
 
 // nilai yang belum sempat terkirim, dikirim waktu halaman ditutup
 window.addEventListener("pagehide", () => { if (typeof kirimNilaiTertunda === "function") kirimNilaiTertunda(); });
+
+// =====================================================
+//  MENU PILIHAN
+//  Daftar menu-pilih bawaan browser (<select>) polos dan beda-beda tiap HP.
+//  Tiap <select> di layar dikasih tampilan menu-pilih sendiri. Select aslinya tetap ada
+//  dan tetap yang nyimpen nilainya, jadi form & onchange di layar lain nggak perlu diubah.
+//  Keterangan kecil di bawah pilihan: <option data-ket="...">.
+// =====================================================
+const IKON_PANAH_PILIHAN = `<svg class="menu-pilih-panah" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>`;
+const IKON_CENTANG_PILIHAN = `<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>`;
+let pilihanTerbuka = null;
+
+function tutupPilihan() {
+  if (pilihanTerbuka) pilihanTerbuka();
+}
+
+function percantikPilihan(sel) {
+  if (sel.dataset.cantik) return;
+  sel.dataset.cantik = "1";
+  const wadah = document.createElement("span");
+  wadah.className = "menu-pilih";
+  sel.parentNode.insertBefore(wadah, sel);
+  wadah.appendChild(sel);
+  sel.classList.add("menu-pilih-asli");
+  sel.tabIndex = -1;
+  sel.setAttribute("aria-hidden", "true");
+
+  const label = sel.closest("label");
+  const namaLabel = sel.getAttribute("aria-label") ||
+    (label ? [...label.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(" ").trim() : "");
+  const tombol = document.createElement("button");
+  tombol.type = "button";
+  tombol.className = "menu-pilih-tombol";
+  tombol.setAttribute("aria-haspopup", "listbox");
+  tombol.setAttribute("aria-expanded", "false");
+  const daftar = document.createElement("span");
+  daftar.className = "menu-pilih-daftar";
+  daftar.setAttribute("role", "listbox");
+  if (namaLabel) daftar.setAttribute("aria-label", namaLabel);
+  daftar.hidden = true;
+  wadah.append(tombol, daftar);
+
+  const isiTombol = () => {
+    const o = sel.options[sel.selectedIndex];
+    tombol.innerHTML = `<span class="menu-pilih-teks" dir="auto">${aman(o ? o.text : "")}</span>${IKON_PANAH_PILIHAN}`;
+    if (namaLabel) tombol.setAttribute("aria-label", `${namaLabel}: ${o ? o.text : ""}`);
+    tombol.disabled = sel.disabled;
+  };
+  function tutup(fokus) {
+    daftar.hidden = true;
+    tombol.setAttribute("aria-expanded", "false");
+    if (pilihanTerbuka === tutup) pilihanTerbuka = null;
+    if (fokus === true) tombol.focus();
+  }
+  function buka() {
+    tutupPilihan();
+    daftar.innerHTML = [...sel.options].map((o, i) => `
+      <button type="button" role="option" class="menu-pilih-opsi" data-i="${i}" aria-selected="${i === sel.selectedIndex}" ${o.disabled ? "disabled" : ""}>
+        <span class="menu-pilih-centang">${i === sel.selectedIndex ? IKON_CENTANG_PILIHAN : ""}</span>
+        <span class="menu-pilih-isi"><span dir="auto">${aman(o.text)}</span>${o.dataset.ket ? `<small>${aman(o.dataset.ket)}</small>` : ""}</span>
+      </button>`).join("");
+    daftar.hidden = false;
+    tombol.setAttribute("aria-expanded", "true");
+    // kalau ruang di bawah sempit, daftarnya dibuka ke atas
+    const r = tombol.getBoundingClientRect();
+    const bawah = window.innerHeight - r.bottom;
+    wadah.classList.toggle("ke-atas", bawah < Math.min(daftar.scrollHeight + 12, 320) && r.top > bawah);
+    pilihanTerbuka = tutup;
+    const aktif = daftar.querySelector('[aria-selected="true"]:not([disabled])') || daftar.querySelector("button:not([disabled])");
+    if (aktif) aktif.focus();
+  }
+
+  tombol.onclick = () => daftar.hidden ? buka() : tutup();
+  tombol.onkeydown = (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); buka(); }
+  };
+  daftar.onclick = (e) => {
+    const b = e.target.closest("[data-i]");
+    if (!b || b.disabled) return;
+    const i = Number(b.dataset.i);
+    tutup(true);
+    if (i !== sel.selectedIndex) {
+      sel.selectedIndex = i;
+      isiTombol();
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  };
+  daftar.onkeydown = (e) => {
+    const opsi = [...daftar.querySelectorAll("button:not([disabled])")];
+    const i = opsi.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); (opsi[i + 1] || opsi[0]).focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); (opsi[i - 1] || opsi[opsi.length - 1]).focus(); }
+    else if (e.key === "Home") { e.preventDefault(); opsi[0].focus(); }
+    else if (e.key === "End") { e.preventDefault(); opsi[opsi.length - 1].focus(); }
+    else if (e.key === "Escape") { e.preventDefault(); tutup(true); }
+    else if (e.key === "Tab") tutup();
+  };
+  // layar kadang ngembaliin nilai select (misal konfirmasi dibatalin): tampilannya ikut
+  sel.addEventListener("change", isiTombol);
+  isiTombol();
+}
+
+document.addEventListener("click", (e) => {
+  if (pilihanTerbuka && !e.target.closest(".menu-pilih")) tutupPilihan();
+});
+// tiap kali isi layar digambar ulang, select yang baru langsung dipercantik
+new MutationObserver(() => {
+  isi.querySelectorAll("select:not([data-cantik])").forEach(percantikPilihan);
+}).observe(isi, { childList: true, subtree: true });

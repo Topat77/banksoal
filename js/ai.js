@@ -4,7 +4,8 @@
 //  Alurnya:
 //    bahan dari modul (a. judul & target capaian, b. ringkasan materi,
 //    c. file PDF modul)  →  perintah ke AI  →  jawaban JSON
-//    →  draft soal yang bisa diedit guru  →  disimpan ke modul / ujian.
+//    →  draft soal yang bisa diedit guru  →  disimpan ke modul / ujian
+//    (atau, buat guru di grup yang bukan koordinator: dikirim sebagai usulan soal UAS bersama).
 //
 //  Yang dikirim ke AI cuma isi modul. Data santri NGGAK PERNAH dikirim.
 //  Soal hasil AI bentuknya sama persis kayak soal yang diketik manual,
@@ -24,23 +25,25 @@ const BAHASA_AI = { ikut: "Ikut bahasa materi", indonesia: "Bahasa Indonesia", a
 let drafAI = null;
 
 function kunciDrafAI() {
-  return `${posisi.aiUntuk}:${posisi.mapelId}:${posisi.aiUntuk === "sumatif" ? posisi.sumId : posisi.modId}`;
+  return `${posisi.aiUntuk}:${posisi.mapelId}:${posisi.aiUntuk === "sumatif" ? (posisi.uasGrup ? `uas-${posisi.uasGrup}-${posisi.uasSem}${posisi.usul ? "-usul" : ""}` : posisi.sumId) : posisi.modId}`;
 }
 
 // ---------- kumpulin bahan dari modul ----------
 function bahanAI(mp) {
   if (posisi.aiUntuk === "sumatif") {
     const sum = sumAktif();
-    if (!milikSaya(sum)) throw new DataHilang();
-    const modul = modulMapel(mp.id).filter(m => samaSemester(m, sum));
+    // guru di grup (bukan koordinator) boleh bikin soal UAS pakai AI, hasilnya jadi usulan
+    const usul = modeUAS() && !!posisi.usul && !sayaKoordinator(posisi.uasGrup);
+    if (usul ? !bisaUsulUAS(sum) : !bolehUbahUjian(mp.id, sum)) throw new DataHilang();
+    const modul = modulGrup(mp.id).filter(m => samaSemester(m, sum));
     return {
-      untuk: "sumatif", mapel: mp, sum, sem: sum,
+      untuk: "sumatif", usul, mapel: mp, sum, sem: sum,
       pilihan: modul.map(m => ({ id: m.id, label: m.judul, sub: `${(m.pertemuan || []).length} pertemuan`, modul: m })),
       bacaan: []
     };
   }
   const m = modAktif();
-  if (!milikSaya(m)) throw new DataHilang();
+  if (!bisaDiubahDi(mp.id, m, modulMapel(mp.id))) throw new DataHilang();
   return {
     untuk: "modul", mapel: mp, modul: m, sem: m,
     pilihan: (m.pertemuan || []).map((p, i) => ({ id: p.id, label: `Pertemuan ${i + 1}`, sub: p.target || "Target belum diisi", pertemuan: p, nomor: i + 1 })),
@@ -215,7 +218,7 @@ function layarAISoal() {
   const coba = toko.backend.mode === "coba";
   const keModul = bahan.untuk === "modul";
 
-  judul.textContent = keModul ? "Buat soal pakai AI" : "Buat soal ujian pakai AI";
+  judul.textContent = keModul ? "Buat soal pakai AI" : bahan.usul ? "Usulkan soal UAS pakai AI" : "Buat soal ujian pakai AI";
   jejak.textContent = keModul ? `${bahan.modul.judul}` : `${bahan.sum.nama} · ${namaMapel(mp)}`;
   tombolKembali.hidden = false;
 
@@ -382,14 +385,14 @@ function layarAISoal() {
       <p class="info">Cek tiap soal. Bisa langsung diedit di sini, kunci jawaban ditandai huruf yang hijau. Hilangkan centang "Pakai" atau tekan Buang buat soal yang nggak cocok.</p>
       <div class="kolom">${d.soal.map(htmlSoal).join("")}</div>
       <div class="baris-tombol bawah-draf">
-        <button class="tombol-utama" id="simpanDraf">${keModul ? `Simpan ${dipakai} soal ke modul` : `Masukkan ${dipakai} soal ke ujian`}</button>
+        <button class="tombol-utama" id="simpanDraf">${labelSimpanAI(bahan, dipakai)}</button>
         <button class="tombol-teks merah" id="kosongkanDraf">Kosongkan draft</button>
       </div>`;
 
     const segarkanHitung = () => {
       const n = d.soal.filter(s => s.pakai).length;
       document.getElementById("hitungDraf").textContent = `${d.soal.length} soal · ${n} dipakai`;
-      document.getElementById("simpanDraf").textContent = keModul ? `Simpan ${n} soal ke modul` : `Masukkan ${n} soal ke ujian`;
+      document.getElementById("simpanDraf").textContent = labelSimpanAI(bahan, n);
     };
 
     wadah.querySelectorAll("[data-draf]").forEach(el => {
@@ -450,17 +453,36 @@ function simpanDrafAI(bahan, d, wadah) {
     drafAI = null;
     pergi("modul", { aiPertemuan: null });
   } else {
-    const t = sumatifMapel(mp.id).find(x => x.id === bahan.sum.id);
-    if (!t) { alert("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return pergi("mapel", { tab: "sumatif" }); }
+    const t = ujianTerbaru(mp.id, bahan.sum.id);
+    if (!t) { alert("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return kembaliKeDaftar(); }
+    if (bahan.usul) {
+      if (t.status === "dikunci") { alert("UAS ini sudah dikunci TU, jadi nggak bisa diusulkan soal lagi."); return pergi("sumatif", { usul: false }); }
+      for (const s of siap) {
+        simpanUsulan(posisi.uasGrup, {
+          id: buatId(), semester: t.semester, tahun: t.tahun,
+          modulId: MODUL_UJIAN, soalId: s.id,
+          salinan: { soal: { ...s, pertemuanId: null, bacaanId: null }, bacaan: null, judulModul: "Soal buatan AI", namaPemilik: namaSaya() },
+          catatan: ""
+        });
+      }
+      drafAI = null;
+      alert(`${siap.length} soal sudah dikirim sebagai usulan. Koordinator yang memutuskan dipakai atau nggak.`);
+      return pergi("sumatif", { usul: false });
+    }
     const butir = [...(t.butir || []), ...siap.map(s => ({
       modulId: MODUL_UJIAN, soalId: s.id,
       salinan: { soal: { ...s, pertemuanId: null, bacaanId: null }, bacaan: null }
     }))];
-    simpanSumatif(mp.id, { ...t, butir });
+    simpanUjian(mp.id, { ...t, butir });
     drafAI = null;
     pergi("sumatif");
   }
 }
 
+function labelSimpanAI(bahan, n) {
+  if (bahan.untuk === "modul") return `Simpan ${n} soal ke modul`;
+  return bahan.usul ? `Usulkan ${n} soal ke koordinator` : `Masukkan ${n} soal ke ujian`;
+}
+
 // ikon kecil buat tombol AI (bintang berkilau)
-const IKON_AI = `<svg viewBox="0 0 24 24" aria-hidden="true" class="ikon-ai"><path d="M12 3l1.8 4.9L19 9.7l-5.2 1.8L12 16.4l-1.8-4.9L5 9.7l5.2-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>`;
+const IKON_AI = `<svg viewBox="0 0 24 24" aria-hidden="true" class="ikon-ai"><path d="M12 3l1.8 4.9L19 9.7l-5.2 1.8L12 16.4l-1.8-4.9L5 9.7l5.2-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>`;
