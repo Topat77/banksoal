@@ -811,8 +811,9 @@ function hapusPengguna(uid) {
   berubah();
 }
 
-// khusus admin, dipanggil setelah bersihkan data: grup mapel yang udah nggak punya mapel
+// khusus admin, dipanggil setelah mapel dihapus: grup mapel yang udah nggak punya mapel
 // (beserta UAS & usulannya) dan kelas yang udah nggak punya mapel maupun siswa ikut dihapus.
+// Sengaja nggak lewat sinkron otomatis, biar ganti nama mapel nggak ngehapus riwayat UAS.
 function hapusSisaKosong() {
   const b = toko.backend;
   const grupAda = new Set(toko.mapel.map(idGrup));

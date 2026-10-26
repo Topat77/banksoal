@@ -1582,16 +1582,6 @@ label.pilih-peran .menu-pilih { min-width: 160px; }
 /* ---- tombol nonaktifkan / hapus akun ---- */
 .aksi-akun { display: flex; flex-wrap: wrap; gap: 4px 28px; }
 
-/* ---- bersihkan data (TU) ---- */
-.tombol-merah {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-height: 48px; padding: 0 20px; border: none; border-radius: var(--sudut);
-  background: var(--merah); color: var(--di-atas-merah); font: inherit; font-weight: 700; cursor: pointer;
-}
-.tombol-merah:disabled { opacity: .45; cursor: not-allowed; }
-.konfirmasi-hapus { border-color: var(--merah); }
-.pemberitahuan-kecil .baris-tombol { margin-top: 8px; }
-
 /* ---- kelengkapan perangkat (beranda TU) ---- */
 .kelengkapan { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; }
 .donat { position: relative; width: 140px; height: 140px; flex: none; }
