@@ -47,7 +47,13 @@ function buatAturan(ambilDok, adminAwal) {
     if (b[0] === "mapel" && b[2] === "nilai" && b.length === 4) {
       return aktif(auth) && (kurikulum(auth) || pengampu(auth, b[1]));
     }
-    if (b[0] === "santri" && b.length === 2) return aktif(auth);
+    if (b[0] === "kelas" && b.length === 2) return aktif(auth);
+    if (b[0] === "santri" && b.length === 2) {
+      if (!aktif(auth)) return false;
+      if (kurikulum(auth)) return true;
+      const k = d.kelasId ? ambilDok(`kelas/${d.kelasId}`) : null;
+      return !!k && Array.isArray(k.pengampu) && k.pengampu.includes(auth.uid);
+    }
     if (b[0] === "grup" && b.length === 2) return aktif(auth);
     if (b[0] === "grup" && (b[2] === "uas" || b[2] === "usulan") && b.length === 4) {
       return aktif(auth) && (kurikulum(auth) || anggotaGrup(auth, b[1]));
@@ -80,8 +86,9 @@ function buatAturan(ambilDok, adminAwal) {
       if (!aktif(auth)) return false;
       return pengampu(auth, b[1]) || (baru === null && kurikulum(auth));
     }
-    // santri: diisi, diubah, dihapus admin; ustadz cuma lihat
+    // santri & kelas: diisi, diubah, dihapus admin; ustadz cuma lihat
     if (b[0] === "santri" && b.length === 2) return kurikulum(auth);
+    if (b[0] === "kelas" && b.length === 2) return kurikulum(auth);
 
     if (b[0] === "mapel" && (b[2] === "modul" || b[2] === "sumatif") && b.length === 4) {
       if (!aktif(auth)) return false;

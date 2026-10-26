@@ -20,7 +20,9 @@ const toko = {
   grupSiap: false,
   uas: {},            // id grup → [UAS bersama per semester]
   usulan: {},         // id grup → [usulan soal UAS dari pengampu]
-  santri: [],         // semua santri (buat lembar nilai & rapor)
+  santri: [],         // santri (admin: semua; ustadz: cuma kelas yang dia ajar)
+  kelas: [],          // daftar pengampu tiap kelas (buat aturan siapa boleh lihat santri)
+  kelasSiap: false,
   pengguna: []        // semua akun (cuma buat admin)
 };
 
@@ -28,6 +30,7 @@ let langgananProfil = null;
 let langgananData = [];
 let langgananMapel = {};      // id mapel → { tanda, henti: [fungsi berhenti] }
 let langgananGrup = {};       // id grup → { tanda, henti: [fungsi berhenti] }
+let langgananSantri = {};     // id kelas → fungsi berhenti (khusus ustadz)
 let peranTerpasang = null;    // peran waktu langganan data dipasang
 let sudahCatatMasuk = false;
 
@@ -141,6 +144,7 @@ function pasangData(peran) {
     toko.mapelSiap = true;
     aturLanggananMapel();
     aturLanggananGrup();
+    aturLanggananSantri();
     sinkronGrup();
     berubah();
   }, laporGagal("mapel")));
@@ -154,10 +158,22 @@ function pasangData(peran) {
     berubah();
   }, laporGagal("grup")));
 
-  langgananData.push(b.pantauKoleksi("santri", [], daftar => {
-    toko.santri = daftar.sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
+  langgananData.push(b.pantauKoleksi("kelas", [], daftar => {
+    toko.kelas = daftar;
+    toko.kelasSiap = true;
+    aturLanggananSantri();
+    sinkronGrup();
     berubah();
-  }, laporGagal("santri")));
+  }, laporGagal("kelas")));
+
+  // santri: admin lihat semua; ustadz cuma kelas yang dia ajar (lihat aturLanggananSantri)
+  if (peran === "kurikulum") {
+    langgananData.push(b.pantauKoleksi("santri", [], daftar => {
+      toko.santri = daftar.sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
+      sinkronGrup();
+      berubah();
+    }, laporGagal("santri")));
+  }
 
   if (peran === "kurikulum") {
     langgananData.push(b.pantauKoleksi("pengguna", [], daftar => {
@@ -235,6 +251,34 @@ function pantauIsiTetangga(id) {
   ];
 }
 
+// santri buat ustadz: satu langganan per kelas yang dia ajar.
+// Aturan database cuma ngizinin kalau kelas itu udah mencatat akun ini sebagai pengampu.
+const santriPerKelas = {};
+function aturLanggananSantri() {
+  if (sayaKurikulum()) return;
+  const perlu = new Set();
+  for (const m of mapelDiampu()) {
+    const k = dataKelas(idKelas(m.jenjang, m.kelas));
+    if (k && (k.pengampu || []).includes(uidSaya())) perlu.add(k.id);
+  }
+  let ganti = false;
+  for (const id of Object.keys(langgananSantri)) {
+    if (!perlu.has(id)) { langgananSantri[id](); delete langgananSantri[id]; delete santriPerKelas[id]; ganti = true; }
+  }
+  for (const id of perlu) {
+    if (langgananSantri[id]) continue;
+    langgananSantri[id] = toko.backend.pantauKoleksi("santri", [["kelasId", "==", id]], daftar => {
+      santriPerKelas[id] = daftar;
+      gabungSantri();
+    }, laporGagal("santri"));
+  }
+  if (ganti) gabungSantri();
+}
+function gabungSantri() {
+  toko.santri = Object.values(santriPerKelas).flat().sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
+  berubah();
+}
+
 // UAS bersama & usulan soalnya: per grup yang diampu (admin: semua grup)
 function aturLanggananGrup() {
   const perlu = new Set();
@@ -278,6 +322,11 @@ function hentikanData() {
   langgananMapel = {};
   for (const id of Object.keys(langgananGrup)) langgananGrup[id].henti.forEach(berhenti => berhenti());
   langgananGrup = {};
+  for (const id of Object.keys(langgananSantri)) langgananSantri[id]();
+  langgananSantri = {};
+  for (const id of Object.keys(santriPerKelas)) delete santriPerKelas[id];
+  toko.kelas = [];
+  toko.kelasSiap = false;
   toko.isi = {};
   toko.mapel = [];
   toko.mapelSiap = false;
@@ -372,6 +421,16 @@ function idGrup(mp) {
     .toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
   return teks || "tanpa-nama";
 }
+// kelas = jenjang + rombel, misal "paket-b-7a1". Dokumen kelas/{id} nyatet pengampu
+// semua mapel di kelas itu; aturan database pakai daftar ini buat nentuin
+// ustadz mana yang boleh lihat santri kelas tersebut.
+function idKelas(jenjang, kelas) {
+  const teks = `${jenjang || ""}-${kelas || ""}`.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
+  return teks || "tanpa-kelas";
+}
+function dataKelas(id) {
+  return toko.kelas.find(k => k.id === id) || null;
+}
 function namaGrup(mp) {
   return `${mp.nama} kelas ${tingkatKelas(mp.kelas)}`;
 }
@@ -457,7 +516,7 @@ function usulanGrup(gid, sem) {
 // ---- dari perangkat admin: catat grup tiap mapel & daftar pengampu tiap grup ----
 let jadwalSinkron = null;
 function sinkronGrup() {
-  if (!sayaKurikulum() || !toko.mapelSiap || !toko.grupSiap) return;
+  if (!sayaKurikulum() || !toko.mapelSiap || !toko.grupSiap || !toko.kelasSiap) return;
   clearTimeout(jadwalSinkron);
   jadwalSinkron = setTimeout(jalankanSinkronGrup, 300);
 }
@@ -471,6 +530,28 @@ function jalankanSinkronGrup() {
     if (!peta.has(gid)) peta.set(gid, { nama: m.nama, jenjang: m.jenjang, tingkat: tingkatKelas(m.kelas), pengampu: new Set() });
     (m.pengampu || []).forEach(u => peta.get(gid).pengampu.add(u));
   }
+  // kelas: pengampu semua mapel di kelas itu, dan tiap santri dicatat kelasnya
+  const petaKelas = new Map();
+  const tambahKelas = (jenjang, kelas) => {
+    const id = idKelas(jenjang, kelas);
+    if (!petaKelas.has(id)) petaKelas.set(id, { jenjang, kelas, pengampu: new Set() });
+    return petaKelas.get(id);
+  };
+  for (const m of toko.mapel) (m.pengampu || []).forEach(u => tambahKelas(m.jenjang, m.kelas).pengampu.add(u));
+  for (const s of toko.santri) {
+    tambahKelas(s.jenjang, s.kelas);
+    const id = idKelas(s.jenjang, s.kelas);
+    if (s.kelasId !== id) b.tulis(`santri/${s.id}`, tanpaId({ ...s, kelasId: id })).catch(gagalSimpan);
+  }
+  for (const id of new Set([...petaKelas.keys(), ...toko.kelas.map(k => k.id)])) {
+    const lama = dataKelas(id);
+    const x = petaKelas.get(id);
+    const baru = x ? { jenjang: x.jenjang, kelas: x.kelas, pengampu: [...x.pengampu].sort() } : { ...tanpaId(lama), pengampu: [] };
+    if (!lama || JSON.stringify([lama.jenjang, lama.kelas, lama.pengampu]) !== JSON.stringify([baru.jenjang, baru.kelas, baru.pengampu])) {
+      b.tulis(`kelas/${id}`, baru).catch(gagalSimpan);
+    }
+  }
+
   const semuaId = new Set([...peta.keys(), ...toko.grup.map(g => g.id)]);
   for (const gid of semuaId) {
     const lama = dataGrup(gid);
@@ -689,6 +770,7 @@ function santriKelas(jenjang, kelas) {
 
 function simpanSantri(santri) {
   const baru = salin(santri);
+  baru.kelasId = idKelas(baru.jenjang, baru.kelas);
   if (!baru.dibuat) baru.dibuat = Date.now();
   baru.diubah = Date.now();
   pasangDiDaftar(toko.santri, baru);

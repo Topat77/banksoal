@@ -8,7 +8,7 @@
 //  termasuk aturan siapa boleh baca/tulis apa (lihat aturan.js).
 // =====================================================
 
-const KUNCI_COBA = "banksoal-coba-data-v2";   // v2: ada grup mapel & UAS bersama
+const KUNCI_COBA = "banksoal-coba-data-v3";   // v3: santri dicatat per kelas (kelasId)
 const KUNCI_COBA_AKUN = "banksoal-coba-akun";
 
 const AKUN_CONTOH = [
@@ -95,6 +95,17 @@ function dataAwalCoba() {
   for (const [gid, g] of Object.entries(pengampuGrup)) {
     db[`grup/${gid}`] = { nama: g.nama, jenjang: g.jenjang, tingkat: g.tingkat, pengampu: [...g.pengampu].sort(), koordinator: null };
   }
+  // ---- kelas: pengampu semua mapel di tiap kelas ----
+  const pengampuKelas = {};
+  for (const [jalur, m] of Object.entries(db)) {
+    if (!jalur.startsWith("mapel/") || jalur.split("/").length !== 2) continue;
+    const id = idKelas(m.jenjang, m.kelas);
+    pengampuKelas[id] = pengampuKelas[id] || { jenjang: m.jenjang, kelas: m.kelas, pengampu: new Set() };
+    m.pengampu.forEach(u => pengampuKelas[id].pengampu.add(u));
+  }
+  for (const [id, k] of Object.entries(pengampuKelas)) {
+    db[`kelas/${id}`] = { jenjang: k.jenjang, kelas: k.kelas, pengampu: [...k.pengampu].sort() };
+  }
   const grupBindo = idGrup(db["mapel/bindo7"]);
   db[`grup/${grupBindo}`].koordinator = "u-aminah";
 
@@ -105,12 +116,12 @@ function dataAwalCoba() {
   putra.forEach((nama, i) => {
     const id = `san-${i + 1}`;
     santriA.push(id);
-    db[`santri/${id}`] = { absen: i + 1, nama, nis: `2526${String(i + 1).padStart(3, "0")}`, jenjang: "Paket B", kelas: "7A1", aktif: true, dibuat: jam - 25 * hari };
+    db[`santri/${id}`] = { absen: i + 1, nama, nis: `2526${String(i + 1).padStart(3, "0")}`, jenjang: "Paket B", kelas: "7A1", kelasId: idKelas("Paket B", "7A1"), aktif: true, dibuat: jam - 25 * hari };
   });
   putri.forEach((nama, i) => {
     const id = `san-${i + 7}`;
     santriB.push(id);
-    db[`santri/${id}`] = { absen: i + 1, nama, nis: `2526${String(i + 7).padStart(3, "0")}`, jenjang: "Paket B", kelas: "7B1", aktif: true, dibuat: jam - 25 * hari };
+    db[`santri/${id}`] = { absen: i + 1, nama, nis: `2526${String(i + 7).padStart(3, "0")}`, jenjang: "Paket B", kelas: "7B1", kelasId: idKelas("Paket B", "7B1"), aktif: true, dibuat: jam - 25 * hari };
   });
 
   // ---- lembar nilai contoh (semester ini) ----
@@ -391,7 +402,9 @@ function buatBackendCoba() {
       const semua = isiKoleksi(p.jalur).filter(d => cocok(d, p.syarat));
       // aturan bukan saringan: kalau ada SATU yang nggak boleh dibaca, seluruh permintaan ditolak
       const terlarang = semua.some(d => !aturan.bolehBaca(`${p.jalur}/${d.id}`, d, auth));
-      if (terlarang || (semua.length === 0 && !aturan.bolehBaca(`${p.jalur}/_`, { pemilik: auth && auth.uid, dibagikan: true }, auth))) {
+      // hasil kosong: Firestore tetap ngecek aturan pakai syarat query (misal kelasId == ...)
+      const contoh = { pemilik: auth && auth.uid, dibagikan: true, ...Object.fromEntries(p.syarat.filter(([, op]) => op === "==").map(([k, , v]) => [k, v])) };
+      if (terlarang || (semua.length === 0 && !aturan.bolehBaca(`${p.jalur}/_`, contoh, auth))) {
         return p.gagal(galat("permission-denied"));
       }
       p.cb(semua, { dariCache: false });
