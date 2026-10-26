@@ -12,8 +12,8 @@ function wajibKurikulum() {
 // =====================================================
 function layarAkun() {
   wajibKurikulum();
-  judul.textContent = "Akun";
-  jejak.textContent = "Siapa saja yang boleh memakai aplikasi";
+  judul.textContent = "Guru";
+  jejak.textContent = "Akun guru & staf TU yang boleh memakai aplikasi";
 
   const semua = [...toko.pengguna].sort((a, b) => (a.nama || "").localeCompare(b.nama || "", "id"));
   const menunggu = semua.filter(p => p.peran === "menunggu").sort((a, b) => (b.dibuat || 0) - (a.dibuat || 0));
@@ -35,7 +35,7 @@ function layarAkun() {
   if (menunggu.length === 0) {
     h += `<p class="info">Nggak ada yang menunggu. Akun baru muncul di sini setelah ustadz/ustadzah masuk pakai akun Google-nya.</p>`;
   } else {
-    h += `<p class="info">Pastikan nama dan emailnya memang ustadz/ustadzah atau staf TU di lembaga ini. Santri atau orang luar jangan disetujui. Akun yang disetujui jadi ustadz/ustadzah dulu; kalau dia staf TU, perannya bisa diganti jadi admin di daftar akun aktif.</p>`;
+    h += `<p class="info">Pastikan nama dan emailnya memang ustadz/ustadzah atau staf TU di lembaga ini. Siswa atau orang luar jangan disetujui. Akun yang disetujui jadi ustadz/ustadzah dulu; kalau dia staf TU, perannya bisa diganti jadi admin di daftar akun aktif.</p>`;
     for (const p of menunggu) {
       h += `
         <article class="kartu-akun menunggu">
@@ -53,31 +53,26 @@ function layarAkun() {
     }
   }
 
-  h += `<h2 class="subjudul">Akun aktif <small>${aktif.length} akun</small></h2><div class="daftar-akun">`;
-  for (const p of aktif) {
-    const diriSendiri = p.id === uidSaya();
-    const ampu = mapelOrang(p.id);
-    h += `
-      <article class="kartu-akun">
-        <div class="kartu-akun-isi">
-          <strong>${aman(p.nama)}${diriSendiri ? " (kamu)" : ""}</strong>
-          <span>${aman(p.email)}</span>
-          <small>${ampu.length ? "Mengampu " + aman(ampu.join(", ")) : "Belum mengampu mapel"} · Terakhir masuk ${aman(waktuRapi(p.terakhirMasuk))}</small>
-        </div>
-        ${diriSendiri ? `<div class="baris-tombol">${pilihSapaan(p)}</div>` : `
-        <div class="baris-tombol">
-          ${pilihSapaan(p)}
-          <label class="pilih-peran">Peran
-            <select data-peran="${p.id}">
-              <option value="ustadz" ${p.peran === "ustadz" ? "selected" : ""}>Ustadz/ustadzah</option>
-              <option value="kurikulum" ${p.peran === "kurikulum" ? "selected" : ""}>Admin (TU)</option>
-            </select>
-          </label>
-          <button class="tombol-teks merah" data-nonaktif="${p.id}">Nonaktifkan</button>
-        </div>`}
-      </article>`;
-  }
-  h += `</div>`;
+  // ---- daftar guru aktif: tabel (di HP jadi kartu) ----
+  h += `<h2 class="subjudul">Daftar guru <small>${aktif.length} akun aktif</small></h2>
+    <input type="search" class="cari-guru" id="cariGuru" placeholder="Cari nama, NIP, atau mapel" aria-label="Cari guru">
+    <div class="wadah-tabel-guru"><table class="tabel-guru">
+      <thead><tr><th>No</th><th>Nama guru</th><th>NIP</th><th>Mapel yang diampu</th><th>Status</th><th><span class="sr">Aksi</span></th></tr></thead>
+      <tbody>${aktif.map((p, i) => {
+        const ampu = mapelOrang(p.id);
+        const sap = sapaanPengguna(p);
+        const cari = [p.nama, p.email, p.nip, ...ampu].join(" ").toLowerCase();
+        return `<tr data-cari="${aman(cari)}">
+          <td class="kol-no">${i + 1}</td>
+          <td class="kol-nama"><span class="nama-guru"><b>${aman(p.nama)}${p.id === uidSaya() ? " (kamu)" : ""}</b><small>${sap ? SAPAAN[sap] + " · " : ""}${aman(p.email)}</small></span></td>
+          <td class="kol-nip">${aman(p.nip || "")}</td>
+          <td class="kol-mapel"><span class="mapel-guru">${ampu.length ? aman(ampu.join(", ")) : "Belum mengampu mapel"}</span></td>
+          <td class="kol-status"><span class="tanda-status ${p.peran === "kurikulum" ? "admin" : ""}">${p.peran === "kurikulum" ? "Admin TU" : "Aktif"}</span></td>
+          <td class="kol-aksi"><button class="tombol-kecil" data-ubah-guru="${p.id}">Ubah</button></td>
+        </tr>`;
+      }).join("")}</tbody>
+    </table></div>
+    <p class="info" id="cariGuruKosong" hidden>Nggak ada guru yang cocok.</p>`;
 
   if (lain.length) {
     h += `<h2 class="subjudul">Ditolak &amp; nonaktif <small>${lain.length} akun</small></h2><div class="daftar-akun">`;
@@ -96,6 +91,19 @@ function layarAkun() {
   }
   isi.innerHTML = h;
 
+  const cari = document.getElementById("cariGuru");
+  cari.oninput = () => {
+    const kata = cari.value.trim().toLowerCase();
+    let ada = 0;
+    isi.querySelectorAll(".tabel-guru tbody tr").forEach(tr => {
+      const cocok = !kata || tr.dataset.cari.includes(kata);
+      tr.hidden = !cocok;
+      if (cocok) ada++;
+    });
+    document.getElementById("cariGuruKosong").hidden = ada > 0;
+  };
+  isi.querySelectorAll("[data-ubah-guru]").forEach(b => b.onclick = () => pergi("formGuru", { guruId: b.dataset.ubahGuru }));
+
   const ubahPeran = (uid, peran) => {
     const p = toko.pengguna.find(x => x.id === uid);
     if (!p) return;
@@ -110,7 +118,7 @@ function layarAkun() {
       if (!p) return;
       const kelasA = toko.mapel.filter(m => kelasPutra(m.kelas) && (m.pengampu || []).includes(p.id));
       if (sel.value === "ustadzah" && kelasA.length &&
-          !confirm(`Peringatan: ${p.nama} masih tercatat ngajar di kelas putra (${kelasA.map(namaMapel).join(", ")}).\n\nUstadzah nggak boleh ngajar santriwan. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu mapel tersebut.`)) {
+          !confirm(`Peringatan: ${p.nama} masih tercatat ngajar di kelas putra (${kelasA.map(namaMapel).join(", ")}).\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu mapel tersebut.`)) {
         sel.value = sapaanPengguna(p) || "";
         return;
       }
@@ -135,11 +143,78 @@ function layarAkun() {
     sel.onchange = () => {
       const p = toko.pengguna.find(x => x.id === sel.dataset.peran);
       const ke = sel.value === "kurikulum" ? "admin (TU)" : "ustadz/ustadzah";
-      const ket = sel.value === "kurikulum" ? "\n\nAdmin bisa menyetujui akun, mengatur mapel, daftar santri, bobot nilai, dan rapor." : "";
+      const ket = sel.value === "kurikulum" ? "\n\nAdmin bisa menyetujui akun, mengatur mapel, daftar siswa, bobot nilai, dan rapor." : "";
       if (!confirm(`Jadikan ${p.nama} sebagai ${ke}?${ket}`)) { sel.value = p.peran; return; }
       ubahPeran(p.id, sel.value);
     };
   });
+}
+
+// =====================================================
+//  UBAH DATA GURU: nama, NIP, sapaan, peran, nonaktifkan
+// =====================================================
+function formGuru() {
+  wajibKurikulum();
+  const p = butuh(toko.pengguna.find(x => x.id === posisi.guruId && PERAN_AKTIF.includes(x.peran)));
+  const diriSendiri = p.id === uidSaya();
+  const ampu = toko.mapel.filter(m => (m.pengampu || []).includes(p.id));
+  judul.textContent = "Ubah data guru";
+  jejak.textContent = p.email || "";
+  tombolKembali.hidden = false;
+
+  isi.innerHTML = `
+    <form id="form">
+      <label>Nama yang tampil <input name="nama" value="${aman(p.nama || "")}" required></label>
+      <label>NIP <input name="nip" value="${aman(p.nip || "")}" inputmode="numeric" placeholder="Boleh dikosongkan" maxlength="30" autocomplete="off"></label>
+      <div class="dua-kolom">
+        <label>Sapaan
+          <select name="sapaan">
+            <option value="" ${!sapaanPengguna(p) ? "selected" : ""}>Belum diatur</option>
+            <option value="ustadz" ${sapaanPengguna(p) === "ustadz" ? "selected" : ""}>Ustadz</option>
+            <option value="ustadzah" ${sapaanPengguna(p) === "ustadzah" ? "selected" : ""}>Ustadzah</option>
+          </select>
+        </label>
+        <label>Peran
+          <select name="peran" ${diriSendiri ? "disabled" : ""}>
+            <option value="ustadz" ${p.peran === "ustadz" ? "selected" : ""}>Guru (ustadz/ustadzah)</option>
+            <option value="kurikulum" ${p.peran === "kurikulum" ? "selected" : ""}>Admin (TU)</option>
+          </select>
+        </label>
+      </div>
+      ${diriSendiri ? `<p class="info">Peran akunmu sendiri nggak bisa diganti dari sini.</p>` : ""}
+      <p class="info">Mengampu: ${ampu.length ? aman(ampu.map(namaMapel).join(", ")) : "belum ada mapel"}. Atur di halaman Mapel &amp; pengampu.</p>
+      <button type="submit" class="tombol-utama">Simpan</button>
+      ${diriSendiri ? "" : `<button type="button" class="tombol-hapus" id="nonaktif">Nonaktifkan akun ini</button>`}
+    </form>`;
+
+  const form = document.getElementById("form");
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const f = new FormData(form);
+    const nama = f.get("nama").trim();
+    const nip = f.get("nip").trim().replace(/\s+/g, " ");
+    const sapaan = f.get("sapaan") || null;
+    const peran = diriSendiri ? p.peran : f.get("peran");
+    if (!nama) return;
+    if (nip && !/^[0-9 ]+$/.test(nip)) return alert("NIP cuma boleh berisi angka (dan spasi).");
+    const kembar = nip && toko.pengguna.find(x => x.id !== p.id && (x.nip || "").replace(/\s/g, "") === nip.replace(/\s/g, ""));
+    if (kembar && !confirm(`NIP ini sudah dipakai ${kembar.nama}. Tetap simpan?`)) return;
+    const kelasA = ampu.filter(m => kelasPutra(m.kelas));
+    if (sapaan === "ustadzah" && kelasA.length &&
+        !confirm(`Peringatan: ${nama} masih tercatat ngajar di kelas putra (${kelasA.map(namaMapel).join(", ")}).\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu mapel tersebut.`)) return;
+    if (peran !== p.peran && !confirm(`Jadikan ${nama} sebagai ${peran === "kurikulum" ? "admin (TU)" : "guru"}?${peran === "kurikulum" ? "\n\nAdmin bisa menyetujui akun, mengatur mapel, daftar siswa, bobot nilai, dan rapor." : ""}`)) return;
+    const terbaru = toko.pengguna.find(x => x.id === p.id) || p;
+    const { id, ...data } = terbaru;
+    simpanPengguna(p.id, { ...data, nama, nip, sapaan, peran, diubahOleh: uidSaya(), diubah: Date.now() });
+    pergi("akun");
+  };
+  const nonaktif = document.getElementById("nonaktif");
+  if (nonaktif) nonaktif.onclick = () => {
+    if (!confirm(`Nonaktifkan ${p.nama}? Modul dan soalnya tetap tersimpan, cuma dia nggak bisa masuk sampai diaktifkan lagi.`)) return;
+    const { id, ...data } = p;
+    simpanPengguna(p.id, { ...data, peran: "nonaktif", diubahOleh: uidSaya(), diubah: Date.now() });
+    pergi("akun");
+  };
 }
 
 // =====================================================
@@ -214,7 +289,7 @@ function layarKelolaMapel() {
   let h = htmlTabJenjang() + `<p class="info">Mapel dibuat di sini, lalu tentukan ustadz/ustadzah pengampunya. Satu mapel boleh diampu lebih dari satu orang.</p>`;
   const salah = daftar.filter(m => pengampuTakSesuai(m).length);
   if (salah.length) {
-    h += `<div class="pemberitahuan-kecil"><b>Perlu dicek:</b> ada ustadzah yang tercatat ngajar di kelas putra (${aman(salah.map(namaMapel).join(", "))}). Ustadzah nggak boleh ngajar santriwan.</div>`;
+    h += `<div class="pemberitahuan-kecil"><b>Perlu dicek:</b> ada ustadzah yang tercatat ngajar di kelas putra (${aman(salah.map(namaMapel).join(", "))}). Ustadzah nggak boleh ngajar siswa putra.</div>`;
   }
   if (daftar.length === 0) {
     h += `<p class="kosong">Belum ada mapel ${aman(jenjang)}.</p>`;
@@ -276,7 +351,7 @@ function formMapel() {
       <div>
         <label>Kelas / rombel <input name="kelas" list="saranKelas" value="${aman(m.kelas)}" placeholder="7A1" required autocomplete="off"><datalist id="saranKelas"></datalist></label>
       </div>
-      <p class="info">Tulis kelas dan rombelnya, misal 7A1 (A putra, B putri). Daftar santri, lembar nilai, dan rapor dikelompokkan per kelas ini.</p>
+      <p class="info">Tulis kelas dan rombelnya, misal 7A1 (A putra, B putri). Daftar siswa, lembar nilai, dan rapor dikelompokkan per kelas ini.</p>
       <fieldset>
         <legend>Jenis pelajaran</legend>
         <div class="pilih-jenis">
@@ -336,7 +411,7 @@ function formMapel() {
   function cekPengampu() {
     const salah = ustadzahDiKelasPutra();
     peringatan.hidden = !salah.length;
-    peringatan.innerHTML = salah.length ? `<b>Peringatan:</b> ${aman(pilihKelas.value)} kelas putra (rombel A), sedangkan ${aman(salah.join(", "))} ustadzah. Ustadzah nggak boleh ngajar santriwan.` : "";
+    peringatan.innerHTML = salah.length ? `<b>Peringatan:</b> ${aman(pilihKelas.value)} kelas putra (rombel A), sedangkan ${aman(salah.join(", "))} ustadzah. Ustadzah nggak boleh ngajar siswa putra.` : "";
   }
   form.querySelectorAll('[name="pengampu"]').forEach(c => c.onchange = cekPengampu);
   pilihKelas.oninput = cekPengampu;
@@ -355,7 +430,7 @@ function formMapel() {
       x.nama.toLowerCase() === nama.toLowerCase() && x.jenjang === f.get("jenjang") && x.kelas === kelas);
     if (kembar && !confirm(`Mapel ${nama} ${kelas} (${f.get("jenjang")}) sudah ada. Tetap bikin satu lagi?`)) return;
     const salah = ustadzahDiKelasPutra();
-    if (salah.length && !confirm(`Peringatan: ${kelas} kelas putra, tapi ${salah.join(", ")} ustadzah.\n\nUstadzah nggak boleh ngajar santriwan. Tetap simpan?`)) return;
+    if (salah.length && !confirm(`Peringatan: ${kelas} kelas putra, tapi ${salah.join(", ")} ustadzah.\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan?`)) return;
 
     const baru = simpanMapelData({
       ...(lama || {}),
@@ -553,7 +628,7 @@ async function unduhCadangan(tombol, pesan) {
     if (!jadi) return false;
     simpanLembaga({ ...toko.lembaga, cadanganTerakhir: Date.now(), cadanganOleh: namaSaya() });
     const totalSoal = data.mapel.reduce((a, m) => a + m.modul.reduce((x, y) => x + jumlahSoal(y), 0), 0);
-    if (pesan) pesan.textContent = `Tersimpan: ${data.mapel.length} mapel, ${totalSoal} soal, ${data.santri.length} santri. Simpan file-nya di Google Drive atau flashdisk.`;
+    if (pesan) pesan.textContent = `Tersimpan: ${data.mapel.length} mapel, ${totalSoal} soal, ${data.santri.length} siswa. Simpan file-nya di Google Drive atau flashdisk.`;
     return true;
   } finally {
     if (tombol) tombol.disabled = false;
@@ -568,7 +643,7 @@ function htmlBagianCadangan() {
   return `
     <section class="bagian">
       <h2>Cadangan data</h2>
-      <p class="info">Unduh semua isi aplikasi (akun, mapel, modul, soal, ujian, nilai, dan santri) jadi satu file. Simpan di Google Drive atau flashdisk, biar kalau ada yang kehapus nggak sengaja, datanya masih ada. Saran: unduh tiap akhir bulan dan sebelum ujian.</p>
+      <p class="info">Unduh semua isi aplikasi (akun, mapel, modul, soal, ujian, nilai, dan siswa) jadi satu file. Simpan di Google Drive atau flashdisk, biar kalau ada yang kehapus nggak sengaja, datanya masih ada. Saran: unduh tiap akhir bulan dan sebelum ujian.</p>
       <p class="info"><b>${terakhir}</b>${hari !== null && hari >= BATAS_HARI_CADANGAN ? " Sudah lebih dari sebulan, sebaiknya unduh lagi." : ""}</p>
       <div class="baris-tombol">
         <button class="tombol-kedua" id="unduhCadangan">Unduh cadangan (.json)</button>

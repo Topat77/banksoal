@@ -12,6 +12,7 @@ function fileKurang() {
     "js/coba.js": typeof buatBackendCoba === "function",
     "js/toko.js": typeof mulaiAplikasi === "function",
     "js/layar.js": typeof tampilkan === "function",
+    "js/beranda.js": typeof layarBeranda === "function",
     "js/modul.js": typeof layarModul === "function",
     "js/sumatif.js": typeof layarSumatif === "function",
     "js/uas.js": typeof layarDaftarUAS === "function",

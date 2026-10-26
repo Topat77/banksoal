@@ -65,7 +65,7 @@ function formModul() {
 
       <fieldset>
         <legend>Pertemuan &amp; target capaian</legend>
-        <p class="info">Tulis apa yang harus dicapai santri di tiap pertemuan. Soal formatif nanti ditandai untuk pertemuan yang mana.</p>
+        <p class="info">Tulis apa yang harus dicapai siswa di tiap pertemuan. Soal formatif nanti ditandai untuk pertemuan yang mana.</p>
         <div id="daftarPertemuan" class="kolom"></div>
         <button type="button" class="tombol-kedua" id="tambahPertemuan">+ Tambah pertemuan</button>
       </fieldset>
@@ -640,7 +640,8 @@ function formSoal() {
     const f = new FormData(form);
     const hasil = bacaIsianSoal(form, lama ? lama.id : buatId());
     if (hasil.galat) return alert(hasil.galat);
-    const baru = { ...hasil.soal, bacaanId: f.get("bacaanId") || null, pertemuanId: f.get("pertemuanId") || null };
+    // "dibuat" dipakai beranda buat ngitung soal baru bulan ini
+    const baru = { ...hasil.soal, bacaanId: f.get("bacaanId") || null, pertemuanId: f.get("pertemuanId") || null, dibuat: (lama && lama.dibuat) || Date.now() };
 
     const t = modulMapel(mp.id).find(y => y.id === m.id);
     if (!t) {

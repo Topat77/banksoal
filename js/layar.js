@@ -47,13 +47,15 @@ const daftarLayar = {
   raporCetak: "layarRaporCetak",
   bobot: "layarBobot",
   aiSoal: "layarAISoal",
-  daftarUAS: "layarDaftarUAS"
+  daftarUAS: "layarDaftarUAS",
+  pilihMapel: "layarPilihMapel",
+  formGuru: "formGuru"
 };
 
 // layar yang nggak boleh digambar ulang sendiri waktu data berubah
 // (lagi ngetik / milih sesuatu, nanti isiannya hilang)
 const LAYAR_DIAM = ["formSemester", "formModul", "formBacaan", "formSoal", "formSumatif",
-                    "pilihSoal", "cetak", "cari", "lainnya", "formMapel", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal"];
+                    "pilihSoal", "cetak", "cari", "lainnya", "formMapel", "formGuru", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal"];
 
 // data hilang (misal dihapus dari perangkat lain) → dilempar biar balik ke layar aman
 class DataHilang extends Error {}
@@ -160,6 +162,7 @@ function layarInduk() {
   if (L === "santri") return posisi.dariNilai ? "nilai" : "beranda";
   if (L === "aiSoal") return posisi.aiUntuk === "sumatif" ? "sumatif" : "modul";
   if (L === "pilihSoal") return "sumatif";
+  if (L === "formGuru") return "akun";
   if (L === "sumatif" && posisi.uasGrup && sayaKurikulum() && !sayaPengampu(cariMapel(posisi.mapelId))) return "daftarUAS";
   return {
     mapel: "beranda",
@@ -217,6 +220,10 @@ let nomorLogo = 0;
 // logo lain yang numpang id-nya ikut nggak kelihatan
 const logo = () => { const id = `gLogo${++nomorLogo}`; return `<svg class="logo" aria-hidden="true" viewBox="0 0 512 512"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0B8C63"/><stop offset="1" stop-color="#13719F"/></linearGradient></defs><rect width="512" height="512" rx="115" fill="url(#${id})"/><g transform="translate(256 256) scale(1.0) translate(-256 -256)"><path d="M170 132 H284 C326 132 352 156 352 194 C352 216 341 233 322 242 C347 251 362 273 362 304 C362 346 331 376 286 376 H170 Z M228 180 V230 H276 C292 230 300 221 300 205 C300 189 292 180 276 180 Z M228 274 V328 H281 C299 328 308 318 308 301 C308 284 299 274 281 274 Z" fill="#fff" fill-rule="evenodd" transform="translate(256 258) scale(.84) translate(-266 -254)"/><path d="M372 150 C330 96 186 96 136 170 C86 246 120 398 254 410 C376 420 420 318 398 238" fill="none" stroke="#E0442E" stroke-width="16" stroke-linecap="round"/></g></svg>`; };
 
+// ikon kecil di menu samping & kartu
+function ikonMenu(k) { return (IKON[k] || "").replace("<svg ", '<svg class="ikon-menu" '); }
+function ikonKotak(k, warna) { return `<span class="ikon-kotak ${warna}">${IKON[k] || ""}</span>`; }
+
 const IKON = {
   beranda: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>`,
   cari: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>`,
@@ -225,7 +232,15 @@ const IKON = {
   akun: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.8-3 3-4.5 6-4.5s5.2 1.5 6 4.5M16 6.5a3 3 0 0 1 0 5.5M18 14.8c1.6.6 2.6 2 3 4.2"/></svg>`,
   mapel: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/></svg>`,
   rapor: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4M10 12h6M10 16h6"/></svg>`,
-  santri: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>`
+  santri: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 9.5 12 5l10 4.5-10 4.5z"/><path d="M6 11.3V16c1.7 1.5 3.7 2.2 6 2.2s4.3-.7 6-2.2v-4.7M22 9.5V15"/></svg>`,
+  bobot: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>`,
+  uas: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 12l2 2 4-4M9 17h6"/></svg>`,
+  modul: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C6.5 4.5 9.5 4.5 12 6c2.5-1.5 5.5-1.5 8-.5V19c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z"/><path d="M12 6v13.5"/></svg>`,
+  soal: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>`,
+  nilai: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16V11M12 16V7M17 16v-3"/></svg>`,
+  ai: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.9L19 9.7l-5.2 1.8L12 16.4l-1.8-4.9L5 9.7l5.2-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>`,
+  cetak: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5"/><rect x="3" y="8" width="18" height="9" rx="2"/><path d="M7 14h10v7H7z"/></svg>`,
+  panah: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`
 };
 
 // satu baris di daftar
@@ -374,13 +389,13 @@ function kelompokLayar() {
   if (["cari"].includes(L)) return "cari";
   if (["lainnya"].includes(L)) return "lainnya";
   if (["pantauan"].includes(L)) return "pantauan";
-  if (["akun"].includes(L)) return "akun";
+  if (["akun", "formGuru"].includes(L)) return "akun";
   if (["santri"].includes(L) && !posisi.dariNilai) return "santri";
   if (["rapor", "raporCetak"].includes(L)) return "rapor";
   if (L === "bobot") return "bobot";
   if (L === "daftarUAS" || (posisi.uasGrup && sayaKurikulum() && !sayaPengampu(cariMapel(posisi.mapelId)))) return "uas";
   if (["kelolaMapel", "formMapel"].includes(L) && !posisi.dariMapel) return "kelola";
-  if (L === "beranda") return "beranda";
+  if (L === "beranda" || L === "pilihMapel") return "beranda";
   return "mapel";
 }
 
@@ -407,19 +422,19 @@ function gambarSamping() {
       <input type="search" name="kata" placeholder="Cari soal" aria-label="Cari soal" value="${grup === "cari" ? aman(posisi.kata || "") : ""}">
     </form>
     <nav class="menu-samping">
-      <button class="menu-item ${grup === "beranda" ? "aktif" : ""}" data-ke="beranda">Beranda</button>`;
+      <button class="menu-item ${grup === "beranda" ? "aktif" : ""}" data-ke="beranda">${ikonMenu("beranda")}<span>Beranda</span></button>`;
 
   if (kur) {
     const n = jumlahMenunggu();
     h += `
-      <button class="menu-item ${grup === "pantauan" ? "aktif" : ""}" data-ke="pantauan">Pantauan</button>
-      <button class="menu-item ${grup === "akun" ? "aktif" : ""}" data-ke="akun"><span>Akun</span>${n ? `<span class="lencana" aria-label="${n} menunggu">${n}</span>` : ""}</button>
-      <button class="menu-item ${grup === "kelola" ? "aktif" : ""}" data-ke="kelolaMapel">Mapel &amp; pengampu</button>
-      <button class="menu-item ${grup === "bobot" ? "aktif" : ""}" data-ke="bobot">Bobot nilai</button>
-      <button class="menu-item ${grup === "uas" ? "aktif" : ""}" data-ke="daftarUAS"><span>UAS bersama</span>${jumlahUASDiajukan() ? `<span class="lencana" aria-label="${jumlahUASDiajukan()} diajukan">${jumlahUASDiajukan()}</span>` : ""}</button>
-      <button class="menu-item ${grup === "rapor" ? "aktif" : ""}" data-ke="rapor">Rapor</button>`;
+      <button class="menu-item ${grup === "pantauan" ? "aktif" : ""}" data-ke="pantauan">${ikonMenu("pantauan")}<span>Pantauan</span></button>
+      <button class="menu-item ${grup === "akun" ? "aktif" : ""}" data-ke="akun">${ikonMenu("akun")}<span>Guru</span>${n ? `<span class="lencana" aria-label="${n} menunggu">${n}</span>` : ""}</button>
+      <button class="menu-item ${grup === "kelola" ? "aktif" : ""}" data-ke="kelolaMapel">${ikonMenu("mapel")}<span>Mapel &amp; pengampu</span></button>
+      <button class="menu-item ${grup === "bobot" ? "aktif" : ""}" data-ke="bobot">${ikonMenu("bobot")}<span>Bobot nilai</span></button>
+      <button class="menu-item ${grup === "uas" ? "aktif" : ""}" data-ke="daftarUAS">${ikonMenu("uas")}<span>UAS bersama</span>${jumlahUASDiajukan() ? `<span class="lencana" aria-label="${jumlahUASDiajukan()} diajukan">${jumlahUASDiajukan()}</span>` : ""}</button>
+      <button class="menu-item ${grup === "rapor" ? "aktif" : ""}" data-ke="rapor">${ikonMenu("rapor")}<span>Rapor siswa</span></button>`;
   }
-  h += `<button class="menu-item ${grup === "santri" ? "aktif" : ""}" data-ke="santri">Daftar santri</button>`;
+  h += `<button class="menu-item ${grup === "santri" ? "aktif" : ""}" data-ke="santri">${ikonMenu("santri")}<span>Daftar siswa</span></button>`;
 
   const urutJ = Object.keys(KELAS_PER_JENJANG);
   // admin: per jenjang, lalu per jenis; ustadz: per jenis (diniah dulu, lalu umum)
@@ -493,7 +508,7 @@ function gambarSamping() {
 function gambarNavBawah() {
   const grup = kelompokLayar();
   const item = sayaKurikulum()
-    ? [["beranda", "beranda", "Beranda"], ["pantauan", "pantauan", "Pantauan"], ["rapor", "rapor", "Rapor"], ["akun", "akun", "Akun"], ["lainnya", "lainnya", "Saya"]]
+    ? [["beranda", "beranda", "Beranda"], ["pantauan", "pantauan", "Pantauan"], ["rapor", "rapor", "Rapor"], ["akun", "akun", "Guru"], ["lainnya", "lainnya", "Saya"]]
     : [["beranda", "beranda", "Beranda"], ["cari", "cari", "Cari"], ["lainnya", "lainnya", "Saya"]];
   const ikonDari = { beranda: "beranda", pantauan: "pantauan", akun: "akun", kelola: "mapel", lainnya: "lainnya", cari: "cari", rapor: "rapor", santri: "santri" };
   navBawah.style.setProperty("--jumlah", item.length);
@@ -509,239 +524,7 @@ function gambarNavBawah() {
   });
 }
 
-// =====================================================
-//  BERANDA
-// =====================================================
-function sapaan() {
-  const nama = namaSaya();
-  return `<p class="sapa">Assalamu'alaikum, ${aman(nama)}</p>`;
-}
-
-function layarBeranda() {
-  judul.innerHTML = `<span class="judul-logo">${logo()}${aman(KONFIG.namaAplikasi)}</span>`;
-  jejak.textContent = toko.lembaga.nama || KONFIG.namaLembaga || "";
-  const kur = sayaKurikulum();
-  const sem = semesterSekarang();
-  const diampu = mapelDiampu();
-
-  let utama = "";
-
-  // ---------- ringkasan buat admin ----------
-  if (kur) {
-    const n = jumlahMenunggu();
-    if (n) {
-      utama += `
-        <div class="pemberitahuan">
-          <p><b>${n} akun</b> menunggu persetujuan.</p>
-          <button class="tombol-teks" id="keAkun">Lihat</button>
-        </div>`;
-    }
-    const uasDiajukan = jumlahUASDiajukan();
-    if (uasDiajukan) {
-      utama += `
-        <div class="pemberitahuan">
-          <p><b>${uasDiajukan} UAS bersama</b> sudah diajukan koordinator dan menunggu diperiksa.</p>
-          <button class="tombol-teks" id="keUASDiajukan">Periksa</button>
-        </div>`;
-    }
-    const hariCadangan = hariSejakCadangan();
-    const adaIsi = toko.mapel.length > 0 || toko.santri.length > 0;
-    if (adaIsi && (hariCadangan === null || hariCadangan >= BATAS_HARI_CADANGAN)) {
-      utama += `
-        <div class="pemberitahuan">
-          <p>${hariCadangan === null ? "<b>Cadangan data belum pernah diunduh.</b>" : `<b>Cadangan data terakhir diunduh ${hariCadangan} hari lalu.</b>`} Unduh sekarang biar data aman kalau ada yang kehapus.</p>
-          <button class="tombol-teks" id="cadanganBeranda">Unduh cadangan</button>
-        </div>`;
-    }
-    const kelasKosong = daftarKelas().filter(x => santriKelas(x.jenjang, x.kelas).length === 0);
-    if (kelasKosong.length) {
-      utama += `
-        <div class="pemberitahuan">
-          <p><b>${kelasKosong.length} kelas</b> belum ada daftar santrinya: ${kelasKosong.map(x => aman(x.kelas)).join(", ")}.</p>
-          <button class="tombol-teks" data-kelas-kosong="${aman(`${kelasKosong[0].jenjang}|${kelasKosong[0].kelas}`)}">Isi sekarang</button>
-        </div>`;
-    }
-    const semuaModul = toko.mapel.flatMap(m => modulMapel(m.id)).filter(x => samaSemester(x, sem));
-    const aktif = toko.pengguna.filter(p => PERAN_AKTIF.includes(p.peran)).length;
-    utama += `
-      <section class="ringkasan">
-        <h2 class="subjudul">Semester ini <small>${aman(namaSemester(sem))}</small></h2>
-        <div class="angka-angka">
-          <div><b class="gradasi">${toko.mapel.length}</b><span>mapel</span></div>
-          <div><b class="gradasi">${aktif}</b><span>akun aktif</span></div>
-          <div><b class="gradasi">${semuaModul.length}</b><span>modul</span></div>
-          <div><b class="gradasi">${semuaModul.reduce((x, m) => x + jumlahSoal(m), 0)}</b><span>soal</span></div>
-        </div>
-        <div class="baris-tombol">
-          <button class="tombol-utama" id="kePantauan">Buka pantauan</button>
-          <button class="tombol-kedua" id="keKelola">Mapel &amp; pengampu</button>
-          <button class="tombol-kedua" id="keBobot">Bobot nilai</button>
-          <button class="tombol-kedua" id="keUAS">UAS bersama</button>
-          <button class="tombol-kedua" id="keSantri">Daftar santri</button>
-        </div>
-      </section>`;
-
-    // panel per jenjang
-    utama += `<div class="panel-jenjang">${daftarJenjang().map(j => {
-      const mp = toko.mapel.filter(m => m.jenjang === j);
-      const kelas = daftarKelas().filter(x => x.jenjang === j);
-      const santri = toko.santri.filter(x => x.jenjang === j && x.aktif !== false).length;
-      const tanpaAmpu = mp.filter(m => !(m.pengampu || []).length).length;
-      return `
-        <section class="kartu-jenjang">
-          <h2>${aman(j)}</h2>
-          <dl>
-            <div><dt>Mapel</dt><dd>${mp.length}</dd></div>
-            <div><dt>Kelas</dt><dd>${kelas.length}</dd></div>
-            <div><dt>Santri</dt><dd>${santri}</dd></div>
-          </dl>
-          ${tanpaAmpu ? `<p class="info">${tanpaAmpu} mapel belum ada pengampunya.</p>` : ""}
-          <div class="baris-tombol">
-            <button class="tombol-teks" data-panel-jenjang="${aman(j)}" data-ke="kelolaMapel">Mapel</button>
-            <button class="tombol-teks" data-panel-jenjang="${aman(j)}" data-ke="santri">Santri</button>
-            <button class="tombol-teks" data-panel-jenjang="${aman(j)}" data-ke="rapor">Rapor</button>
-          </div>
-        </section>`;
-    }).join("")}</div>`;
-
-    if (toko.mapel.length === 0) {
-      utama += `
-        <section class="panduan">
-          <h2>Mulai dari sini</h2>
-          <ol>
-            <li><strong>Setujui akun ustadz</strong><span>Minta ustadz dan ustadzah masuk pakai akun Google masing-masing, lalu setujui di halaman Akun.</span></li>
-            <li><strong>Tambah mapel dan pengampunya</strong><span>Misalnya Bahasa Indonesia Paket B kelas 7A1, diampu Ustadzah Aminah.</span></li>
-            <li><strong>Isi daftar santri tiap kelas</strong><span>No. absen, NIS, dan nama. Paling cepat: salin dari Excel lalu tempel di tabel.</span></li>
-            <li><strong>Pantau isinya</strong><span>Lihat modul, soal, dan nilai yang sudah diisi tiap ustadz, lalu cetak rapor.</span></li>
-          </ol>
-        </section>`;
-    }
-  }
-
-  // ---------- koordinator UAS bersama ----------
-  if (!kur) {
-    const grupKoor = [...new Map(diampu.filter(m => sayaKoordinator(idGrup(m))).map(m => [idGrup(m), m])).values()];
-    for (const m of grupKoor) {
-      const u = uasGrup(idGrup(m), sem);
-      const usul = usulanGrup(idGrup(m), sem).length;
-      const pesan = !u ? "belum mulai disusun"
-        : u.status === "draf" ? `masih draf, ${(u.butir || []).length} soal${usul ? `, ${usul} usulan masuk` : ""}`
-        : u.status === "diajukan" ? "sudah diajukan, menunggu TU" : "sudah dikunci TU";
-      utama += `
-        <section class="kartu-tugas">
-          <p><b>Tugas kamu:</b> koordinator UAS ${aman(namaGrup(m))}. UAS-nya ${pesan}.</p>
-          <button class="tombol-utama" data-koor-mapel="${m.id}">${!u ? "Mulai susun UAS" : "Buka UAS"}</button>
-        </section>`;
-    }
-  }
-
-  // ---------- angka singkat punya sendiri (semester ini) ----------
-  if (diampu.length) {
-    const milikSem = diampu.flatMap(m => modulMapel(m.id)).filter(x => milikSaya(x) && samaSemester(x, sem));
-    utama += `
-      <section class="ringkasan">
-        <h2 class="subjudul">Isianmu semester ini <small>${aman(namaSemester(sem))}</small></h2>
-        <div class="angka-angka tiga">
-          <div><b class="gradasi">${milikSem.length}</b><span>modul</span></div>
-          <div><b class="gradasi">${milikSem.reduce((x, m) => x + (m.pertemuan || []).length, 0)}</b><span>pertemuan</span></div>
-          <div><b class="gradasi">${milikSem.reduce((x, m) => x + jumlahSoal(m), 0)}</b><span>soal</span></div>
-        </div>
-      </section>`;
-  }
-
-  // ---------- mapel yang diampu ----------
-  if (!kur || diampu.length) {
-    utama += `<h2 class="subjudul">Mapel yang kamu ampu <small>${diampu.length} mapel</small></h2>`;
-    if (diampu.length === 0) {
-      utama += `
-        <section class="panduan">
-          <h2>Belum ada mapel</h2>
-          <p>Kamu belum ditugaskan ke mapel mana pun. Minta admin (TU) menambahkanmu sebagai pengampu. Setelah ditambahkan, mapelnya otomatis muncul di sini.</p>
-        </section>`;
-    } else {
-      for (const k of kelompokJenis(diampu)) {
-        utama += `<p class="label-kelompok">Mapel ${namaJenis(k.jenis).toLowerCase()}</p><div class="daftar">`;
-        for (const m of k.mapel) {
-          const milik = modulMapel(m.id).filter(x => milikSaya(x) && samaSemester(x, sem));
-          utama += htmlBaris({
-            attr: `data-mapel="${m.id}"`,
-            judulBaris: aman(m.nama),
-            sub: `${aman(m.kelas)}, ${aman(m.jenjang)}`,
-            kanan: isiMapelSiap(m.id) ? `${milik.length} modul` : ""
-          });
-        }
-        utama += `</div>`;
-      }
-    }
-  }
-
-  // ---------- kolom samping: lanjutkan ----------
-  let sisi = "";
-  const terakhir = ambilTerakhir().map(t => {
-    const m = cariMapel(t.mapelId);
-    if (!m) return null;
-    const x = t.jenis === "modul"
-      ? modulGrup(m.id).find(y => y.id === t.id)
-      : sumatifMapel(m.id).find(y => y.id === t.id) || sumatifGrup(m.id).find(y => y.id === t.id);
-    return x ? { ...t, m, x } : null;
-  }).filter(Boolean).slice(0, 5);
-
-  if (terakhir.length) {
-    sisi += `<section class="lanjutkan"><h2 class="subjudul">Lanjutkan</h2><div class="daftar">`;
-    for (const t of terakhir) {
-      sisi += htmlBaris({
-        attr: `data-lanjut="${t.jenis}" data-mapel="${t.m.id}" data-isi="${t.x.id}"`,
-        judulBaris: aman(t.jenis === "modul" ? t.x.judul : t.x.nama),
-        arahJudul: true,
-        sub: `${t.jenis === "modul" ? "Modul" : "Ujian sumatif"}, ${aman(namaMapel(t.m))}`
-      });
-    }
-    sisi += `</div></section>`;
-  }
-
-  isi.innerHTML = sapaan() + `
-    <div class="beranda ${sisi ? "ada-samping" : ""}">
-      <div class="beranda-utama">${utama}</div>
-      ${sisi ? `<div class="beranda-samping">${sisi}</div>` : ""}
-    </div>`;
-
-  const klik = (id, f) => { const el = document.getElementById(id); if (el) el.onclick = f; };
-  klik("keAkun", () => pergi("akun"));
-  klik("kePantauan", () => pergi("pantauan"));
-  klik("keKelola", () => pergi("kelolaMapel", { dariMapel: false }));
-  klik("keSantri", () => pergi("santri", { dariNilai: false }));
-  klik("keBobot", () => pergi("bobot"));
-  klik("keUAS", () => pergi("daftarUAS"));
-  isi.querySelectorAll("[data-koor-mapel]").forEach(b => {
-    b.onclick = () => pergi("mapel", { mapelId: b.dataset.koorMapel, tab: "sumatif", semester: kunciSemester(sem) });
-  });
-  klik("keUASDiajukan", () => pergi("daftarUAS"));
-  isi.querySelectorAll("[data-panel-jenjang]").forEach(b => b.onclick = () => {
-    pilihJenjang(b.dataset.panelJenjang);
-    pergi(b.dataset.ke, { dariMapel: false, dariNilai: false, kelasSantri: null, kelasRapor: null });
-  });
-  klik("cadanganBeranda", async () => {
-    const b = document.getElementById("cadanganBeranda");
-    if (await unduhCadangan(b, null)) tampilkan(true);
-  });
-  klik("keRapor", () => pergi("rapor"));
-  isi.querySelectorAll("[data-kelas-kosong]").forEach(b => b.onclick = () => pergi("santri", { kelasSantri: b.dataset.kelasKosong, dariNilai: false }));
-
-  isi.querySelectorAll(".baris[data-mapel]:not([data-lanjut])").forEach(b => {
-    b.onclick = () => pergi("mapel", { mapelId: b.dataset.mapel, semester: null, tab: "modul" });
-  });
-  isi.querySelectorAll(".baris[data-lanjut]").forEach(b => {
-    const d = b.dataset;
-    b.onclick = () => {
-      const x = d.lanjut === "modul"
-        ? modulMapel(d.mapel).find(y => y.id === d.isi)
-        : sumatifMapel(d.mapel).find(y => y.id === d.isi);
-      const semester = x ? kunciSemester(x) : null;
-      if (d.lanjut === "modul") pergi("modul", { mapelId: d.mapel, modId: d.isi, semester });
-      else pergi("sumatif", { mapelId: d.mapel, sumId: d.isi, semester, uasGrup: null });
-    };
-  });
-}
+// beranda: lihat js/beranda.js
 
 // =====================================================
 //  HALAMAN SATU MAPEL: pilih semester, tab Modul / Sumatif

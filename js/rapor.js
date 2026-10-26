@@ -74,7 +74,7 @@ function layarRapor() {
   h += `<p class="info">${mapel.length} mapel di kelas ini: ${mapel.map(m => `${aman(m.nama)} (${namaJenis(jenisMapel(m))})`).join(", ") || "belum ada"}. Bentuk rapor masih sementara, nanti disesuaikan dengan format resmi pondok.</p>`;
 
   if (santri.length === 0) {
-    h += `<p class="kosong">Belum ada santri di kelas ini.</p><button class="tombol-kedua" id="keSantri">Isi daftar santri</button>`;
+    h += `<p class="kosong">Belum ada siswa di kelas ini.</p><button class="tombol-kedua" id="keSantri">Isi daftar siswa</button>`;
   } else {
     h += `<div class="daftar">`;
     santri.forEach((s, i) => {
@@ -163,7 +163,7 @@ function layarRaporCetak() {
   isi.innerHTML = `
     <div class="layar-cetak">
       <div class="panel-cetak jangan-cetak">
-        <p class="info">${daftar.length} rapor${daftar.length > 1 ? ", tiap santri satu halaman" : ""}.</p>
+        <p class="info">${daftar.length} rapor${daftar.length > 1 ? ", tiap siswa satu halaman" : ""}.</p>
         <div class="baris-tombol"><button class="tombol-utama" id="print">Cetak / PDF</button></div>
         <p class="info">Mau jadi PDF? Di jendela cetak, pilih tujuan "Simpan sebagai PDF".</p>
       </div>

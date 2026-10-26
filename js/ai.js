@@ -266,7 +266,7 @@ function layarAISoal() {
           <button class="tombol-utama tombol-ai" id="buatAI">${IKON_AI}<span>${d.soal.length ? "Buat lagi (ditambah ke draft)" : "Buat draft soal"}</span></button>
           <span class="info" id="statusAI" role="status" aria-live="polite"></span>
         </div>
-        <p class="info kecil">Yang dikirim ke AI cuma isi modul di atas. Data santri dan nilai nggak pernah dikirim. Hasil AI bisa salah, jadi cek dulu tiap soal dan kuncinya sebelum disimpan.</p>
+        <p class="info kecil">Yang dikirim ke AI cuma isi modul di atas. Data siswa dan nilai nggak pernah dikirim. Hasil AI bisa salah, jadi cek dulu tiap soal dan kuncinya sebelum disimpan.</p>
       </section>
 
       <div id="wadahDraf"></div>
@@ -435,8 +435,8 @@ function simpanDrafAI(bahan, d, wadah) {
     if (el) el.classList.toggle("ada-salah", !!galat);
     if (galat) { salah++; continue; }
     siap.push(s.jenis === "PG"
-      ? { id: buatId(), jenis: "PG", teks, pilihan, kunci: s.kunci, pertemuanId: s.pertemuanId || null, bacaanId: s.bacaanId || null }
-      : { id: buatId(), jenis: "Esai", teks, pedoman: (s.pedoman || "").trim(), pertemuanId: s.pertemuanId || null, bacaanId: s.bacaanId || null });
+      ? { id: buatId(), jenis: "PG", teks, pilihan, kunci: s.kunci, pertemuanId: s.pertemuanId || null, bacaanId: s.bacaanId || null, dibuat: Date.now() }
+      : { id: buatId(), jenis: "Esai", teks, pedoman: (s.pedoman || "").trim(), pertemuanId: s.pertemuanId || null, bacaanId: s.bacaanId || null, dibuat: Date.now() });
   }
   if (salah) {
     const pertama = wadah.querySelector(".ada-salah");

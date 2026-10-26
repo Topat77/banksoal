@@ -8,14 +8,14 @@
 //  termasuk aturan siapa boleh baca/tulis apa (lihat aturan.js).
 // =====================================================
 
-const KUNCI_COBA = "banksoal-coba-data-v3";   // v3: santri dicatat per kelas (kelasId)
+const KUNCI_COBA = "banksoal-coba-data-v4";   // v4: guru punya NIP
 const KUNCI_COBA_AKUN = "banksoal-coba-akun";
 
 const AKUN_CONTOH = [
   { uid: "u-aminah",  nama: "Ustadzah Aminah",  email: "aminah@contoh.id",  ket: "Ustadzah, B. Indonesia 7B1 (putri), koordinator UAS B. Indonesia kelas 7" },
   { uid: "u-hasan",   nama: "Ustadz Hasan",     email: "hasan@contoh.id",   ket: "Ustadz, ngajar di 7A1 & 8A1 (putra)" },
   { uid: "u-yusuf",   nama: "Ustadz Yusuf",     email: "yusuf@contoh.id",   ket: "Ustadz, B. Indonesia 7A2 (satu grup dengan 7A1 & 7B1)" },
-  { uid: "u-kur",     nama: "Admin TU",         email: "kurikulum@contoh.id", ket: "Admin (TU): akun, mapel, santri, bobot, rapor" },
+  { uid: "u-kur",     nama: "Admin TU",         email: "kurikulum@contoh.id", ket: "Admin (TU): guru, mapel, siswa, bobot, rapor" },
   { uid: "u-baru",    nama: "Ustadz Fadil",     email: "fadil@contoh.id",   ket: "Akun baru, belum disetujui" }
 ];
 
@@ -25,8 +25,8 @@ function dataAwalCoba() {
   const hari = 86400000;
   const db = {};
 
-  db["pengguna/u-aminah"] = { nama: "Ustadzah Aminah", email: "aminah@contoh.id", foto: "", sapaan: "ustadzah", peran: "ustadz", dibuat: jam - 30 * hari, terakhirMasuk: jam - 2 * hari };
-  db["pengguna/u-hasan"]  = { nama: "Ustadz Hasan", email: "hasan@contoh.id", foto: "", sapaan: "ustadz", peran: "ustadz", dibuat: jam - 29 * hari, terakhirMasuk: jam - 5 * hari };
+  db["pengguna/u-aminah"] = { nama: "Ustadzah Aminah", email: "aminah@contoh.id", nip: "198702142010012003", foto: "", sapaan: "ustadzah", peran: "ustadz", dibuat: jam - 30 * hari, terakhirMasuk: jam - 2 * hari };
+  db["pengguna/u-hasan"]  = { nama: "Ustadz Hasan", email: "hasan@contoh.id", nip: "198905232015031001", foto: "", sapaan: "ustadz", peran: "ustadz", dibuat: jam - 29 * hari, terakhirMasuk: jam - 5 * hari };
   db["pengguna/u-yusuf"]  = { nama: "Ustadz Yusuf", email: "yusuf@contoh.id", foto: "", sapaan: "ustadz", peran: "ustadz", dibuat: jam - 29 * hari, terakhirMasuk: jam - 3 * hari };
   db["pengguna/u-kur"]    = { nama: "Admin TU", email: "kurikulum@contoh.id", foto: "", peran: "kurikulum", dibuat: jam - 31 * hari, terakhirMasuk: jam - hari };
 
