@@ -8,12 +8,13 @@
 //  termasuk aturan siapa boleh baca/tulis apa (lihat aturan.js).
 // =====================================================
 
-const KUNCI_COBA = "banksoal-coba-data";
+const KUNCI_COBA = "banksoal-coba-data-v2";   // v2: ada grup mapel & UAS bersama
 const KUNCI_COBA_AKUN = "banksoal-coba-akun";
 
 const AKUN_CONTOH = [
-  { uid: "u-aminah",  nama: "Ustadzah Aminah",  email: "aminah@contoh.id",  ket: "Ustadzah, ngajar B. Indonesia di 7A1 & 7B1" },
-  { uid: "u-hasan",   nama: "Ustadz Hasan",     email: "hasan@contoh.id",   ket: "Ustadz, ngajar di 7A1 & 8A1" },
+  { uid: "u-aminah",  nama: "Ustadzah Aminah",  email: "aminah@contoh.id",  ket: "Ustadzah, B. Indonesia 7B1 (putri), koordinator UAS B. Indonesia kelas 7" },
+  { uid: "u-hasan",   nama: "Ustadz Hasan",     email: "hasan@contoh.id",   ket: "Ustadz, ngajar di 7A1 & 8A1 (putra)" },
+  { uid: "u-yusuf",   nama: "Ustadz Yusuf",     email: "yusuf@contoh.id",   ket: "Ustadz, B. Indonesia 7A2 (satu grup dengan 7A1 & 7B1)" },
   { uid: "u-kur",     nama: "Admin TU",         email: "kurikulum@contoh.id", ket: "Admin (TU): akun, mapel, santri, bobot, rapor" },
   { uid: "u-baru",    nama: "Ustadz Fadil",     email: "fadil@contoh.id",   ket: "Akun baru, belum disetujui" }
 ];
@@ -26,19 +27,26 @@ function dataAwalCoba() {
 
   db["pengguna/u-aminah"] = { nama: "Ustadzah Aminah", email: "aminah@contoh.id", foto: "", sapaan: "ustadzah", peran: "ustadz", dibuat: jam - 30 * hari, terakhirMasuk: jam - 2 * hari };
   db["pengguna/u-hasan"]  = { nama: "Ustadz Hasan", email: "hasan@contoh.id", foto: "", sapaan: "ustadz", peran: "ustadz", dibuat: jam - 29 * hari, terakhirMasuk: jam - 5 * hari };
+  db["pengguna/u-yusuf"]  = { nama: "Ustadz Yusuf", email: "yusuf@contoh.id", foto: "", sapaan: "ustadz", peran: "ustadz", dibuat: jam - 29 * hari, terakhirMasuk: jam - 3 * hari };
   db["pengguna/u-kur"]    = { nama: "Admin TU", email: "kurikulum@contoh.id", foto: "", peran: "kurikulum", dibuat: jam - 31 * hari, terakhirMasuk: jam - hari };
 
   db["pengaturan/lembaga"] = { nama: "PKBM Imam Syafi'i", waktu: "60 menit" };
   db["pengaturan/bobot"] = {
-    umum:   { tugas: 20, uh: 30, uts: 20, uas: 30, keaktifan: 0, kehadiran: 0 },
-    diniah: { tugas: 15, uh: 25, uts: 20, uas: 25, keaktifan: 5, kehadiran: 10 },
+    "Paket B": {
+      umum:   { tugas: 20, uh: 30, uts: 20, uas: 30, keaktifan: 0, kehadiran: 0 },
+      diniah: { tugas: 15, uh: 25, uts: 20, uas: 25, keaktifan: 5, kehadiran: 10 }
+    },
+    "Paket C": {
+      umum:   { tugas: 15, uh: 30, uts: 25, uas: 30, keaktifan: 0, kehadiran: 0 },
+      diniah: { tugas: 15, uh: 25, uts: 20, uas: 30, keaktifan: 5, kehadiran: 5 }
+    },
     diubah: jam - 30 * hari, diubahOleh: "u-kur"
   };
 
   db["mapel/bindo7"] = {
     nama: "Bahasa Indonesia", jenjang: "Paket B", kelas: "7A1", jenis: "umum",
-    pengampu: ["u-aminah", "u-hasan"],
-    namaPengampu: { "u-aminah": "Ustadzah Aminah", "u-hasan": "Ustadz Hasan" },
+    pengampu: ["u-hasan"],
+    namaPengampu: { "u-hasan": "Ustadz Hasan" },
     dibuat: jam - 28 * hari
   };
   db["mapel/barab7"] = {
@@ -61,6 +69,13 @@ function dataAwalCoba() {
     namaPengampu: { "u-aminah": "Ustadzah Aminah" },
     dibuat: jam - 28 * hari
   };
+  // satu grup dengan 7A1 & 7B1 (B. Indonesia kelas 7), tapi pengampunya beda
+  db["mapel/bindo7a2"] = {
+    nama: "Bahasa Indonesia", jenjang: "Paket B", kelas: "7A2", jenis: "umum",
+    pengampu: ["u-yusuf"],
+    namaPengampu: { "u-yusuf": "Ustadz Yusuf" },
+    dibuat: jam - 28 * hari
+  };
   // kelas yang santrinya belum diisi TU
   db["mapel/fiqih8"] = {
     nama: "Fiqih", jenjang: "Paket B", kelas: "8A1", jenis: "diniah",
@@ -68,6 +83,20 @@ function dataAwalCoba() {
     namaPengampu: { "u-hasan": "Ustadz Hasan" },
     dibuat: jam - 26 * hari
   };
+
+  // ---- grup mapel (dihitung dari mapel di atas) ----
+  const pengampuGrup = {};
+  for (const [jalur, m] of Object.entries(db)) {
+    if (!jalur.startsWith("mapel/") || jalur.split("/").length !== 2) continue;
+    m.grup = idGrup(m);
+    pengampuGrup[m.grup] = pengampuGrup[m.grup] || { nama: m.nama, jenjang: m.jenjang, tingkat: tingkatKelas(m.kelas), pengampu: new Set() };
+    m.pengampu.forEach(u => pengampuGrup[m.grup].pengampu.add(u));
+  }
+  for (const [gid, g] of Object.entries(pengampuGrup)) {
+    db[`grup/${gid}`] = { nama: g.nama, jenjang: g.jenjang, tingkat: g.tingkat, pengampu: [...g.pengampu].sort(), koordinator: null };
+  }
+  const grupBindo = idGrup(db["mapel/bindo7"]);
+  db[`grup/${grupBindo}`].koordinator = "u-aminah";
 
   // ---- santri: 7A1 putra, 7B1 putri ----
   const putra = ["Ahmad Fauzi", "Bilal Ramadhan", "Hanif Maulana", "Muhammad Rizki", "Rafi Ananda", "Abdullah Hakim"];
@@ -104,7 +133,7 @@ function dataAwalCoba() {
   db[`mapel/bindo7/nilai/${idLembar}`] = {
     semester: t.semester, tahun: t.tahun,
     kolom: kolomUmum, ...isiNilai(kolomUmum, santriA, "san-6"),
-    diubah: jam - hari, diubahOleh: "u-aminah", namaPengubah: "Ustadzah Aminah"
+    diubah: jam - hari, diubahOleh: "u-hasan", namaPengubah: "Ustadz Hasan"
   };
   db[`mapel/bindo7b/nilai/${idLembar}`] = {
     semester: t.semester, tahun: t.tahun,
@@ -124,7 +153,7 @@ function dataAwalCoba() {
   };
 
   const p1 = "per-1", p2 = "per-2", p3 = "per-3", bac = "bac-pasar";
-  db["mapel/bindo7/modul/mod-deskripsi"] = {
+  db["mapel/bindo7b/modul/mod-deskripsi"] = {
     semester: t.semester, tahun: t.tahun,
     judul: "Teks Deskripsi",
     pemilik: "u-aminah", namaPemilik: "Ustadzah Aminah",
@@ -174,6 +203,7 @@ function dataAwalCoba() {
     judul: "Teks Narasi",
     pemilik: "u-hasan", namaPemilik: "Ustadz Hasan",
     dibagikan: false,
+    terkait: ["mod-deskripsi"],
     link: "", catatan: "",
     pertemuan: [{ id: q1, target: "Menyebutkan struktur teks narasi (orientasi, komplikasi, resolusi)." }],
     bacaan: [],
@@ -205,13 +235,73 @@ function dataAwalCoba() {
     dibuat: jam - 10 * hari, diubah: jam - 6 * hari
   };
 
-  db["mapel/bindo7/sumatif/sum-sts"] = {
+  db["mapel/bindo7b/sumatif/sum-sts"] = {
     semester: t.semester, tahun: t.tahun,
     nama: "Sumatif Tengah Semester",
     pelaksanaan: "Minggu ke-9",
     pemilik: "u-aminah", namaPemilik: "Ustadzah Aminah",
     butir: ["s-1", "s-2", "s-3", "s-4"].map(id => ({ modulId: "mod-deskripsi", soalId: id, salinan: null })),
     dibuat: jam - 3 * hari, diubah: jam - 3 * hari
+  };
+
+  // ---- kelas lain di grup yang sama (7A2): modul & sumatif yang dibagikan ----
+  const y1 = "per-y1", y2 = "per-y2";
+  db["mapel/bindo7a2/modul/mod-prosedur"] = {
+    semester: t.semester, tahun: t.tahun,
+    judul: "Teks Prosedur",
+    pemilik: "u-yusuf", namaPemilik: "Ustadz Yusuf",
+    dibagikan: true,
+    lanjutanDari: "mod-deskripsi",
+    link: "", catatan: "Peserta didik mampu menyusun langkah-langkah teks prosedur.",
+    pertemuan: [
+      { id: y1, target: "Menyebutkan struktur teks prosedur (tujuan, bahan, langkah)." },
+      { id: y2, target: "Menulis teks prosedur sederhana, misalnya cara berwudhu." }
+    ],
+    bacaan: [],
+    soal: [
+      { id: "s-y1", jenis: "PG", pertemuanId: y1, bacaanId: null,
+        teks: "Bagian teks prosedur yang berisi urutan kegiatan disebut ...",
+        pilihan: ["langkah-langkah", "tujuan", "bahan dan alat", "penutup", ""], kunci: 0 },
+      { id: "s-y2", jenis: "PG", pertemuanId: y1, bacaanId: null,
+        teks: "Kata yang sering dipakai di teks prosedur adalah ...",
+        pilihan: ["kemudian, setelah itu, lalu", "namun, tetapi, walaupun", "karena, sebab, akibatnya", "seperti, bagaikan, laksana", ""], kunci: 0 },
+      { id: "s-y3", jenis: "Esai", pertemuanId: y2, bacaanId: null,
+        teks: "Tuliskan langkah-langkah berwudhu secara urut!",
+        pedoman: "Urutan benar: niat, membasuh telapak tangan, berkumur, ... sampai membasuh kaki (skor penuh kalau urut & lengkap)." }
+    ],
+    dibuat: jam - 12 * hari, diubah: jam - 4 * hari
+  };
+  db["mapel/bindo7a2/sumatif/sum-y-latihan"] = {
+    semester: t.semester, tahun: t.tahun,
+    nama: "Latihan Sumatif Teks Prosedur",
+    pelaksanaan: "Minggu ke-6",
+    pemilik: "u-yusuf", namaPemilik: "Ustadz Yusuf",
+    dibagikan: true,
+    butir: ["s-y1", "s-y2", "s-y3"].map(id => ({ modulId: "mod-prosedur", soalId: id, salinan: null })),
+    dibuat: jam - 6 * hari, diubah: jam - 6 * hari
+  };
+
+  // ---- UAS bersama B. Indonesia kelas 7: draf dari koordinator + satu usulan ----
+  const modDes = db["mapel/bindo7b/modul/mod-deskripsi"];
+  const salinanDari = (m, idSoal) => {
+    const soal = m.soal.find(x => x.id === idSoal);
+    return { soal, bacaan: (m.bacaan || []).find(b => b.id === soal.bacaanId) || null, judulModul: m.judul, namaPemilik: m.namaPemilik };
+  };
+  db[`grup/${grupBindo}/uas/${idLembar}`] = {
+    semester: t.semester, tahun: t.tahun,
+    nama: "Sumatif Akhir Semester",
+    pelaksanaan: "",
+    status: "draf",
+    butir: ["s-1", "s-2", "s-4"].map(id => ({ modulId: "mod-deskripsi", soalId: id, salinan: salinanDari(modDes, id) })),
+    dibuat: jam - 2 * hari, diubah: jam - 2 * hari, diubahOleh: "u-aminah", namaPengubah: "Ustadzah Aminah"
+  };
+  db[`grup/${grupBindo}/usulan/usul-1`] = {
+    semester: t.semester, tahun: t.tahun,
+    modulId: "mod-prosedur", soalId: "s-y2",
+    salinan: salinanDari(db["mapel/bindo7a2/modul/mod-prosedur"], "s-y2"),
+    catatan: "Soal ini sering keluar di ujian kesetaraan.",
+    pemilik: "u-yusuf", namaPemilik: "Ustadz Yusuf",
+    dibuat: jam - hari
   };
   return db;
 }

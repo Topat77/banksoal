@@ -37,6 +37,20 @@ service cloud.firestore {
     function pengampu(idMapel) {
       return request.auth.uid in get(/databases/$(database)/documents/mapel/$(idMapel)).data.pengampu;
     }
+    // grup = mapel yang sama di jenjang & tingkat yang sama (misal B. Indonesia 7A1, 7A2, 7B1, 7B2)
+    function dataGrup(idGrup) {
+      return get(/databases/$(database)/documents/grup/$(idGrup)).data;
+    }
+    function anggotaGrup(idGrup) {
+      return request.auth.uid in dataGrup(idGrup).pengampu;
+    }
+    function koordinatorGrup(idGrup) {
+      return dataGrup(idGrup).get('koordinator', null) == request.auth.uid;
+    }
+    // pengampu kelas lain yang satu grup dengan mapel ini
+    function segrup(idMapel) {
+      return anggotaGrup(get(/databases/$(database)/documents/mapel/$(idMapel)).data.grup);
+    }
 
     // ---------- akun ----------
     match /pengguna/{uid} {
@@ -50,12 +64,14 @@ service cloud.firestore {
                 && request.auth.token.email_verified == true
                 && request.auth.token.email in emailAdminAwal()));
 
-      // ubah profil sendiri boleh, tapi nggak boleh ngubah peran & email sendiri.
+      // ubah profil sendiri boleh, tapi nggak boleh ngubah peran, email, & sapaan sendiri
+      // (sapaan ustadz/ustadzah nentuin kelas putra/putri yang boleh diajar, jadi diatur admin).
       // Admin boleh ngubah akun siapa pun (setujui, tolak, nonaktifkan).
       allow update: if masuk() && (
         (request.auth.uid == uid
           && request.resource.data.peran == resource.data.peran
-          && request.resource.data.email == resource.data.email)
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.get('sapaan', null) == resource.data.get('sapaan', null))
         || kurikulum());
 
       allow delete: if kurikulum();
@@ -80,12 +96,13 @@ service cloud.firestore {
       allow write: if kurikulum();
 
       // modul: pemiliknya + kurikulum selalu bisa lihat;
-      // pengampu lain mapel ini bisa lihat kalau modulnya dibagikan
+      // pengampu lain mapel ini, dan pengampu kelas lain di grupnya,
+      // bisa lihat kalau modulnya dibagikan
       match /modul/{id} {
         allow read: if aktif() && (
           kurikulum()
           || resource.data.pemilik == request.auth.uid
-          || (resource.data.dibagikan == true && pengampu(idMapel)));
+          || (resource.data.dibagikan == true && (pengampu(idMapel) || segrup(idMapel))));
         allow create: if aktif()
           && request.resource.data.pemilik == request.auth.uid
           && pengampu(idMapel);
@@ -105,11 +122,13 @@ service cloud.firestore {
         allow delete: if aktif() && (pengampu(idMapel) || kurikulum());
       }
 
-      // ujian sumatif: cuma pemiliknya + kurikulum
+      // ujian sumatif: pemiliknya + kurikulum; kalau dibagikan,
+      // pengampu lain di mapel ini & di grupnya bisa lihat (dan nyalin ke ujiannya sendiri)
       match /sumatif/{id} {
         allow read: if aktif() && (
           kurikulum()
-          || resource.data.pemilik == request.auth.uid);
+          || resource.data.pemilik == request.auth.uid
+          || (resource.data.dibagikan == true && (pengampu(idMapel) || segrup(idMapel))));
         allow create: if aktif()
           && request.resource.data.pemilik == request.auth.uid
           && pengampu(idMapel);
@@ -118,6 +137,42 @@ service cloud.firestore {
           && request.resource.data.pemilik == request.auth.uid;
         allow delete: if aktif()
           && (resource.data.pemilik == request.auth.uid || kurikulum());
+      }
+    }
+
+    // ---------- grup mapel ----------
+    // isinya daftar pengampu semua kelas di grup + koordinator UAS.
+    // Diperbarui otomatis dari perangkat admin; koordinator dipilih admin.
+    match /grup/{idGrup} {
+      allow read: if aktif();
+      allow write: if kurikulum();
+
+      // UAS bersama satu grup per semester. Disusun koordinator (selama masih draf / diajukan),
+      // lalu diperiksa, dikunci, dan dicetak admin. Yang udah dikunci cuma bisa diubah admin.
+      match /uas/{id} {
+        allow read: if aktif() && (kurikulum() || anggotaGrup(idGrup));
+        allow create: if aktif() && (kurikulum()
+          || (koordinatorGrup(idGrup) && request.resource.data.status == 'draf'));
+        allow update: if aktif() && (kurikulum()
+          || (koordinatorGrup(idGrup)
+              && resource.data.status in ['draf', 'diajukan']
+              && request.resource.data.status in ['draf', 'diajukan']));
+        allow delete: if aktif() && (kurikulum()
+          || (koordinatorGrup(idGrup) && resource.data.status == 'draf'));
+      }
+
+      // usulan soal UAS dari pengampu di grup; diterima / ditolak koordinator
+      match /usulan/{id} {
+        allow read: if aktif() && (kurikulum() || anggotaGrup(idGrup));
+        allow create: if aktif() && anggotaGrup(idGrup)
+          && request.resource.data.pemilik == request.auth.uid;
+        allow update: if aktif()
+          && resource.data.pemilik == request.auth.uid
+          && request.resource.data.pemilik == request.auth.uid;
+        allow delete: if aktif() && (
+          resource.data.pemilik == request.auth.uid
+          || koordinatorGrup(idGrup)
+          || kurikulum());
       }
     }
   }

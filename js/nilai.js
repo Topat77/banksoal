@@ -4,8 +4,9 @@
 //  Satu lembar nilai = satu mapel, satu semester.
 //  Isinya kolom-kolom nilai (Tugas 1, UH 1, UH 2, UTS, UAS, ...),
 //  dan kehadiran tiap santri (hadir/sakit/izin). Yang ngisi: pengampu mapelnya.
-//  Bobot tiap kelompok diatur admin, satu set per jenis mapel
-//  (umum & diniah), disimpan di pengaturan/bobot.
+//  Bobot tiap kelompok diatur admin, satu set per jenjang & jenis mapel
+//  (Paket B umum, Paket B diniah, Paket C umum, Paket C diniah),
+//  disimpan di pengaturan/bobot: { "Paket B": { umum, diniah }, ... }.
 //  Nilai akhir = gabungan rata-rata tiap kelompok sesuai bobotnya.
 // =====================================================
 
@@ -26,9 +27,11 @@ const BOBOT_BAWAAN = {
 
 function jenisMapel(m) { return m && m.jenis === "diniah" ? "diniah" : "umum"; }
 
-// bobot yang berlaku buat satu jenis mapel
-function bobotJenis(jenis) {
-  const atur = (toko.bobot || {})[jenis];
+// bobot yang berlaku buat satu jenjang & jenis mapel.
+// Data lama (satu set per jenis, belum dipisah jenjang) tetap dipakai sampai admin nyimpan bobot baru.
+function bobotUntuk(jenjang, jenis) {
+  const semua = toko.bobot || {};
+  const atur = (semua[jenjang] || {})[jenis] || semua[jenis];
   const dasar = BOBOT_BAWAAN[jenis] || BOBOT_BAWAAN.umum;
   const hasil = {};
   for (const g of KELOMPOK_NILAI) hasil[g.k] = atur && atur[g.k] !== undefined ? Number(atur[g.k]) || 0 : dasar[g.k];
@@ -38,6 +41,24 @@ function ringkasBobot(bobot) {
   return KELOMPOK_NILAI.filter(g => bobot[g.k] > 0).map(g => `${g.label} ${bobot[g.k]}%`).join(" · ");
 }
 function namaJenis(j) { return j === "diniah" ? "Diniah" : "Umum"; }
+
+// daftar mapel dikelompokkan per jenis: diniah dulu (fiqih, aqidah, nahwu, ...), lalu umum.
+// Tiap mapel tetap sendiri-sendiri; di dalam kelompok urut nama mapel, lalu kelas.
+const URUT_JENIS = ["diniah", "umum"];
+function urutMapelJenis(a, b) {
+  return (URUT_JENIS.indexOf(jenisMapel(a)) - URUT_JENIS.indexOf(jenisMapel(b))) ||
+    a.nama.localeCompare(b.nama, "id") || bandingKelas(a, b);
+}
+function kelompokJenis(daftar) {
+  return URUT_JENIS
+    .map(jenis => ({ jenis, mapel: daftar.filter(m => jenisMapel(m) === jenis).sort(urutMapelJenis) }))
+    .filter(k => k.mapel.length);
+}
+// tebakan jenis dari nama mapel, buat form tambah mapel
+const POLA_DINIAH = /fiq[ih]|fikih|aqidah|akidah|akhlak|nahw|nahu|sh?or[ao]f|sharaf|tajwid|tafsir|hadi[ts]|tahfi[dz]|qur.?an|bahasa arab|tarikh|sirah|mahfu[dz]?at|imla|khat|fara.?idh?|ushul|balaghah|mantiq|tauhid|tasawuf|muthala/i;
+function tebakJenis(nama) {
+  return POLA_DINIAH.test(nama || "") ? "diniah" : "umum";
+}
 
 function angkaRapi(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return "-";
@@ -49,7 +70,7 @@ function rataRata(daftar) {
 }
 
 function lembarBaru(mapel, sem) {
-  const bobot = bobotJenis(jenisMapel(mapel));
+  const bobot = bobotUntuk(mapel.jenjang, jenisMapel(mapel));
   const kolom = [
     { id: buatId(), kelompok: "tugas", label: "Tugas 1" },
     { id: buatId(), kelompok: "uh", label: "UH 1" },
@@ -82,7 +103,7 @@ function hitungNilai(lembar, idSantri, mapel) {
     hasil.per.kehadiran = null;
   }
   // kelompok yang belum ada nilainya nggak ikut dihitung (bobotnya dibagi ke yang ada)
-  const daftarBobot = bobotJenis(jenisMapel(mapel));
+  const daftarBobot = bobotUntuk(mapel.jenjang, jenisMapel(mapel));
   let jumlah = 0, bobot = 0;
   for (const g of KELOMPOK_NILAI) {
     const b = Number(daftarBobot[g.k]) || 0;
@@ -340,7 +361,7 @@ function layarNilai() {
   const bisaIsi = sayaPengampu(mp);          // yang ngisi nilai cuma pengampunya
   if (!bisaIsi && !sayaKurikulum()) throw new DataHilang();
   const jenis = jenisMapel(mp);
-  const bobot = bobotJenis(jenis);
+  const bobot = bobotUntuk(mp.jenjang, jenis);
   const sem = semAktif();
   posisi.semester = kunciSemester(sem);
 
@@ -370,7 +391,7 @@ function layarNilai() {
   // ---- bobot (cuma ditampilkan; diatur admin) ----
   h += `
     <div class="kotak-bobot">
-      <div><b>Bobot mapel ${namaJenis(jenis).toLowerCase()}</b><span>${aman(ringkasBobot(bobot)) || "Belum diatur"}</span></div>
+      <div><b>Bobot mapel ${namaJenis(jenis).toLowerCase()} ${aman(mp.jenjang)}</b><span>${aman(ringkasBobot(bobot)) || "Belum diatur"}</span></div>
       ${sayaKurikulum() ? `<button class="tombol-teks" id="keBobot">Ubah bobot</button>` : `<small>Diatur admin (TU)</small>`}
     </div>
     ${bisaIsi ? "" : `<p class="pemberitahuan-kecil">Kamu cuma bisa melihat. Nilai diisi oleh pengampu mapel ini.</p>`}`;
@@ -465,7 +486,7 @@ function layarNilai() {
       const tunggal = g.k === "uts" || g.k === "uas" || g.k === "keaktifan";
       const label = tunggal && ada === 0 ? g.label : `${g.label} ${ada + 1}`;
       lembar.kolom.push({ id: buatId(), kelompok: g.k, label });
-      if (!(Number(bobot[g.k]) > 0) && !confirm(`Bobot ${g.nama} untuk mapel ${namaJenis(jenis).toLowerCase()} sekarang 0%, jadi kolom ini belum ikut dihitung di nilai akhir. Tetap tambah?\n\n(Bobot diatur admin.)`)) {
+      if (!(Number(bobot[g.k]) > 0) && !confirm(`Bobot ${g.nama} untuk mapel ${namaJenis(jenis).toLowerCase()} ${mp.jenjang} sekarang 0%, jadi kolom ini belum ikut dihitung di nilai akhir. Tetap tambah?\n\n(Bobot diatur admin.)`)) {
         lembar.kolom.pop();
         return;
       }
@@ -517,29 +538,40 @@ function htmlTabNilai(mp, sem) {
 }
 
 // =====================================================
-//  BOBOT NILAI (khusus admin) — satu set per jenis mapel
+//  BOBOT NILAI (khusus admin) — satu set per jenjang & jenis mapel
 // =====================================================
+const JENIS_MAPEL = ["umum", "diniah"];
+
 function layarBobot() {
   wajibKurikulum();
   judul.textContent = "Bobot nilai";
-  jejak.textContent = "Berlaku untuk semua mapel sesuai jenisnya";
+  jejak.textContent = "Berlaku untuk semua mapel sesuai jenjang & jenisnya";
 
-  const isian = { umum: bobotJenis("umum"), diniah: bobotJenis("diniah") };
-  const jumlahMapel = (j) => toko.mapel.filter(m => jenisMapel(m) === j).length;
-
-  let h = `<p class="info">Nilai akhir tiap mapel = gabungan rata-rata tiap kelompok sesuai bobot di bawah. Kelompok yang bobotnya 0% nggak dihitung. Kehadiran dihitung otomatis dari hadir ÷ (hadir + sakit + izin) × 100. Ustadz/ustadzah cuma bisa melihat bobot ini.</p>
-    <div class="grid-bobot">`;
-  for (const j of ["umum", "diniah"]) {
-    h += `
-      <section class="bagian kartu-bobot" data-jenis="${j}">
-        <h2>Mapel ${namaJenis(j).toLowerCase()} <small>${jumlahMapel(j)} mapel</small></h2>
-        <div class="isian-bobot">
-          ${KELOMPOK_NILAI.map(g => `<label>${g.nama}<span class="kotak-persen"><input type="number" inputmode="numeric" min="0" max="100" data-jenis="${j}" data-bobot="${g.k}" value="${isian[j][g.k]}"><span>%</span></span></label>`).join("")}
-        </div>
-        <p class="total-bobot" data-total="${j}"></p>
-      </section>`;
+  const jenjang = JENJANG_PKBM;
+  const isian = {};
+  for (const j of jenjang) {
+    isian[j] = {};
+    for (const t of JENIS_MAPEL) isian[j][t] = bobotUntuk(j, t);
   }
-  h += `</div>
+  const jumlahMapel = (j, t) => toko.mapel.filter(m => m.jenjang === j && jenisMapel(m) === t).length;
+  const kunci = (j, t) => `${j}|${t}`;
+
+  let h = `<p class="info">Nilai akhir tiap mapel = gabungan rata-rata tiap kelompok sesuai bobot di bawah. Kelompok yang bobotnya 0% nggak dihitung. Kehadiran dihitung otomatis dari hadir ÷ (hadir + sakit + izin) × 100. Ustadz/ustadzah cuma bisa melihat bobot ini.</p>`;
+  for (const j of jenjang) {
+    h += `<h2 class="subjudul">${aman(j)}</h2><div class="grid-bobot">`;
+    for (const t of JENIS_MAPEL) {
+      h += `
+        <section class="bagian kartu-bobot" data-jenis="${aman(kunci(j, t))}">
+          <h2>Mapel ${namaJenis(t).toLowerCase()} <small>${jumlahMapel(j, t)} mapel</small></h2>
+          <div class="isian-bobot">
+            ${KELOMPOK_NILAI.map(g => `<label>${g.nama}<span class="kotak-persen"><input type="number" inputmode="numeric" min="0" max="100" data-jenjang="${aman(j)}" data-jenis="${t}" data-bobot="${g.k}" value="${isian[j][t][g.k]}"><span>%</span></span></label>`).join("")}
+          </div>
+          <p class="total-bobot" data-total="${aman(kunci(j, t))}"></p>
+        </section>`;
+    }
+    h += `</div>`;
+  }
+  h += `
     <div class="baris-tombol">
       <button class="tombol-utama" id="simpanBobot">Simpan bobot</button>
       <button class="tombol-teks" id="bawaanBobot">Pakai bobot bawaan</button>
@@ -551,12 +583,12 @@ function layarBobot() {
   const pesan = document.getElementById("pesanSimpanBobot");
   const tulisTotal = () => {
     let semuaPas = true;
-    for (const j of ["umum", "diniah"]) {
-      const t = KELOMPOK_NILAI.reduce((a, g) => a + (Number(isian[j][g.k]) || 0), 0);
-      const el = isi.querySelector(`[data-total="${j}"]`);
-      el.textContent = `Total ${t}%${t === 100 ? "" : " · sebaiknya pas 100%"}`;
-      el.classList.toggle("salah", t !== 100);
-      if (t !== 100) semuaPas = false;
+    for (const j of jenjang) for (const t of JENIS_MAPEL) {
+      const total = KELOMPOK_NILAI.reduce((a, g) => a + (Number(isian[j][t][g.k]) || 0), 0);
+      const el = isi.querySelector(`[data-total="${CSS.escape(kunci(j, t))}"]`);
+      el.textContent = `Total ${total}%${total === 100 ? "" : " · sebaiknya pas 100%"}`;
+      el.classList.toggle("salah", total !== 100);
+      if (total !== 100) semuaPas = false;
     }
     return semuaPas;
   };
@@ -564,20 +596,22 @@ function layarBobot() {
 
   isi.querySelectorAll("input[data-bobot]").forEach(inp => {
     inp.oninput = () => {
-      isian[inp.dataset.jenis][inp.dataset.bobot] = Math.max(0, Math.min(100, Math.round(Number(inp.value) || 0)));
+      isian[inp.dataset.jenjang][inp.dataset.jenis][inp.dataset.bobot] = Math.max(0, Math.min(100, Math.round(Number(inp.value) || 0)));
       pesan.textContent = "";
       tulisTotal();
     };
   });
   document.getElementById("simpanBobot").onclick = () => {
     if (!tulisTotal() && !confirm("Total bobot belum pas 100%. Tetap simpan?\n\n(Nilai akhir tetap dihitung adil: dibagi total bobot yang ada.)")) return;
-    simpanBobot({ umum: { ...isian.umum }, diniah: { ...isian.diniah }, diubah: Date.now(), diubahOleh: uidSaya() });
+    const data = { diubah: Date.now(), diubahOleh: uidSaya() };
+    for (const j of jenjang) data[j] = { umum: { ...isian[j].umum }, diniah: { ...isian[j].diniah } };
+    simpanBobot(data);
     pesan.textContent = "Tersimpan";
   };
   document.getElementById("bawaanBobot").onclick = () => {
-    for (const j of ["umum", "diniah"]) {
-      Object.assign(isian[j], BOBOT_BAWAAN[j]);
-      for (const g of KELOMPOK_NILAI) isi.querySelector(`input[data-jenis="${j}"][data-bobot="${g.k}"]`).value = isian[j][g.k];
+    for (const j of jenjang) for (const t of JENIS_MAPEL) {
+      Object.assign(isian[j][t], BOBOT_BAWAAN[t]);
+      for (const g of KELOMPOK_NILAI) isi.querySelector(`input[data-jenjang="${CSS.escape(j)}"][data-jenis="${t}"][data-bobot="${g.k}"]`).value = isian[j][t][g.k];
     }
     pesan.textContent = "Belum disimpan";
     tulisTotal();

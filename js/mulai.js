@@ -14,6 +14,7 @@ function fileKurang() {
     "js/layar.js": typeof tampilkan === "function",
     "js/modul.js": typeof layarModul === "function",
     "js/sumatif.js": typeof layarSumatif === "function",
+    "js/uas.js": typeof layarDaftarUAS === "function",
     "js/ai.js": typeof layarAISoal === "function",
     "js/kop.js": typeof KOP_RESMI !== "undefined",
     "js/docx.js": typeof buatDocx === "function",

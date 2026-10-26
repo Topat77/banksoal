@@ -3,6 +3,33 @@
 //             teks bacaan, dan soal formatif
 // =====================================================
 
+// ---- hubungan antar modul (diisi guru di form modul) ----
+//  lanjutanDari: id modul sebelumnya (modul ini lanjutan dari modul itu)
+//  terkait     : [id modul lain yang berhubungan]
+// Pilihannya modul yang kelihatan di grup mapel ini (punya sendiri + yang dibagikan).
+function labelModul(m, idMapel) {
+  const asal = mapelAsal(m.id);
+  const kelas = asal && asal.id !== idMapel ? ` (${asal.kelas})` : "";
+  return `${m.judul}${kelas}`;
+}
+function bukaModulLain(idMapel, idModul) {
+  const asal = mapelAsal(idModul);
+  const keAsal = asal && asal.id !== idMapel && sayaPengampu(asal);
+  pergi("modul", { modId: idModul, ...(keAsal ? { mapelId: asal.id } : {}) });
+}
+// alur: modul-modul sebelumnya (ditelusuri lewat lanjutanDari) → modul ini → modul lanjutannya
+function alurModul(m, semua) {
+  const peta = new Map(semua.map(x => [x.id, x]));
+  const sebelum = [];
+  let x = m;
+  while (x.lanjutanDari && peta.has(x.lanjutanDari) && x.lanjutanDari !== m.id && sebelum.length < 6 && !sebelum.includes(peta.get(x.lanjutanDari))) {
+    x = peta.get(x.lanjutanDari);
+    sebelum.unshift(x);
+  }
+  const sesudah = semua.filter(y => y.lanjutanDari === m.id && y.id !== m.id);
+  return { sebelum, sesudah };
+}
+
 // pertemuan yang dipakai soal (null kalau soalnya nggak ditandai / pertemuannya udah dihapus)
 function pertemuanSoal(m, s) {
   return (m.pertemuan || []).find(p => p.id === s.pertemuanId) || null;
@@ -22,6 +49,9 @@ function formModul() {
     pertemuan: [{ id: buatId(), target: "" }]
   };
 
+  // modul lain di grup ini, semester yang sama (modul ini sendiri nggak ikut)
+  const pilihanRelasi = modulGrup(mp.id).filter(x => x.id !== (lama && lama.id) && samaSemester(x, lama || sem));
+
   judul.textContent = lama ? "Ubah modul ajar" : "Tambah modul ajar";
   jejak.textContent = `${namaMapel(mp)}, ${namaSemester(lama || sem)}`;
   tombolKembali.hidden = false;
@@ -38,6 +68,23 @@ function formModul() {
         <p class="info">Tulis apa yang harus dicapai santri di tiap pertemuan. Soal formatif nanti ditandai untuk pertemuan yang mana.</p>
         <div id="daftarPertemuan" class="kolom"></div>
         <button type="button" class="tombol-kedua" id="tambahPertemuan">+ Tambah pertemuan</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Hubungan dengan modul lain (opsional)</legend>
+        <p class="info">Biar kelihatan urutan materinya. Pilihannya modul kamu dan modul yang dibagikan di ${aman(namaGrup(mp))}.</p>
+        <label>Lanjutan dari modul
+          <select name="lanjutanDari">
+            <option value="">Bukan lanjutan modul lain</option>
+            ${pilihanRelasi.map(x => `<option value="${aman(x.id)}" ${m.lanjutanDari === x.id ? "selected" : ""}>${aman(labelModul(x, mp.id))}</option>`).join("")}
+          </select>
+        </label>
+        ${pilihanRelasi.length ? `<p class="label-kelompok">Modul terkait</p>
+        <div class="kolom daftar-centang">${pilihanRelasi.map(x => `
+          <label class="centang">
+            <input type="checkbox" name="terkait" value="${aman(x.id)}" ${(m.terkait || []).includes(x.id) ? "checked" : ""}>
+            <span class="isi-centang"><b dir="auto">${aman(labelModul(x, mp.id))}</b><small>${aman(x.namaPemilik || "")}</small></span>
+          </label>`).join("")}</div>` : ""}
       </fieldset>
 
       <label>Link file modul (opsional)
@@ -98,6 +145,7 @@ function formModul() {
     const f = new FormData(form);
     const link = (f.get("link") || "").trim();
     const pertemuan = daftar.map(p => ({ id: p.id, target: p.target.trim() }));
+    const relasi = { lanjutanDari: f.get("lanjutanDari") || null, terkait: f.getAll("terkait") };
 
     if (lama) {
       const terbaru = modulMapel(mp.id).find(x => x.id === lama.id);
@@ -107,7 +155,7 @@ function formModul() {
       }
       const ada = new Set(pertemuan.map(p => p.id));
       const soal = (terbaru.soal || []).map(s => ada.has(s.pertemuanId) ? s : { ...s, pertemuanId: null });
-      simpanModul(mp.id, { ...terbaru, judul: f.get("judul").trim(), catatan: f.get("catatan").trim(), link, pertemuan, soal });
+      simpanModul(mp.id, { ...terbaru, judul: f.get("judul").trim(), catatan: f.get("catatan").trim(), link, pertemuan, soal, ...relasi });
       pergi("modul");
     } else {
       const baru = simpanModul(mp.id, {
@@ -117,6 +165,7 @@ function formModul() {
         catatan: f.get("catatan").trim(),
         link,
         dibagikan: false,
+        ...relasi,
         pertemuan, bacaan: [], soal: []
       });
       pergi("modul", { modId: baru.id });
@@ -143,12 +192,15 @@ function formModul() {
 function layarModul() {
   const mp = mapelAktif();
   const m = modAktif();
-  const boleh = milikSaya(m);
+  // yang bisa ngubah cuma pemiliknya, dari mapel tempat modul ini disimpan
+  const boleh = bisaDiubahDi(mp.id, m, modulMapel(mp.id));
+  const asal = mapelAsal(m.id);
+  const dariKelasLain = asal && asal.id !== mp.id;
   posisi.semester = kunciSemester(m);
   tandaLayarModul = JSON.stringify([m, toko.lembaga]);
 
   judul.textContent = m.judul;
-  jejak.textContent = `${namaMapel(mp)}, ${namaSemester(m)}`;
+  jejak.textContent = `${dariKelasLain ? `${namaMapel(asal)} (kelas lain di grup)` : namaMapel(mp)}, ${namaSemester(m)}`;
   tombolKembali.hidden = false;
   catatTerakhir("modul", mp.id, m.id);
 
@@ -166,12 +218,32 @@ function layarModul() {
     kiri += `
       <label class="saklar">
         <input type="checkbox" id="bagikan" ${m.dibagikan ? "checked" : ""}>
-        <span class="saklar-isi"><b>Bagikan ke pengampu lain</b><small>${m.dibagikan
-          ? "Pengampu lain mapel ini bisa melihat dan memakai soalnya untuk sumatif."
+        <span class="saklar-isi"><b>Bagikan ke guru lain di ${aman(namaGrup(mp))}</b><small>${m.dibagikan
+          ? `Pengampu ${aman(mp.nama)} di semua kelas ${aman(tingkatKelas(mp.kelas))} (${aman([mp, ...mapelSegrup(mp)].map(x => x.kelas).join(", "))}) bisa melihat dan memakai soalnya untuk sumatif & UAS.`
           : "Tertutup: cuma kamu dan admin (TU) yang bisa melihat."}</small></span>
       </label>`;
   } else {
-    kiri += `<p class="info">${m.dibagikan ? "Dibagikan" : "Tertutup"} · cuma bisa dilihat, yang bisa mengubah hanya ${aman(m.namaPemilik || "pemiliknya")}.</p>`;
+    kiri += `<p class="info">${m.dibagikan ? "Dibagikan" : "Tertutup"}${dariKelasLain ? ` · dari ${aman(asal.kelas)}` : ""} · cuma bisa dilihat, yang bisa mengubah hanya ${aman(m.namaPemilik || "pemiliknya")}.</p>`;
+  }
+  // alur & modul terkait
+  const semuaGrup = modulGrup(mp.id);
+  const { sebelum, sesudah } = alurModul(m, semuaGrup);
+  const terkait = [...new Set([...(m.terkait || []), ...semuaGrup.filter(x => (x.terkait || []).includes(m.id)).map(x => x.id)])]
+    .map(id => semuaGrup.find(x => x.id === id)).filter(x => x && x.id !== m.id);
+  if (sebelum.length || sesudah.length) {
+    kiri += `<p class="label-kelompok">Alur modul</p><ol class="alur-modul">
+      ${sebelum.map(x => `<li><button data-ke-modul="${aman(x.id)}" dir="auto">${aman(labelModul(x, mp.id))}</button></li>`).join("")}
+      <li><span class="ini" dir="auto">${aman(m.judul)}</span></li>
+      ${sesudah.length ? `<li>${sesudah.map(x => `<button data-ke-modul="${aman(x.id)}" dir="auto">${aman(labelModul(x, mp.id))}</button>`).join(" ")}</li>` : ""}
+    </ol>`;
+  }
+  if (terkait.length) {
+    kiri += `<p class="label-kelompok">Modul terkait</p><div class="alur-modul terkait-modul">
+      ${terkait.map(x => `<button data-ke-modul="${aman(x.id)}" dir="auto">${aman(labelModul(x, mp.id))}</button>`).join("")}
+    </div>`;
+  }
+  if (m.lanjutanDari && !sebelum.length) {
+    kiri += `<p class="info">Lanjutan dari modul yang sudah nggak tersedia (dihapus atau nggak dibagikan lagi).</p>`;
   }
   kiri += `<div class="aksi-teks">`;
   if (linkAman(m.link)) kiri += `<a class="tombol-teks" href="${aman(m.link)}" target="_blank" rel="noopener">Buka file di tab baru</a>`;
@@ -274,6 +346,7 @@ function layarModul() {
   klik("tambahBacaan", () => pergi("formBacaan", { bacaanId: null }));
   klik("cetakFormatif", () => pergi("cetak", { cetakDari: "modul", cetakPertemuan: null }));
   klik("keAI", () => pergi("aiSoal", { aiUntuk: "modul", aiPertemuan: null }));
+  isi.querySelectorAll("[data-ke-modul]").forEach(b => { b.onclick = () => bukaModulLain(mp.id, b.dataset.keModul); });
 
   const saklar = document.getElementById("bagikan");
   if (saklar) {
@@ -328,7 +401,7 @@ function layarModul() {
 function formBacaan() {
   const mp = mapelAktif();
   const m = modAktif();
-  if (!milikSaya(m)) throw new DataHilang();
+  if (!bisaDiubahDi(mp.id, m, modulMapel(mp.id))) throw new DataHilang();
   const lama = posisi.bacaanId ? butuh((m.bacaan || []).find(b => b.id === posisi.bacaanId)) : null;
   const b = lama || { judul: "", teks: "" };
 
@@ -501,7 +574,7 @@ function bacaIsianSoal(form, id) {
 function formSoal() {
   const mp = mapelAktif();
   const m = modAktif();
-  if (!milikSaya(m)) throw new DataHilang();
+  if (!bisaDiubahDi(mp.id, m, modulMapel(mp.id))) throw new DataHilang();
   const lama = posisi.soalId ? butuh((m.soal || []).find(s => s.id === posisi.soalId)) : null;
   const bacaan = m.bacaan || [];
   const pertemuan = m.pertemuan || [];

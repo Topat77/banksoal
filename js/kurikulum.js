@@ -108,6 +108,12 @@ function layarAkun() {
     sel.onchange = () => {
       const p = toko.pengguna.find(x => x.id === sel.dataset.sapaan);
       if (!p) return;
+      const kelasA = toko.mapel.filter(m => kelasPutra(m.kelas) && (m.pengampu || []).includes(p.id));
+      if (sel.value === "ustadzah" && kelasA.length &&
+          !confirm(`Peringatan: ${p.nama} masih tercatat ngajar di kelas putra (${kelasA.map(namaMapel).join(", ")}).\n\nUstadzah nggak boleh ngajar santriwan. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu mapel tersebut.`)) {
+        sel.value = sapaanPengguna(p) || "";
+        return;
+      }
       const { id, ...data } = p;
       simpanPengguna(p.id, { ...data, sapaan: sel.value || null });
     };
@@ -148,6 +154,20 @@ const KELAS_PER_JENJANG = {
 };
 // jenjang yang ada di PKBM Imam Syafi'i
 const JENJANG_PKBM = ["Paket B", "Paket C"];
+
+// rombel A = putra, B = putri (misal 7A2 putra, 7B2 putri).
+// Ustadz boleh ngajar kelas putri, tapi ustadzah nggak boleh ngajar kelas putra.
+function kelasPutra(kelas) {
+  return /^\s*\d+\s*A/i.test(kelas || "");
+}
+// pengampu yang nggak sesuai aturan di satu mapel: ustadzah di kelas putra
+function pengampuTakSesuai(mp) {
+  if (!kelasPutra(mp.kelas)) return [];
+  return (mp.pengampu || []).filter(uid => sapaanPengguna(toko.pengguna.find(p => p.id === uid)) === "ustadzah");
+}
+function namaPengampuMapel(mp, uid) {
+  return namaPengguna(uid) || (mp.namaPengampu || {})[uid] || "";
+}
 
 // =====================================================
 //  PANEL JENJANG (khusus admin): Paket B dan Paket C dipisah
@@ -192,18 +212,24 @@ function layarKelolaMapel() {
     .sort((a, b) => bandingKelas(a, b) || a.nama.localeCompare(b.nama, "id"));
   jejak.textContent = jenjang;
   let h = htmlTabJenjang() + `<p class="info">Mapel dibuat di sini, lalu tentukan ustadz/ustadzah pengampunya. Satu mapel boleh diampu lebih dari satu orang.</p>`;
+  const salah = daftar.filter(m => pengampuTakSesuai(m).length);
+  if (salah.length) {
+    h += `<div class="pemberitahuan-kecil"><b>Perlu dicek:</b> ada ustadzah yang tercatat ngajar di kelas putra (${aman(salah.map(namaMapel).join(", "))}). Ustadzah nggak boleh ngajar santriwan.</div>`;
+  }
   if (daftar.length === 0) {
     h += `<p class="kosong">Belum ada mapel ${aman(jenjang)}.</p>`;
-  } else {
-    h += `<div class="daftar">`;
-    for (const m of daftar) {
+  }
+  for (const k of kelompokJenis(daftar)) {
+    h += `<h2 class="subjudul">Mapel ${namaJenis(k.jenis).toLowerCase()} <small>${k.mapel.length} mapel</small></h2><div class="daftar">`;
+    for (const m of k.mapel) {
       const nama = (m.pengampu || []).map(u => namaPengguna(u) || (m.namaPengampu || {})[u]).filter(Boolean);
+      const takSesuai = pengampuTakSesuai(m);
       h += htmlBaris({
         attr: `data-mapel="${m.id}"`,
         judulBaris: aman(m.nama),
-        sub: `${aman(m.kelas)} · ${namaJenis(jenisMapel(m))} · ${nama.length ? aman(nama.join(", ")) : "<em>belum ada pengampu</em>"}`,
-        tanda: nama.length ? "" : "Belum ada pengampu",
-        tandaJenis: "tanda-tutup"
+        sub: `${aman(m.kelas)} · ${nama.length ? aman(nama.join(", ")) : "<em>belum ada pengampu</em>"}`,
+        tanda: takSesuai.length ? "Ustadzah di kelas putra" : nama.length ? "" : "Belum ada pengampu",
+        tandaJenis: takSesuai.length ? "tanda-ragu" : "tanda-tutup"
       });
     }
     h += `</div>`;
@@ -236,8 +262,8 @@ function formMapel() {
     .sort((a, b) => (a.nama || "").localeCompare(b.nama || "", "id"));
   const pilihPengampu = calon.length ? calon.map(p => `
       <label class="centang">
-        <input type="checkbox" name="pengampu" value="${p.id}" ${(m.pengampu || []).includes(p.id) ? "checked" : ""}>
-        <span class="isi-centang"><b>${aman(p.nama)}</b><small>${aman(p.email)}</small></span>
+        <input type="checkbox" name="pengampu" value="${p.id}" data-sapaan-pengampu="${aman(sapaanPengguna(p) || "")}" ${(m.pengampu || []).includes(p.id) ? "checked" : ""}>
+        <span class="isi-centang"><b>${aman(p.nama)}</b><small>${sapaanPengguna(p) ? `${SAPAAN[sapaanPengguna(p)]} · ` : ""}${aman(p.email)}</small></span>
       </label>`).join("") : `<p class="info">Belum ada akun aktif. Setujui akun ustadz dulu di halaman Akun.</p>`;
 
   isi.innerHTML = `
@@ -261,6 +287,7 @@ function formMapel() {
       </fieldset>
       <fieldset>
         <legend>Pengampu</legend>
+        <div class="pemberitahuan-kecil" id="peringatanPengampu" hidden></div>
         <div class="kolom daftar-centang">${pilihPengampu}</div>
       </fieldset>
       <button type="submit" class="tombol-utama">Simpan</button>
@@ -288,7 +315,33 @@ function formMapel() {
   }
   form.querySelectorAll("[name=jenjang]").forEach(r => r.onchange = () => aturSaranKelas(true));
   aturSaranKelas();
-  pilihKelas.onchange = () => { pilihKelas.value = pilihKelas.value.trim().replace(/\s+/g, " "); };
+
+  // mapel baru: jenis (diniah / umum) ditebak dari namanya, selama belum dipilih sendiri
+  let jenisDipilih = !!lama;
+  form.querySelectorAll("[name=jenis]").forEach(r => r.addEventListener("change", () => { jenisDipilih = true; }));
+  form.nama.addEventListener("input", () => {
+    if (jenisDipilih) return;
+    const j = tebakJenis(form.nama.value);
+    form.querySelector(`[name=jenis][value="${j}"]`).checked = true;
+  });
+
+  // ustadzah yang dicentang di kelas putra (rombel A) → peringatan
+  const peringatan = document.getElementById("peringatanPengampu");
+  function ustadzahDiKelasPutra() {
+    if (!kelasPutra(pilihKelas.value)) return [];
+    return [...form.querySelectorAll('[name="pengampu"]:checked')]
+      .filter(c => c.dataset.sapaanPengampu === "ustadzah")
+      .map(c => namaPengguna(c.value));
+  }
+  function cekPengampu() {
+    const salah = ustadzahDiKelasPutra();
+    peringatan.hidden = !salah.length;
+    peringatan.innerHTML = salah.length ? `<b>Peringatan:</b> ${aman(pilihKelas.value)} kelas putra (rombel A), sedangkan ${aman(salah.join(", "))} ustadzah. Ustadzah nggak boleh ngajar santriwan.` : "";
+  }
+  form.querySelectorAll('[name="pengampu"]').forEach(c => c.onchange = cekPengampu);
+  pilihKelas.oninput = cekPengampu;
+  cekPengampu();
+  pilihKelas.onchange = () => { pilihKelas.value = pilihKelas.value.trim().replace(/\s+/g, " "); cekPengampu(); };
 
   form.onsubmit = (e) => {
     e.preventDefault();
@@ -301,6 +354,8 @@ function formMapel() {
     const kembar = toko.mapel.find(x => x.id !== (lama && lama.id) &&
       x.nama.toLowerCase() === nama.toLowerCase() && x.jenjang === f.get("jenjang") && x.kelas === kelas);
     if (kembar && !confirm(`Mapel ${nama} ${kelas} (${f.get("jenjang")}) sudah ada. Tetap bikin satu lagi?`)) return;
+    const salah = ustadzahDiKelasPutra();
+    if (salah.length && !confirm(`Peringatan: ${kelas} kelas putra, tapi ${salah.join(", ")} ustadzah.\n\nUstadzah nggak boleh ngajar santriwan. Tetap simpan?`)) return;
 
     const baru = simpanMapelData({
       ...(lama || {}),
@@ -464,7 +519,7 @@ function dataCadangan() {
   const isi = (id) => toko.isi[id] || {};
   return {
     aplikasi: KONFIG.namaAplikasi,
-    versiCadangan: 1,
+    versiCadangan: 2,
     dibuat: new Date().toISOString(),
     oleh: (toko.saya && toko.saya.email) || "",
     lembaga: salin(toko.lembaga),
@@ -476,7 +531,9 @@ function dataCadangan() {
       modul: salin(modulMapel(m.id)),
       sumatif: salin(sumatifMapel(m.id)),
       nilai: salin(isi(m.id).nilai || [])
-    }))
+    })),
+    // grup mapel + UAS bersama & usulan soalnya
+    grup: toko.grup.map(g => ({ ...salin(g), uas: salin(toko.uas[g.id] || []), usulan: salin(toko.usulan[g.id] || []) }))
   };
 }
 
