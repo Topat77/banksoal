@@ -164,7 +164,16 @@ function pasangData(peran) {
     aturLanggananSantri();
     sinkronGrup();
     berubah();
-  }, laporGagal("kelas")));
+  }, (err) => {
+    // aturan database versi lama belum kenal "kelas": aplikasi jalan kayak dulu
+    // (ustadz baca santri lewat cara lama) sampai aturan baru dipasang
+    laporGagal("kelas")(err);
+    toko.kelasGagal = true;
+    toko.kelasSiap = true;
+    aturLanggananSantri();
+    sinkronGrup();
+    berubah();
+  }));
 
   // santri: admin lihat semua; ustadz cuma kelas yang dia ajar (lihat aturLanggananSantri)
   if (peran === "kurikulum") {
@@ -256,6 +265,15 @@ function pantauIsiTetangga(id) {
 const santriPerKelas = {};
 function aturLanggananSantri() {
   if (sayaKurikulum()) return;
+  if (toko.kelasGagal) {
+    if (!langgananSantri._semua) {
+      langgananSantri._semua = toko.backend.pantauKoleksi("santri", [], daftar => {
+        santriPerKelas._semua = daftar;
+        gabungSantri();
+      }, laporGagal("santri"));
+    }
+    return;
+  }
   const perlu = new Set();
   for (const m of mapelDiampu()) {
     const k = dataKelas(idKelas(m.jenjang, m.kelas));
@@ -327,6 +345,7 @@ function hentikanData() {
   for (const id of Object.keys(santriPerKelas)) delete santriPerKelas[id];
   toko.kelas = [];
   toko.kelasSiap = false;
+  toko.kelasGagal = false;
   toko.isi = {};
   toko.mapel = [];
   toko.mapelSiap = false;
@@ -543,7 +562,7 @@ function jalankanSinkronGrup() {
     const id = idKelas(s.jenjang, s.kelas);
     if (s.kelasId !== id) b.tulis(`santri/${s.id}`, tanpaId({ ...s, kelasId: id })).catch(gagalSimpan);
   }
-  for (const id of new Set([...petaKelas.keys(), ...toko.kelas.map(k => k.id)])) {
+  for (const id of toko.kelasGagal ? [] : new Set([...petaKelas.keys(), ...toko.kelas.map(k => k.id)])) {
     const lama = dataKelas(id);
     const x = petaKelas.get(id);
     const baru = x ? { jenjang: x.jenjang, kelas: x.kelas, pengampu: [...x.pengampu].sort() } : { ...tanpaId(lama), pengampu: [] };
