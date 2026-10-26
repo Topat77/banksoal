@@ -18,11 +18,6 @@ function isiMapelRingkas(m) {
   };
 }
 
-function akunBisaDihapus(p) {
-  const adminAwal = (KONFIG.adminAwal || []).map(e => e.toLowerCase());
-  return p.id !== uidSaya() && !adminAwal.includes((p.email || "").toLowerCase());
-}
-
 function layarBersihkanData() {
   wajibKurikulum();
   judul.textContent = "Bersihkan data";
