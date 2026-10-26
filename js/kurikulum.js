@@ -84,7 +84,7 @@ function layarAkun() {
             <span>${aman(p.email)}</span>
             <small>${p.peran === "ditolak" ? "Ditolak" : "Dinonaktifkan"}</small>
           </div>
-          <div class="baris-tombol"><button class="tombol-kedua" data-aktifkan="${p.id}">Aktifkan sebagai ustadz</button></div>
+          <div class="baris-tombol"><button class="tombol-kedua" data-aktifkan="${p.id}">Aktifkan lagi</button>${akunBisaDihapus(p) ? `<button class="tombol-teks merah" data-hapus-akun="${p.id}">Hapus</button>` : ""}</div>
         </article>`;
     }
     h += `</div>`;
@@ -127,6 +127,12 @@ function layarAkun() {
     };
   });
   isi.querySelectorAll("[data-aktifkan]").forEach(b => b.onclick = () => ubahPeran(b.dataset.aktifkan, "ustadz"));
+  isi.querySelectorAll("[data-hapus-akun]").forEach(b => {
+    b.onclick = () => {
+      const p = toko.pengguna.find(x => x.id === b.dataset.hapusAkun);
+      if (p && confirm(`Hapus akun ${p.nama} (${p.email}) dari daftar?`)) { hapusPengguna(p.id); tampilkan(true); }
+    };
+  });
   isi.querySelectorAll("[data-tolak]").forEach(b => {
     b.onclick = () => {
       const p = toko.pengguna.find(x => x.id === b.dataset.tolak);
@@ -148,6 +154,13 @@ function layarAkun() {
       ubahPeran(p.id, sel.value);
     };
   });
+}
+
+// akun yang boleh dihapus: bukan akun yang lagi login, dan bukan admin awal
+// (admin awal kalau login lagi otomatis jadi admin, jadi percuma dihapus)
+function akunBisaDihapus(p) {
+  const adminAwal = (KONFIG.adminAwal || []).map(e => e.toLowerCase());
+  return p.id !== uidSaya() && !adminAwal.includes((p.email || "").toLowerCase());
 }
 
 // =====================================================
@@ -184,7 +197,12 @@ function formGuru() {
       ${diriSendiri ? `<p class="info">Peran akunmu sendiri nggak bisa diganti dari sini.</p>` : ""}
       <p class="info">Mengampu: ${ampu.length ? aman(ampu.map(namaMapel).join(", ")) : "belum ada mapel"}. Atur di halaman Mapel &amp; pengampu.</p>
       <button type="submit" class="tombol-utama">Simpan</button>
-      ${diriSendiri ? "" : `<button type="button" class="tombol-hapus" id="nonaktif">Nonaktifkan akun ini</button>`}
+      ${diriSendiri ? "" : `
+      <div class="aksi-akun">
+        <button type="button" class="tombol-hapus" id="nonaktif">Nonaktifkan akun ini</button>
+        ${akunBisaDihapus(p) ? `<button type="button" class="tombol-hapus" id="hapusAkun">Hapus akun ini</button>` : ""}
+      </div>
+      <p class="info kecil"><b>Nonaktifkan</b>: akun nggak bisa masuk, tapi masih tercatat dan bisa diaktifkan lagi. <b>Hapus</b>: akun hilang dari daftar guru dan dicabut dari semua mapel yang diampu; kalau login lagi, statusnya jadi menunggu persetujuan.</p>`}
     </form>`;
 
   const form = document.getElementById("form");
@@ -206,6 +224,13 @@ function formGuru() {
     const terbaru = toko.pengguna.find(x => x.id === p.id) || p;
     const { id, ...data } = terbaru;
     simpanPengguna(p.id, { ...data, nama, nip, sapaan, peran, diubahOleh: uidSaya(), diubah: Date.now() });
+    pergi("akun");
+  };
+  const hapus = document.getElementById("hapusAkun");
+  if (hapus) hapus.onclick = () => {
+    const ampuNama = ampu.map(namaMapel);
+    if (!confirm(`Hapus akun ${p.nama} (${p.email})?${ampuNama.length ? `\n\nDia juga dicabut dari pengampu: ${ampuNama.join(", ")}.` : ""}\n\nModul dan soal yang pernah dia buat tetap tersimpan.`)) return;
+    hapusPengguna(p.id);
     pergi("akun");
   };
   const nonaktif = document.getElementById("nonaktif");
@@ -454,6 +479,7 @@ function formMapel() {
       if (!yakin) return;
       if (modul.length && prompt(`Ketik HAPUS untuk memastikan.`) !== "HAPUS") return;
       hapusMapelData(lama.id);
+      hapusSisaKosong();
       pergi("kelolaMapel", { mapelId: null });
     };
   }

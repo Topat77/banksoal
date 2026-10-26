@@ -1579,6 +1579,9 @@ label.pilih-peran .menu-pilih { min-width: 160px; }
   .tabel-guru td.kol-nip::before { content: "NIP "; font-weight: 600; }
 }
 
+/* ---- tombol nonaktifkan / hapus akun ---- */
+.aksi-akun { display: flex; flex-wrap: wrap; gap: 4px 28px; }
+
 /* ---- kelengkapan perangkat (beranda TU) ---- */
 .kelengkapan { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; }
 .donat { position: relative; width: 140px; height: 140px; flex: none; }

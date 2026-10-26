@@ -798,6 +798,37 @@ function simpanSantri(santri) {
   berubah();
   return baru;
 }
+// khusus admin: hapus akun dari daftar guru, sekalian dicabut dari pengampu semua mapel.
+// (Akun Google-nya tetap ada; kalau login lagi, statusnya jadi "menunggu" lagi.)
+function hapusPengguna(uid) {
+  for (const m of toko.mapel.filter(m => (m.pengampu || []).includes(uid))) {
+    const namaPengampu = { ...(m.namaPengampu || {}) };
+    delete namaPengampu[uid];
+    simpanMapelData({ ...m, pengampu: m.pengampu.filter(u => u !== uid), namaPengampu });
+  }
+  toko.pengguna = toko.pengguna.filter(p => p.id !== uid);
+  toko.backend.hapus(`pengguna/${uid}`).catch(gagalSimpan);
+  berubah();
+}
+
+// khusus admin, dipanggil setelah mapel dihapus: grup mapel yang udah nggak punya mapel
+// (beserta UAS & usulannya) dan kelas yang udah nggak punya mapel maupun siswa ikut dihapus.
+// Sengaja nggak lewat sinkron otomatis, biar ganti nama mapel nggak ngehapus riwayat UAS.
+function hapusSisaKosong() {
+  const b = toko.backend;
+  const grupAda = new Set(toko.mapel.map(idGrup));
+  for (const g of toko.grup.filter(g => !grupAda.has(g.id))) {
+    for (const u of (toko.uas[g.id] || [])) b.hapus(`grup/${g.id}/uas/${u.id}`).catch(gagalSimpan);
+    for (const u of (toko.usulan[g.id] || [])) b.hapus(`grup/${g.id}/usulan/${u.id}`).catch(gagalSimpan);
+    b.hapus(`grup/${g.id}`).catch(gagalSimpan);
+  }
+  toko.grup = toko.grup.filter(g => grupAda.has(g.id));
+  const kelasAda = new Set([...toko.mapel.map(m => idKelas(m.jenjang, m.kelas)), ...toko.santri.map(s => idKelas(s.jenjang, s.kelas))]);
+  for (const k of toko.kelas.filter(k => !kelasAda.has(k.id))) b.hapus(`kelas/${k.id}`).catch(gagalSimpan);
+  toko.kelas = toko.kelas.filter(k => kelasAda.has(k.id));
+  berubah();
+}
+
 function hapusSantri(id) {
   toko.santri = toko.santri.filter(x => x.id !== id);
   toko.backend.hapus(`santri/${id}`).catch(gagalSimpan);
