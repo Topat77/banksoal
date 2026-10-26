@@ -155,7 +155,7 @@ function layarSantri() {
   const [jenjang, kelas] = kunci.split("|");
   posisi.kelasSantri = kunci;
 
-  judul.textContent = "Daftar santri";
+  judul.textContent = "Daftar siswa";
   jejak.textContent = kelas ? `${kelas}, ${jenjang}` : (boleh ? jenjangAktif() : "");
   tombolKembali.hidden = !posisi.dariNilai;
 
@@ -169,7 +169,7 @@ function layarSantri() {
   if (!kelas) {
     h += boleh
       ? `<p class="kosong">Belum ada kelas ${aman(jenjangAktif())}. Kelas muncul otomatis setelah ada mapel (dibuat admin).</p>`
-      : `<p class="kosong">Kamu belum mengajar di kelas mana pun, jadi belum ada daftar santri yang bisa dilihat.</p>`;
+      : `<p class="kosong">Kamu belum mengajar di kelas mana pun, jadi belum ada daftar siswa yang bisa dilihat.</p>`;
     isi.innerHTML = h;
     if (boleh) pasangTabJenjang("santri", { kelasSantri: null });
     return;
@@ -180,13 +180,13 @@ function layarSantri() {
   // ---------- ustadz: cuma lihat ----------
   if (!boleh) {
     h += `
-      <h2 class="subjudul">Santri ${aman(kelas)} ${aman(jenjang)} <small>${daftar.length} santri</small></h2>
-      <p class="info">Daftar santri diisi admin (TU). Kalau ada nama atau NIS yang salah, kabari admin ya.</p>`;
+      <h2 class="subjudul">Siswa ${aman(kelas)} ${aman(jenjang)} <small>${daftar.length} siswa</small></h2>
+      <p class="info">Daftar siswa diisi admin (TU). Kalau ada nama atau NIS yang salah, kabari admin ya.</p>`;
     if (daftar.length === 0) {
-      h += `<p class="kosong">Daftar santri kelas ini belum diisi admin (TU).</p>`;
+      h += `<p class="kosong">Daftar siswa kelas ini belum diisi admin (TU).</p>`;
     } else {
       h += `<div class="wadah-tabel-santri"><table class="tabel-santri lihat">
-          <thead><tr><th class="kol-absen">No. Absen</th><th class="kol-nis">NIS</th><th>Nama santri</th></tr></thead>
+          <thead><tr><th class="kol-absen">No. Absen</th><th class="kol-nis">NIS</th><th>Nama siswa</th></tr></thead>
           <tbody id="badanSantri">${daftar.map(x => `<tr data-id="${x.id}"><td class="tengah">${aman(x.absen ?? "")}</td><td>${aman(x.nis || "")}</td><td>${aman(x.nama)}</td></tr>`).join("")}</tbody>
         </table></div>`;
     }
@@ -198,21 +198,21 @@ function layarSantri() {
   // ---------- admin: tabel bisa diketik ----------
   const pasangTab = () => pasangTabJenjang("santri", { kelasSantri: null });
   const barisKosong = 3;
-  const tombolHapus = (x) => `<button class="tombol-hapus-kecil" data-hapus-santri="${x.id}" aria-label="Hapus ${aman(x.nama)}" title="Hapus santri">×</button>`;
+  const tombolHapus = (x) => `<button class="tombol-hapus-kecil" data-hapus-santri="${x.id}" aria-label="Hapus ${aman(x.nama)}" title="Hapus siswa">×</button>`;
   const htmlBarisSantri = (x) => `
     <tr data-id="${x ? x.id : ""}">
       <td><input data-f="absen" type="number" inputmode="numeric" min="1" step="1" value="${x && x.absen !== undefined && x.absen !== null ? aman(x.absen) : ""}" aria-label="No. absen"></td>
       <td><input data-f="nis" inputmode="numeric" value="${x ? aman(x.nis || "") : ""}" aria-label="NIS"></td>
-      <td><input data-f="nama" value="${x ? aman(x.nama) : ""}" aria-label="Nama santri" placeholder="${x ? "" : "Nama santri baru"}"></td>
+      <td><input data-f="nama" value="${x ? aman(x.nama) : ""}" aria-label="Nama siswa" placeholder="${x ? "" : "Nama siswa baru"}"></td>
       <td class="kol-aksi">${x ? tombolHapus(x) : ""}</td>
     </tr>`;
 
   h += `
-    <h2 class="subjudul">Santri ${aman(kelas)} ${aman(jenjang)} <small id="jumlahSantri">${daftar.length} santri</small></h2>
+    <h2 class="subjudul">Siswa ${aman(kelas)} ${aman(jenjang)} <small id="jumlahSantri">${daftar.length} siswa</small></h2>
     <p class="info">Ketik langsung di tabel, tersimpan otomatis. Bisa juga salin 3 kolom dari Excel (No. Absen, NIS, Nama) lalu tempel di kotak pertama.</p>
     <div class="wadah-tabel-santri">
       <table class="tabel-santri">
-        <thead><tr><th class="kol-absen">No. Absen</th><th class="kol-nis">NIS</th><th>Nama santri</th><th class="kol-aksi"></th></tr></thead>
+        <thead><tr><th class="kol-absen">No. Absen</th><th class="kol-nis">NIS</th><th>Nama siswa</th><th class="kol-aksi"></th></tr></thead>
         <tbody id="badanSantri">${daftar.map(htmlBarisSantri).join("")}${htmlBarisSantri(null).repeat(barisKosong)}</tbody>
       </table>
     </div>
@@ -240,9 +240,9 @@ function layarSantri() {
     badan.querySelectorAll('[data-f="absen"]').forEach(i => {
       const dobel = i.value && hitung[i.value] > 1;
       i.classList.toggle("salah", !!dobel);
-      i.title = dobel ? "No. absen ini dipakai lebih dari satu santri" : "";
+      i.title = dobel ? "No. absen ini dipakai lebih dari satu siswa" : "";
     });
-    document.getElementById("jumlahSantri").textContent = `${badan.querySelectorAll("tr[data-id]:not([data-id=''])").length} santri`;
+    document.getElementById("jumlahSantri").textContent = `${badan.querySelectorAll("tr[data-id]:not([data-id=''])").length} siswa`;
   }
 
   function pastikanBarisKosong() {
@@ -268,7 +268,7 @@ function layarSantri() {
       pesan.textContent = "Tersimpan";
     } else if (v.nama) {
       const kembar = toko.santri.find(x => x.jenjang === jenjang && x.kelas === kelas && x.aktif !== false && x.nama.toLowerCase() === v.nama.toLowerCase());
-      if (kembar && !confirm(`${v.nama} sudah ada di kelas ini. Tetap tambahkan sebagai santri lain?`)) return;
+      if (kembar && !confirm(`${v.nama} sudah ada di kelas ini. Tetap tambahkan sebagai siswa lain?`)) return;
       const baru = simpanSantri({ id: buatId(), nama: v.nama, nis: v.nis, absen, jenjang, kelas, aktif: true });
       tr.dataset.id = baru.id;
       tr.querySelector('[data-f="nama"]').placeholder = "";
@@ -330,7 +330,7 @@ function layarSantri() {
     const b = e.target.closest("[data-hapus-santri]");
     if (!b) return;
     const x = toko.santri.find(y => y.id === b.dataset.hapusSantri);
-    if (!x || !confirm(`Hapus ${x.nama} dari daftar santri?\n\nNilai yang sudah diisi untuk santri ini ikut nggak kepakai lagi.`)) return;
+    if (!x || !confirm(`Hapus ${x.nama} dari daftar siswa?\n\nNilai yang sudah diisi untuk siswa ini ikut nggak kepakai lagi.`)) return;
     hapusSantri(x.id);
     b.closest("tr").remove();
     cekAbsen();
@@ -379,9 +379,9 @@ function layarNilai() {
   let h = "";
   if (santri.length === 0) {
     h += sayaKurikulum()
-      ? `<p class="kosong">Belum ada santri di ${aman(mp.kelas)} ${aman(mp.jenjang)}. Tambahkan daftar santrinya dulu.</p>
-         <button class="tombol-utama" id="keSantri">Isi daftar santri</button>`
-      : `<p class="kosong">Daftar santri ${aman(mp.kelas)} ${aman(mp.jenjang)} belum diisi. Minta admin (TU) mengisinya dulu, nanti nama santrinya otomatis muncul di sini.</p>`;
+      ? `<p class="kosong">Belum ada siswa di ${aman(mp.kelas)} ${aman(mp.jenjang)}. Tambahkan daftar siswanya dulu.</p>
+         <button class="tombol-utama" id="keSantri">Isi daftar siswa</button>`
+      : `<p class="kosong">Daftar siswa ${aman(mp.kelas)} ${aman(mp.jenjang)} belum diisi. Minta admin (TU) mengisinya dulu, nanti nama siswanya otomatis muncul di sini.</p>`;
     isi.innerHTML = h;
     const ks = document.getElementById("keSantri");
     if (ks) ks.onclick = () => pergi("santri", { kelasSantri: `${mp.jenjang}|${mp.kelas}`, dariNilai: true });
@@ -409,7 +409,7 @@ function layarNilai() {
     <div class="wadah-lembar-nilai">
     <table class="lembar-nilai">
       <thead><tr>
-        <th class="kol-nama">Santri</th>
+        <th class="kol-nama">Siswa</th>
         ${kolom.map(k => `<th class="kol-${k.kelompok}">${bisaIsi ? `<button class="judul-kolom" data-kolom="${k.id}" title="Ketuk untuk ganti nama / hapus">${aman(k.label)}</button>` : `<span class="judul-kolom">${aman(k.label)}</span>`}</th>`).join("")}
         <th class="kol-hadir">Hadir</th><th class="kol-hadir">Sakit</th><th class="kol-hadir">Izin</th>
         <th class="kol-akhir">Akhir</th>
@@ -428,7 +428,7 @@ function layarNilai() {
   });
   h += `</tbody></table></div>
     <p class="info">${bisaIsi ? "Ketik nilai 0–100. Tersimpan otomatis. Kolom kosong nggak ikut dihitung. Kehadiran dihitung otomatis: hadir ÷ (hadir + sakit + izin) × 100." : ""}${tersimpan && tersimpan.namaPengubah ? ` Terakhir diubah oleh ${aman(tersimpan.namaPengubah)}.` : ""}</p>
-    <div class="aksi-teks"><button class="tombol-teks" id="keSantri">${sayaKurikulum() ? "Ubah" : "Lihat"} daftar santri ${aman(mp.kelas)}</button></div>`;
+    <div class="aksi-teks"><button class="tombol-teks" id="keSantri">${sayaKurikulum() ? "Ubah" : "Lihat"} daftar siswa ${aman(mp.kelas)}</button></div>`;
   isi.innerHTML = h;
   document.getElementById("keSantri").onclick = () => pergi("santri", { kelasSantri: `${mp.jenjang}|${mp.kelas}`, dariNilai: true });
   const kb = document.getElementById("keBobot");
@@ -520,7 +520,7 @@ function layarNilai() {
 function htmlTabNilai(mp, sem) {
   const santri = santriKelas(mp.jenjang, mp.kelas);
   const lembar = lembarNilai(mp.id, sem);
-  let h = `<p class="info">Mapel ${namaJenis(jenisMapel(mp)).toLowerCase()} · ${santri.length} santri di ${aman(mp.kelas)} ${aman(mp.jenjang)}.</p>`;
+  let h = `<p class="info">Mapel ${namaJenis(jenisMapel(mp)).toLowerCase()} · ${santri.length} siswa di ${aman(mp.kelas)} ${aman(mp.jenjang)}.</p>`;
   if (!lembar) {
     h += `<p class="kosong">Belum ada nilai di semester ini.</p>`;
   } else {
@@ -530,7 +530,7 @@ function htmlTabNilai(mp, sem) {
     for (const x of hasil) {
       h += `<div class="baris baris-santri"><span class="baris-isi"><strong>${aman(x.s.nama)}</strong>${x.n.hadir ? `<span class="baris-sub">Hadir ${x.n.hadir.hadir} · Sakit ${x.n.hadir.sakit} · Izin ${x.n.hadir.izin}</span>` : ""}</span><span class="nilai-akhir">${angkaRapi(x.n.akhir)}</span></div>`;
     }
-    h += `</div><p class="info">${terisi} dari ${santri.length} santri sudah punya nilai akhir. Rata-rata kelas: ${angkaRapi(rataRata(hasil.map(x => x.n.akhir)))}.</p>`;
+    h += `</div><p class="info">${terisi} dari ${santri.length} siswa sudah punya nilai akhir. Rata-rata kelas: ${angkaRapi(rataRata(hasil.map(x => x.n.akhir)))}.</p>`;
   }
   if (sayaPengampu(mp)) h += `<button class="tombol-utama" id="isiNilai">${lembar ? "Buka lembar nilai" : "Mulai isi nilai"}</button>`;
   else if (lembar) h += `<button class="tombol-kedua" id="isiNilai">Lihat lembar nilai</button>`;
@@ -577,7 +577,7 @@ function layarBobot() {
       <button class="tombol-teks" id="bawaanBobot">Pakai bobot bawaan</button>
       <span class="tersimpan" id="pesanSimpanBobot" role="status"></span>
     </div>
-    <p class="info">Kalau bobot diubah di tengah semester, nilai akhir semua santri langsung dihitung ulang. Nilai yang sudah diisi ustadz nggak berubah.</p>`;
+    <p class="info">Kalau bobot diubah di tengah semester, nilai akhir semua siswa langsung dihitung ulang. Nilai yang sudah diisi ustadz nggak berubah.</p>`;
   isi.innerHTML = h;
 
   const pesan = document.getElementById("pesanSimpanBobot");
