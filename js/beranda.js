@@ -53,6 +53,57 @@ function htmlKartuAngka(daftar) {
   }).join("")}</section>`;
 }
 
+// ====== KELENGKAPAN PERANGKAT (buat TU) ======
+// Per guru yang mengampu mapel, di semester ini: udah bikin modul? udah ada soal? nilai udah diisi?
+function hitungKelengkapan(sem) {
+  const adaNilai = (lembar) => !!lembar && Object.values(lembar.nilai || {})
+    .some(per => Object.values(per || {}).some(v => v !== null && v !== "" && v !== undefined));
+  const guru = toko.pengguna.filter(p => PERAN_AKTIF.includes(p.peran))
+    .map(p => ({ p, mapel: toko.mapel.filter(m => (m.pengampu || []).includes(p.id)) }))
+    .filter(x => x.mapel.length);
+  const hasil = { total: guru.length, modul: 0, soal: 0, nilai: 0, lengkap: 0 };
+  for (const { p, mapel } of guru) {
+    const modul = mapel.flatMap(m => modulMapel(m.id)).filter(x => x.pemilik === p.id && samaSemester(x, sem));
+    const okModul = modul.length > 0;
+    const okSoal = modul.some(m => jumlahSoal(m) > 0);
+    const okNilai = mapel.every(m => adaNilai(lembarNilai(m.id, sem)));
+    if (okModul) hasil.modul++;
+    if (okSoal) hasil.soal++;
+    if (okNilai) hasil.nilai++;
+    if (okModul && okSoal && okNilai) hasil.lengkap++;
+  }
+  return hasil;
+}
+
+function htmlKelengkapan(sem) {
+  const k = hitungKelengkapan(sem);
+  const persen = k.total ? Math.round(k.lengkap / k.total * 100) : 0;
+  const keliling = 2 * Math.PI * 42;
+  const bar = (label, n) => `
+    <div class="bar-lengkap">
+      <span class="bar-label">${label}</span><span class="bar-angka">${n}/${k.total}</span>
+      <span class="bar-jalur" aria-hidden="true"><span style="width:${k.total ? Math.round(n / k.total * 100) : 0}%"></span></span>
+    </div>`;
+  return `<section class="panel">
+    <div class="panel-kepala"><h2>Kelengkapan perangkat pembelajaran</h2><button class="tombol-teks" id="kePantauan2">Lihat detail</button></div>
+    ${k.total ? `<div class="kelengkapan">
+      <div class="donat" role="img" aria-label="${persen}% guru sudah lengkap">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="50" r="42" class="donat-jalur"/>
+          <circle cx="50" cy="50" r="42" class="donat-isi" stroke-dasharray="${(keliling * persen / 100).toFixed(1)} ${keliling.toFixed(1)}"/>
+        </svg>
+        <span><b>${persen}%</b><small>lengkap</small></span>
+      </div>
+      <div class="bar-bar">
+        ${bar("Sudah bikin modul ajar", k.modul)}
+        ${bar("Sudah ada soal", k.soal)}
+        ${bar("Nilai sudah diisi", k.nilai)}
+        <p class="info kecil">Dari ${k.total} guru yang mengampu mapel, ${aman(namaSemester(sem))}.</p>
+      </div>
+    </div>` : `<p class="info">Belum ada guru yang mengampu mapel. Atur dulu di Mapel &amp; pengampu.</p>`}
+  </section>`;
+}
+
 // ====== AKTIVITAS TERBARU ======
 let aktivitasTampil = [];   // yang lagi tampil di beranda (buat tombolnya)
 // dikumpulkan dari data yang udah ada: modul, ujian, lembar nilai, UAS bersama, usulan, akun baru
@@ -223,6 +274,7 @@ function layarBeranda() {
   const klik = (id, f) => { const el = document.getElementById(id); if (el) el.onclick = f; };
   klik("keAkun", () => pergi("akun"));
   klik("kePantauan", () => pergi("pantauan"));
+  klik("kePantauan2", () => pergi("pantauan"));
   klik("keUASDiajukan", () => pergi("daftarUAS"));
   klik("cadanganBeranda", async () => {
     const b = document.getElementById("cadanganBeranda");
@@ -289,7 +341,8 @@ function htmlBerandaTU(sem) {
     { ikon: "santri", warna: "oranye", label: "Siswa", angka: siswa.length, tambah: jumlahBulanIni(siswa), ke: "santri" }
   ]);
 
-  // ---- aktivitas + akses cepat ----
+  // ---- kelengkapan, aktivitas, akses cepat ----
+  h += htmlKelengkapan(sem);
   h += `<div class="dasbor-dua">
     ${htmlAktivitas()}
     <section class="panel">
@@ -373,10 +426,10 @@ function htmlBerandaGuru(sem, diampu) {
   // ---- akses cepat ----
   if (diampu.length) {
     h += `<h2 class="subjudul">Akses cepat</h2>` + htmlAksesCepat([
-      { id: "modul", ikon: "modul", warna: "hijau", judul: "Modul ajar", ket: "Tambah & kelola modul" },
-      { id: "nilai", ikon: "nilai", warna: "biru", judul: "Input nilai", ket: "Nilai & total kehadiran" },
-      { id: "cari", ikon: "cari", warna: "ungu", judul: "Bank soal", ket: "Cari soal di semua modul" },
-      { id: "santri", ikon: "santri", warna: "oranye", judul: "Daftar siswa", ket: "Siswa di kelasmu" }
+      { id: "aiGenerator", ikon: "ai", warna: "hijau", judul: "Buat soal dengan AI", ket: "Draft soal dari isi modul" },
+      { id: "modul", ikon: "modul", warna: "biru", judul: "Modul ajar", ket: "Tambah & kelola modul" },
+      { id: "nilai", ikon: "nilai", warna: "ungu", judul: "Input nilai", ket: "Nilai & total kehadiran" },
+      { id: "cari", ikon: "cari", warna: "oranye", judul: "Bank soal", ket: "Cari soal di semua modul" }
     ], true);
   }
 

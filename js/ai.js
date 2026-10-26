@@ -486,3 +486,74 @@ function labelSimpanAI(bahan, n) {
 
 // ikon kecil buat tombol AI (bintang berkilau)
 const IKON_AI = `<svg viewBox="0 0 24 24" aria-hidden="true" class="ikon-ai"><path d="M12 3l1.8 4.9L19 9.7l-5.2 1.8L12 16.4l-1.8-4.9L5 9.7l5.2-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>`;
+
+// =====================================================
+//  AI GENERATOR — pintu depan buat bikin soal pakai AI
+//  Guru pilih mapel & kelas, lalu soalnya mau masuk ke mana
+//  (soal formatif di modul, atau ujian sumatif), terus lanjut
+//  ke layar AI yang sama (layarAISoal) dengan bahan dari modul.
+// =====================================================
+function layarAIGenerator() {
+  if (sayaKurikulum() && !mapelDiampu().length) throw new DataHilang();
+  judul.textContent = "AI Generator soal";
+  jejak.textContent = "Bikin draft soal dari modul, tinggal cek & edit";
+  const diampu = [...mapelDiampu()].sort(urutMapelJenis);
+  const sem = semesterSekarang();
+  const pilihMapel = posisi.aiMapel && diampu.some(m => m.id === posisi.aiMapel) ? posisi.aiMapel : (diampu[0] && diampu[0].id);
+  const mp = cariMapel(pilihMapel);
+  const ke = posisi.aiKe === "sumatif" ? "sumatif" : "modul";
+
+  let h = `<section class="kartu-sambut kecil"><div class="sambut-teks">
+      <h2>Buat soal dengan AI</h2>
+      <p>AI menyusun draft soal pilihan ganda & esai dari target capaian, ringkasan, atau PDF modulmu. Kamu tetap yang memeriksa dan menyimpan.</p>
+    </div></section>`;
+  if (!diampu.length) {
+    isi.innerHTML = h + `<p class="kosong">Kamu belum ditugaskan ke mapel mana pun. Minta admin (TU) menambahkanmu sebagai pengampu.</p>`;
+    return;
+  }
+  const modulSaya = modulMapel(mp.id).filter(m => bisaDiubahDi(mp.id, m, modulMapel(mp.id)) && samaSemester(m, sem));
+  const ujianSaya = sumatifMapel(mp.id).filter(s => bisaDiubahDi(mp.id, s, sumatifMapel(mp.id)) && samaSemester(s, sem));
+  const pilihan = ke === "modul" ? modulSaya : ujianSaya;
+
+  h += `<form id="formAIGen" class="panel">
+      <label>1. Mapel &amp; kelas
+        <select id="aiMapel">${diampu.map(m => `<option value="${m.id}" data-ket="${aman(namaJenis(jenisMapel(m)))} · ${aman(m.jenjang)}" ${m.id === mp.id ? "selected" : ""}>${aman(namaMapel(m))}</option>`).join("")}</select>
+      </label>
+      <fieldset>
+        <legend>2. Soalnya mau dimasukkan ke mana?</legend>
+        <div class="pilih-jenis">
+          <label class="radio"><input type="radio" name="aiKe" value="modul" ${ke === "modul" ? "checked" : ""}> Soal formatif di modul</label>
+          <label class="radio"><input type="radio" name="aiKe" value="sumatif" ${ke === "sumatif" ? "checked" : ""}> Ujian sumatif</label>
+        </div>
+      </fieldset>
+      <label>3. ${ke === "modul" ? "Modul" : "Ujian"} (${aman(namaSemester(sem))})
+        <select id="aiTujuan" ${pilihan.length ? "" : "disabled"}>${pilihan.length
+          ? pilihan.map(x => `<option value="${x.id}" data-ket="${ke === "modul" ? `${(x.pertemuan || []).length} pertemuan, ${jumlahSoal(x)} soal` : `${(x.butir || []).length} soal`}">${aman(ke === "modul" ? x.judul : x.nama)}</option>`).join("")
+          : `<option value="">${ke === "modul" ? "Belum ada modul" : "Belum ada ujian"}</option>`}</select>
+      </label>
+      ${pilihan.length ? "" : `<p class="info">${ke === "modul"
+        ? "Bikin modul dulu, isi target capaian tiap pertemuan. AI pakai isi modul itu sebagai bahan."
+        : "Bikin ujian sumatif dulu di tab Sumatif mapel ini, atau pilih “Soal formatif di modul”."}</p>`}
+      <div class="baris-tombol">
+        ${pilihan.length
+          ? `<button type="submit" class="tombol-utama tombol-ai">${IKON_AI}<span>Lanjut buat soal</span></button>`
+          : `<button type="button" class="tombol-utama" id="aiBuatDulu">${ke === "modul" ? "+ Tambah modul ajar" : "+ Buat ujian sumatif"}</button>`}
+      </div>
+      <p class="info kecil">Yang dikirim ke AI cuma isi modul. Data siswa dan nilai nggak pernah dikirim. Soal UAS bersama dibuat dari halaman UAS-nya.</p>
+    </form>`;
+  isi.innerHTML = h;
+
+  document.getElementById("aiMapel").onchange = (e) => pergi("aiGenerator", { aiMapel: e.target.value });
+  isi.querySelectorAll('[name="aiKe"]').forEach(r => r.onchange = () => pergi("aiGenerator", { aiMapel: mp.id, aiKe: r.value }));
+  const buat = document.getElementById("aiBuatDulu");
+  if (buat) buat.onclick = () => ke === "modul"
+    ? pergi("formModul", { mapelId: mp.id, modEditId: null, semester: kunciSemester(sem) })
+    : pergi("formSumatif", { mapelId: mp.id, sumEditId: null, uasGrup: null, semester: kunciSemester(sem) });
+  document.getElementById("formAIGen").onsubmit = (e) => {
+    e.preventDefault();
+    const id = document.getElementById("aiTujuan").value;
+    if (!id) return;
+    if (ke === "modul") pergi("aiSoal", { mapelId: mp.id, aiUntuk: "modul", modId: id, aiPertemuan: null, semester: kunciSemester(sem) });
+    else pergi("aiSoal", { mapelId: mp.id, aiUntuk: "sumatif", sumId: id, uasGrup: null, usul: false, semester: kunciSemester(sem) });
+  };
+}

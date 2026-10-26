@@ -1578,3 +1578,23 @@ label.pilih-peran .menu-pilih { min-width: 160px; }
   .tabel-guru td.kol-aksi { grid-column: 1 / -1; }
   .tabel-guru td.kol-nip::before { content: "NIP "; font-weight: 600; }
 }
+
+/* ---- kelengkapan perangkat (beranda TU) ---- */
+.kelengkapan { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; }
+.donat { position: relative; width: 140px; height: 140px; flex: none; }
+.donat svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.donat circle { fill: none; stroke-width: 9; }
+.donat-jalur { stroke: var(--ikon-hijau); }
+.donat-isi { stroke: var(--hijau); stroke-linecap: round; }
+.donat > span { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.donat b { font: 800 28px/1 var(--huruf-judul); color: var(--hijau-tua); font-variant-numeric: tabular-nums; }
+.donat small { margin-top: 4px; font-size: 13px; font-weight: 600; color: var(--hijau); }
+.bar-bar { flex: 1 1 260px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.bar-lengkap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; font-size: 15px; }
+.bar-label { font-weight: 600; }
+.bar-angka { color: var(--tinta-redup); font-variant-numeric: tabular-nums; }
+.bar-jalur { grid-column: 1 / -1; height: 8px; border-radius: 999px; background: var(--ikon-hijau); overflow: hidden; }
+.bar-jalur > span { display: block; height: 100%; border-radius: inherit; background: var(--hijau); }
+.info.kecil { font-size: 14px; }
+.kartu-sambut.kecil { grid-template-columns: minmax(0, 1fr); padding: 18px 20px; }
+.kartu-sambut.kecil h2 { font-size: 21px; }

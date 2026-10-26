@@ -49,13 +49,14 @@ const daftarLayar = {
   aiSoal: "layarAISoal",
   daftarUAS: "layarDaftarUAS",
   pilihMapel: "layarPilihMapel",
-  formGuru: "formGuru"
+  formGuru: "formGuru",
+  aiGenerator: "layarAIGenerator"
 };
 
 // layar yang nggak boleh digambar ulang sendiri waktu data berubah
 // (lagi ngetik / milih sesuatu, nanti isiannya hilang)
 const LAYAR_DIAM = ["formSemester", "formModul", "formBacaan", "formSoal", "formSumatif",
-                    "pilihSoal", "cetak", "cari", "lainnya", "formMapel", "formGuru", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal"];
+                    "pilihSoal", "cetak", "cari", "lainnya", "formMapel", "formGuru", "aiGenerator", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal"];
 
 // data hilang (misal dihapus dari perangkat lain) → dilempar biar balik ke layar aman
 class DataHilang extends Error {}
@@ -396,6 +397,7 @@ function kelompokLayar() {
   if (L === "daftarUAS" || (posisi.uasGrup && sayaKurikulum() && !sayaPengampu(cariMapel(posisi.mapelId)))) return "uas";
   if (["kelolaMapel", "formMapel"].includes(L) && !posisi.dariMapel) return "kelola";
   if (L === "beranda" || L === "pilihMapel") return "beranda";
+  if (L === "aiGenerator") return "ai";
   return "mapel";
 }
 
@@ -439,7 +441,10 @@ function gambarSamping() {
   const urutJ = Object.keys(KELAS_PER_JENJANG);
   // admin: per jenjang, lalu per jenis; ustadz: per jenis (diniah dulu, lalu umum)
   const daftar = [...mapelTerlihat()].sort((a, b) => (kur ? urutJ.indexOf(a.jenjang) - urutJ.indexOf(b.jenjang) : 0) || urutMapelJenis(a, b));
-  if (!kur) h += `<p class="menu-judul">Mapel kamu</p>`;
+  if (!kur) {
+    h += `<button class="menu-item ${grup === "ai" ? "aktif" : ""}" data-ke="aiGenerator">${ikonMenu("ai")}<span>AI Generator</span></button>`;
+    h += `<p class="menu-judul">Mapel kamu</p>`;
+  }
   if (daftar.length === 0) h += `<p class="menu-kosong">${kur ? "Belum ada mapel" : "Belum ditugaskan ke mapel"}</p>`;
 
   let jenjangTadi = null, jenisTadi = null;
@@ -509,8 +514,8 @@ function gambarNavBawah() {
   const grup = kelompokLayar();
   const item = sayaKurikulum()
     ? [["beranda", "beranda", "Beranda"], ["pantauan", "pantauan", "Pantauan"], ["rapor", "rapor", "Rapor"], ["akun", "akun", "Guru"], ["lainnya", "lainnya", "Saya"]]
-    : [["beranda", "beranda", "Beranda"], ["cari", "cari", "Cari"], ["lainnya", "lainnya", "Saya"]];
-  const ikonDari = { beranda: "beranda", pantauan: "pantauan", akun: "akun", kelola: "mapel", lainnya: "lainnya", cari: "cari", rapor: "rapor", santri: "santri" };
+    : [["beranda", "beranda", "Beranda"], ["aiGenerator", "ai", "AI"], ["cari", "cari", "Cari"], ["lainnya", "lainnya", "Saya"]];
+  const ikonDari = { ai: "ai", beranda: "beranda", pantauan: "pantauan", akun: "akun", kelola: "mapel", lainnya: "lainnya", cari: "cari", rapor: "rapor", santri: "santri" };
   navBawah.style.setProperty("--jumlah", item.length);
   const n = sayaKurikulum() ? jumlahMenunggu() : 0;
   navBawah.innerHTML = item.map(([ke, kunci, teks]) => {
