@@ -14,6 +14,8 @@
 //     model      : nama model Gemini. Kalau nanti diganti Google,
 //                  cukup ubah di sini (lihat daftar model di dokumentasi
 //                  Firebase AI Logic).
+//     modelCadangan: model yang lebih ringan, dipakai otomatis kalau
+//                  server model utama lagi penuh (error 503). Boleh kosong.
 //     appCheckKey: "site key" reCAPTCHA v3 buat App Check (pengaman
 //                  biar kuota AI nggak dipakai orang lain). Boleh kosong
 //                  waktu nyoba, tapi sebaiknya diisi sebelum dipakai rame-rame.
@@ -38,6 +40,7 @@ const KONFIG = {
 
   ai: {
     model: "gemini-3.8-flash",
+    modelCadangan: "gemini-3.5-flash-lite",
     appCheckKey: "6LfLRP4tAAAAAE-ZJ7xPTPcemz4mGBiACH3QVNMw"
   }
 };

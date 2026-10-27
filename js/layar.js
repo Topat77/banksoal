@@ -77,6 +77,7 @@ function tampilkan(tetapDiTempat = false) {
     gambarStatus();
     gambarTanda();
     window.scrollTo(0, 0);
+    aturRiwayat();
     return;
   }
 
@@ -113,16 +114,20 @@ function tampilkan(tetapDiTempat = false) {
   isi.querySelectorAll('textarea, input:not([type]), input[type="search"], input[type="text"]').forEach(el => el.dir = "auto");
 
   if (!tetapDiTempat) window.scrollTo(0, 0);
+  aturRiwayat();
 }
 
 // layar-layar yang bisa dipakai buat UAS bersama (selain itu, mode UAS dilepas)
 const LAYAR_UAS = ["sumatif", "pilihSoal", "formSoalUjian", "formSumatif", "aiSoal", "cetak"];
+// layar yang tetap dihitung bagian tab AI kalau dibuka dari AI Generator (posisi.dariAI)
+const LAYAR_ALUR_AI = ["aiGenerator", "aiSoal", "formModul", "formSumatif"];
 
 function pergi(layar, tambahan = {}) {
   // nilai yang baru diketik langsung disimpan sebelum pindah layar
   if (typeof kirimNilaiTertunda === "function") kirimNilaiTertunda();
   posisi = { ...posisi, ...tambahan, layar };
   if (!LAYAR_UAS.includes(layar)) posisi.uasGrup = null;
+  if (!LAYAR_ALUR_AI.includes(layar)) posisi.dariAI = false;
   tampilkan();
 }
 
@@ -155,6 +160,7 @@ function segarkanLayar(penuh) {
 // tombol ‹ : tiap layar balik ke layar "induk"-nya
 function layarInduk() {
   const L = posisi.layar;
+  if (posisi.dariAI && LAYAR_ALUR_AI.includes(L) && L !== "aiGenerator") return "aiGenerator";
   if (L === "formModul") return posisi.modEditId ? "modul" : "mapel";
   if (L === "formSumatif") return posisi.sumEditId ? "sumatif" : "mapel";
   if (L === "cetak") return posisi.cetakDari;
@@ -178,13 +184,45 @@ function layarInduk() {
     raporCetak: "rapor"
   }[L] || "beranda";
 }
-tombolKembali.onclick = () => {
+function kembali() {
   const ke = layarInduk();
   if (ke === "mapel" && posisi.layar === "modul") return pergi(ke, { tab: "modul" });
   if (ke === "mapel" && posisi.layar === "sumatif") return pergi(ke, { tab: "sumatif" });
   if (ke === "mapel" && posisi.layar === "nilai") return pergi(ke, { tab: "nilai" });
   pergi(ke);
-};
+}
+tombolKembali.onclick = kembali;
+
+// ---- tombol back HP / browser ----
+// Selama bukan di beranda, ada satu langkah riwayat "cadangan". Back HP makan langkah itu,
+// lalu aplikasinya balik ke layar induk (sama kayak tombol ‹). Di beranda nggak ada
+// cadangan, jadi back keluar dari aplikasi seperti aplikasi Android biasa.
+let adaCadangan = !!(history.state && history.state.banksoal);
+let lewatiPop = false;
+function aturRiwayat() {
+  const diAkar = (toko.status !== "aktif" || posisi.layar === "beranda") && !document.body.classList.contains("ada-dialog");
+  if (!diAkar && !adaCadangan) {
+    history.pushState({ banksoal: 1 }, "");
+    adaCadangan = true;
+  } else if (diAkar && adaCadangan) {
+    adaCadangan = false;
+    lewatiPop = true;
+    history.back();
+  }
+}
+window.addEventListener("popstate", () => {
+  adaCadangan = false;
+  // ini back buatan aturRiwayat sendiri: cukup pastiin cadangannya sesuai layar sekarang
+  if (lewatiPop) { lewatiPop = false; return aturRiwayat(); }
+  // ada kotak dialog: back = Batal (atau Oke kalau cuma pesan)
+  const dialog = [...document.querySelectorAll(".dialog-latar")].pop();
+  if (dialog) {
+    (dialog.querySelector('[data-dialog="tidak"]') || dialog.querySelector('[data-dialog="ya"]')).click();
+    return aturRiwayat();
+  }
+  if (toko.status === "aktif" && posisi.layar !== "beranda") return kembali();
+  aturRiwayat();
+});
 
 // ====== PENCARI DATA LAYAR ======
 // mapel yang boleh dibuka: yang diampu (atau semua, buat kurikulum)
@@ -397,7 +435,7 @@ function kelompokLayar() {
   if (L === "daftarUAS" || (posisi.uasGrup && sayaKurikulum() && !sayaPengampu(cariMapel(posisi.mapelId)))) return "uas";
   if (["kelolaMapel", "formMapel"].includes(L) && !posisi.dariMapel) return "kelola";
   if (L === "beranda" || L === "pilihMapel") return "beranda";
-  if (L === "aiGenerator") return "ai";
+  if (L === "aiGenerator" || (posisi.dariAI && LAYAR_ALUR_AI.includes(L))) return "ai";
   return "mapel";
 }
 

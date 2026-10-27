@@ -42,17 +42,30 @@ export async function buatBackendFirebase(konfig) {
   }
 
   // AI baru dimuat waktu pertama kali dipakai, biar buka aplikasi tetap cepat
-  let modelAI = null;
-  async function ambilModelAI() {
-    if (modelAI) return modelAI;
-    const { getAI, getGenerativeModel, GoogleAIBackend } = await import(`${SDK}/firebase-ai.js`);
-    const ai = getAI(app, { backend: new GoogleAIBackend() });
-    modelAI = getGenerativeModel(ai, {
-      model: setelanAI.model || "gemini-3.8-flash",
-      generationConfig: { responseMimeType: "application/json", temperature: 0.7 }
-    });
-    return modelAI;
+  const modelAI = {};
+  let layananAI = null;
+  // "thinking" dikecilin: nyusun soal dari modul nggak perlu mikir panjang, jadi jauh lebih cepat.
+  // Kalau modelnya nolak setelan ini, sisa sesi pakai setelan bawaan model.
+  let pakaiThinkingRendah = true;
+  async function ambilModelAI(nama) {
+    const kunci = `${nama}|${pakaiThinkingRendah}`;
+    if (modelAI[kunci]) return modelAI[kunci];
+    if (!layananAI) {
+      const sdk = await import(`${SDK}/firebase-ai.js`);
+      layananAI = { sdk, ai: sdk.getAI(app, { backend: new sdk.GoogleAIBackend() }) };
+    }
+    const generationConfig = { responseMimeType: "application/json", temperature: 0.7 };
+    if (pakaiThinkingRendah) generationConfig.thinkingConfig = { thinkingLevel: "LOW" };
+    modelAI[kunci] = layananAI.sdk.getGenerativeModel(layananAI.ai, { model: nama, generationConfig });
+    return modelAI[kunci];
   }
+  const kodeHTTP = (err) => {
+    const s = err && err.customErrorData && err.customErrorData.status;
+    if (s) return s;
+    const m = /\[(\d{3})\b/.exec(String(err && err.message));
+    return m ? Number(m[1]) : 0;
+  };
+  const tunggu = (ms) => new Promise(r => setTimeout(r, ms));
   const auth = getAuth(app);
   auth.languageCode = "id";
 
@@ -125,12 +138,40 @@ export async function buatBackendFirebase(konfig) {
 
     // kirim perintah (+ PDF kalau ada) ke Gemini lewat Firebase AI Logic.
     // Kunci API-nya disimpan di server Firebase, nggak ada di kode ini.
-    async tanyaAI({ perintah, pdf }) {
-      const model = await ambilModelAI();
+    // Server AI kadang penuh (503): dicoba ulang 2x, lalu pindah ke model cadangan.
+    // kabarProses(teks) dipanggil tiap kali mau nyoba ulang, buat ditampilin ke guru.
+    async tanyaAI({ perintah, pdf }, kabarProses = () => {}) {
       const bagian = [{ text: perintah }];
       if (pdf) bagian.push({ inlineData: { mimeType: pdf.mime, data: pdf.data } });
-      const hasil = await model.generateContent(bagian);
-      return hasil.response.text();
+      const utama = setelanAI.model || "gemini-3.8-flash";
+      const giliran = [[utama, 0], [utama, 3000], [utama, 6000]];
+      if (setelanAI.modelCadangan) giliran.push([setelanAI.modelCadangan, 1000]);
+      let galatPertama = null, jatahHabis = false;
+      for (let i = 0; i < giliran.length; i++) {
+        const [nama, jeda] = giliran[i];
+        if (jeda) {
+          kabarProses(nama !== utama ? `${jatahHabis ? "Jatah AI model utama habis" : "Server AI masih penuh"}, pindah ke model cadangan...`
+            : `Server AI lagi penuh, nyoba lagi (${i + 1}/3)...`);
+          await tunggu(jeda);
+        }
+        try {
+          const hasil = await (await ambilModelAI(nama)).generateContent(bagian);
+          return hasil.response.text();
+        } catch (err) {
+          const kode = kodeHTTP(err);
+          if (kode === 400 && pakaiThinkingRendah && /thinking/i.test(String(err && err.message))) {
+            pakaiThinkingRendah = false;   // model ini nggak kenal setelan thinking: ulangi tanpa itu
+            i--;
+            continue;
+          }
+          if (!galatPertama) galatPertama = err;
+          const penuh = [500, 503, 504].includes(kode);
+          // kuota satu model habis (429): langsung coba model cadangan (jatahnya terpisah)
+          if (kode === 429 && nama === utama && setelanAI.modelCadangan) { jatahHabis = true; i = giliran.length - 2; continue; }
+          if (!penuh) throw nama === utama ? err : galatPertama;
+        }
+      }
+      throw galatPertama;
     }
   };
 }
