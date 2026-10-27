@@ -56,7 +56,7 @@ export async function buatBackendFirebase(konfig) {
     }
     const generationConfig = { responseMimeType: "application/json", temperature: 0.7 };
     if (pakaiThinkingRendah) generationConfig.thinkingConfig = { thinkingLevel: "LOW" };
-    modelAI[kunci] = layananAI.sdk.getGenerativeModel(layananAI.ai, { model: nama, generationConfig });
+    modelAI[kunci] = layananAI.sdk.getGenerativeModel(layananAI.ai, { model: nama, generationConfig }, { timeout: BATAS_TUNGGU_AI });
     return modelAI[kunci];
   }
   const kodeHTTP = (err) => {
@@ -66,6 +66,12 @@ export async function buatBackendFirebase(konfig) {
     return m ? Number(m[1]) : 0;
   };
   const tunggu = (ms) => new Promise(r => setTimeout(r, ms));
+  // server yang diam aja (nggak jawab) dianggap lambat setelah 45 detik, lalu pindah ke model cadangan
+  const BATAS_TUNGGU_AI = 45000;
+  const kelamaan = (err) => /timeout has expired|timed? ?out|deadline/i.test(String(err && err.message));
+  // kalau model utama barusan lambat/penuh, 30 menit ke depan langsung pakai model cadangan
+  const LAMA_PAKAI_CADANGAN = 30 * 60 * 1000;
+  let utamaBermasalahSampai = 0;
   const auth = getAuth(app);
   auth.languageCode = "id";
 
@@ -138,24 +144,32 @@ export async function buatBackendFirebase(konfig) {
 
     // kirim perintah (+ PDF kalau ada) ke Gemini lewat Firebase AI Logic.
     // Kunci API-nya disimpan di server Firebase, nggak ada di kode ini.
-    // Server AI kadang penuh (503): dicoba ulang 2x, lalu pindah ke model cadangan.
-    // kabarProses(teks) dipanggil tiap kali mau nyoba ulang, buat ditampilin ke guru.
+    // Server AI kadang penuh (503) atau diam aja (lambat). Model utama dicoba ulang 2x kalau penuh;
+    // kalau lambat, kuota habis, atau tetap penuh, pindah ke model cadangan.
+    // kabarProses(teks) dipanggil tiap kali mau nyoba ulang / pindah model, buat ditampilin ke guru.
     async tanyaAI({ perintah, pdf }, kabarProses = () => {}) {
       const bagian = [{ text: perintah }];
       if (pdf) bagian.push({ inlineData: { mimeType: pdf.mime, data: pdf.data } });
       const utama = setelanAI.model || "gemini-3.8-flash";
-      const giliran = [[utama, 0], [utama, 3000], [utama, 6000]];
-      if (setelanAI.modelCadangan) giliran.push([setelanAI.modelCadangan, 1000]);
-      let galatPertama = null, jatahHabis = false;
+      const cadangan = setelanAI.modelCadangan || null;
+      const langsungCadangan = cadangan && Date.now() < utamaBermasalahSampai;
+      const giliran = langsungCadangan ? [cadangan, utama] : [utama, utama, utama, cadangan].filter(Boolean);
+      const lompatKeModelLain = (i) => {
+        const j = giliran.findIndex((nama, k) => k > i && nama !== giliran[i]);
+        return j < 0 ? giliran.length : j;
+      };
+      let galatUtama = null, galatLain = null, alasan = "";
       for (let i = 0; i < giliran.length; i++) {
-        const [nama, jeda] = giliran[i];
-        if (jeda) {
-          kabarProses(nama !== utama ? `${jatahHabis ? "Jatah AI model utama habis" : "Server AI masih penuh"}, pindah ke model cadangan...`
-            : `Server AI lagi penuh, nyoba lagi (${i + 1}/3)...`);
-          await tunggu(jeda);
+        const nama = giliran[i];
+        if (i > 0) {
+          const ulang = nama === giliran[i - 1];
+          kabarProses(ulang ? `Server AI lagi penuh, nyoba lagi (${i + 1}/3)...`
+            : `${alasan || "Server AI bermasalah"}, pindah ke model ${nama === cadangan ? "cadangan" : "utama"}...`);
+          await tunggu(ulang ? 3000 * i : 1000);
         }
         try {
           const hasil = await (await ambilModelAI(nama)).generateContent(bagian);
+          if (nama === utama) utamaBermasalahSampai = 0;
           return hasil.response.text();
         } catch (err) {
           const kode = kodeHTTP(err);
@@ -164,14 +178,22 @@ export async function buatBackendFirebase(konfig) {
             i--;
             continue;
           }
-          if (!galatPertama) galatPertama = err;
+          if (nama === utama) galatUtama = galatUtama || err;
+          else galatLain = galatLain || err;
+          const lambat = kelamaan(err);
           const penuh = [500, 503, 504].includes(kode);
-          // kuota satu model habis (429): langsung coba model cadangan (jatahnya terpisah)
-          if (kode === 429 && nama === utama && setelanAI.modelCadangan) { jatahHabis = true; i = giliran.length - 2; continue; }
-          if (!penuh) throw nama === utama ? err : galatPertama;
+          if (nama === utama && (lambat || penuh || kode === 429)) utamaBermasalahSampai = Date.now() + LAMA_PAKAI_CADANGAN;
+          if (lambat) { alasan = "Server AI lambat"; i = lompatKeModelLain(i) - 1; continue; }
+          // kuota satu model habis (429): langsung coba model lain (jatahnya terpisah)
+          if (kode === 429) { alasan = "Jatah AI model ini habis"; i = lompatKeModelLain(i) - 1; continue; }
+          if (penuh) { alasan = "Server AI masih penuh"; continue; }
+          // galat lain (misal model cadangan nggak ada): coba model berikutnya kalau ada
+          alasan = "Model AI bermasalah";
+          if (nama !== utama) continue;
+          throw err;
         }
       }
-      throw galatPertama;
+      throw galatUtama || galatLain;
     }
   };
 }
