@@ -145,20 +145,25 @@ function htmlUsulanUAS(u) {
 function pasangAlurUAS(mp, u) {
   const gid = posisi.uasGrup;
   const klik = (id, f) => { const el = document.getElementById(id); if (el) el.onclick = f; };
-  const ganti = (perubahan) => { simpanUAS(gid, { ...u, ...perubahan }); tampilkan(true); };
+  // dipakai setelah dialog konfirmasi: ambil versi UAS terbaru, siapa tau berubah selama dialog kebuka
+  const ganti = (perubahan) => {
+    const t = (toko.uas[gid] || []).find(x => x.id === u.id) || u;
+    simpanUAS(gid, { ...t, ...perubahan });
+    tampilkan(true);
+  };
 
-  klik("ajukanUAS", () => {
-    if (!confirm(`Ajukan ${u.nama} ke TU?\n\nSetelah diajukan, soalnya nggak bisa diubah sampai kamu tarik kembali atau TU mengembalikannya.`)) return;
+  klik("ajukanUAS", async () => {
+    if (!(await tanyaYakin(`Ajukan ${u.nama} ke TU?\n\nSetelah diajukan, soalnya nggak bisa diubah sampai kamu tarik kembali atau TU mengembalikannya.`, { ya: "Ajukan" }))) return;
     ganti({ status: "diajukan", diajukan: Date.now() });
   });
   klik("tarikUAS", () => ganti({ status: "draf" }));
   klik("kembalikanUAS", () => ganti({ status: "draf" }));
-  klik("kunciUAS", () => {
-    if (!confirm(`Kunci ${u.nama}?\n\nSoalnya jadi final untuk semua kelas di grup ini dan nggak bisa diubah koordinator lagi.`)) return;
+  klik("kunciUAS", async () => {
+    if (!(await tanyaYakin(`Kunci ${u.nama}?\n\nSoalnya jadi final untuk semua kelas di grup ini dan nggak bisa diubah koordinator lagi.`, { ya: "Kunci UAS" }))) return;
     ganti({ status: "dikunci", dikunci: Date.now(), dikunciOleh: uidSaya(), namaPengunci: namaSaya() });
   });
-  klik("bukaKunciUAS", () => {
-    if (!confirm("Buka kunci? UAS kembali jadi draf dan bisa diubah koordinator lagi.")) return;
+  klik("bukaKunciUAS", async () => {
+    if (!(await tanyaYakin("Buka kunci? UAS kembali jadi draf dan bisa diubah koordinator lagi.", { ya: "Buka kunci" }))) return;
     ganti({ status: "draf" });
   });
   klik("usulkan", () => pergi("pilihSoal", { usul: true }));
@@ -178,10 +183,10 @@ function pasangAlurUAS(mp, u) {
     };
   });
   isi.querySelectorAll("[data-tolak]").forEach(b => {
-    b.onclick = () => {
+    b.onclick = async () => {
       const x = (toko.usulan[gid] || []).find(y => y.id === b.dataset.tolak);
       if (!x) return;
-      if (!confirm(milikSaya(x) ? "Tarik usulan soal ini?" : `Tolak usulan dari ${x.namaPemilik || "guru ini"}?`)) return;
+      if (!(await tanyaYakin(milikSaya(x) ? "Tarik usulan soal ini?" : `Tolak usulan dari ${x.namaPemilik || "guru ini"}?`, { bahaya: true, ya: milikSaya(x) ? "Tarik" : "Tolak" }))) return;
       hapusUsulan(gid, x.id);
       tampilkan(true);
     };

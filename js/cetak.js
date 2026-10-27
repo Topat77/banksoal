@@ -351,11 +351,11 @@ function layarCetak() {
   document.querySelectorAll('[name="mode"]').forEach(r => r.onchange = gambar);
 
   document.getElementById("print").onclick = () => {
-    if (items.length === 0) return alert("Belum ada soal yang bisa dicetak.");
+    if (items.length === 0) return kabar("Belum ada soal yang bisa dicetak.");
     window.print();
   };
   document.getElementById("word").onclick = () => {
-    if (items.length === 0) return alert("Belum ada soal yang bisa didownload.");
+    if (items.length === 0) return kabar("Belum ada soal yang bisa didownload.");
     const { paket, mode } = pengaturan();
     const bagian = { soal: "Soal", kunci: "Kunci", dua: "Soal dan Kunci" }[mode];
     const { pg, esai } = siapkanLembar(items, paket, centangAcak.checked, benih);

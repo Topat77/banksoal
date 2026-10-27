@@ -113,12 +113,12 @@ function layarAkun() {
   };
   isi.querySelectorAll("[data-setujui]").forEach(b => b.onclick = () => ubahPeran(b.dataset.setujui, "ustadz"));
   isi.querySelectorAll("[data-sapaan]").forEach(sel => {
-    sel.onchange = () => {
+    sel.onchange = async () => {
       const p = toko.pengguna.find(x => x.id === sel.dataset.sapaan);
       if (!p) return;
       const kelasA = toko.mapel.filter(m => kelasPutra(m.kelas) && (m.pengampu || []).includes(p.id));
       if (sel.value === "ustadzah" && kelasA.length &&
-          !confirm(`Peringatan: ${p.nama} masih tercatat ngajar di kelas putra (${kelasA.map(namaMapel).join(", ")}).\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu mapel tersebut.`)) {
+          !(await tanyaYakin(`Peringatan: ${p.nama} masih tercatat ngajar di kelas putra (${kelasA.map(namaMapel).join(", ")}).\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu mapel tersebut.`, { ya: "Tetap simpan" }))) {
         sel.value = sapaanPengguna(p) || "";
         return;
       }
@@ -128,29 +128,29 @@ function layarAkun() {
   });
   isi.querySelectorAll("[data-aktifkan]").forEach(b => b.onclick = () => ubahPeran(b.dataset.aktifkan, "ustadz"));
   isi.querySelectorAll("[data-hapus-akun]").forEach(b => {
-    b.onclick = () => {
+    b.onclick = async () => {
       const p = toko.pengguna.find(x => x.id === b.dataset.hapusAkun);
-      if (p && confirm(`Hapus akun ${p.nama} (${p.email}) dari daftar?`)) { hapusPengguna(p.id); tampilkan(true); }
+      if (p && await tanyaYakin(`Hapus akun ${p.nama} (${p.email}) dari daftar?`, { bahaya: true, ya: "Hapus" })) { hapusPengguna(p.id); tampilkan(true); }
     };
   });
   isi.querySelectorAll("[data-tolak]").forEach(b => {
-    b.onclick = () => {
+    b.onclick = async () => {
       const p = toko.pengguna.find(x => x.id === b.dataset.tolak);
-      if (confirm(`Tolak ${p.nama} (${p.email})? Akun ini nggak bisa membuka isi aplikasi.`)) ubahPeran(p.id, "ditolak");
+      if (await tanyaYakin(`Tolak ${p.nama} (${p.email})? Akun ini nggak bisa membuka isi aplikasi.`, { bahaya: true, ya: "Tolak" })) ubahPeran(p.id, "ditolak");
     };
   });
   isi.querySelectorAll("[data-nonaktif]").forEach(b => {
-    b.onclick = () => {
+    b.onclick = async () => {
       const p = toko.pengguna.find(x => x.id === b.dataset.nonaktif);
-      if (confirm(`Nonaktifkan ${p.nama}? Modul dan soalnya tetap tersimpan, cuma dia nggak bisa masuk sampai diaktifkan lagi.`)) ubahPeran(p.id, "nonaktif");
+      if (await tanyaYakin(`Nonaktifkan ${p.nama}? Modul dan soalnya tetap tersimpan, cuma dia nggak bisa masuk sampai diaktifkan lagi.`, { bahaya: true, ya: "Nonaktifkan" })) ubahPeran(p.id, "nonaktif");
     };
   });
   isi.querySelectorAll("[data-peran]").forEach(sel => {
-    sel.onchange = () => {
+    sel.onchange = async () => {
       const p = toko.pengguna.find(x => x.id === sel.dataset.peran);
       const ke = sel.value === "kurikulum" ? "admin (TU)" : "ustadz/ustadzah";
       const ket = sel.value === "kurikulum" ? "\n\nAdmin bisa menyetujui akun, mengatur mapel, daftar siswa, bobot nilai, dan rapor." : "";
-      if (!confirm(`Jadikan ${p.nama} sebagai ${ke}?${ket}`)) { sel.value = p.peran; return; }
+      if (!(await tanyaYakin(`Jadikan ${p.nama} sebagai ${ke}?${ket}`, { ya: "Ya, ubah" }))) { sel.value = p.peran; return; }
       ubahPeran(p.id, sel.value);
     };
   });
@@ -206,7 +206,7 @@ function formGuru() {
     </form>`;
 
   const form = document.getElementById("form");
-  form.onsubmit = (e) => {
+  form.onsubmit = async (e) => {
     e.preventDefault();
     const f = new FormData(form);
     const nama = f.get("nama").trim();
@@ -214,29 +214,29 @@ function formGuru() {
     const sapaan = f.get("sapaan") || null;
     const peran = diriSendiri ? p.peran : f.get("peran");
     if (!nama) return;
-    if (nip && !/^[0-9 ]+$/.test(nip)) return alert("NIP cuma boleh berisi angka (dan spasi).");
+    if (nip && !/^[0-9 ]+$/.test(nip)) return kabar("NIP cuma boleh berisi angka (dan spasi).");
     const kembar = nip && toko.pengguna.find(x => x.id !== p.id && (x.nip || "").replace(/\s/g, "") === nip.replace(/\s/g, ""));
-    if (kembar && !confirm(`NIP ini sudah dipakai ${kembar.nama}. Tetap simpan?`)) return;
+    if (kembar && !(await tanyaYakin(`NIP ini sudah dipakai ${kembar.nama}. Tetap simpan?`, { ya: "Tetap simpan" }))) return;
     const kelasA = ampu.filter(m => kelasPutra(m.kelas));
     if (sapaan === "ustadzah" && kelasA.length &&
-        !confirm(`Peringatan: ${nama} masih tercatat ngajar di kelas putra (${kelasA.map(namaMapel).join(", ")}).\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu mapel tersebut.`)) return;
-    if (peran !== p.peran && !confirm(`Jadikan ${nama} sebagai ${peran === "kurikulum" ? "admin (TU)" : "guru"}?${peran === "kurikulum" ? "\n\nAdmin bisa menyetujui akun, mengatur mapel, daftar siswa, bobot nilai, dan rapor." : ""}`)) return;
+        !(await tanyaYakin(`Peringatan: ${nama} masih tercatat ngajar di kelas putra (${kelasA.map(namaMapel).join(", ")}).\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu mapel tersebut.`, { ya: "Tetap simpan" }))) return;
+    if (peran !== p.peran && !(await tanyaYakin(`Jadikan ${nama} sebagai ${peran === "kurikulum" ? "admin (TU)" : "guru"}?${peran === "kurikulum" ? "\n\nAdmin bisa menyetujui akun, mengatur mapel, daftar siswa, bobot nilai, dan rapor." : ""}`, { ya: "Ya, ubah" }))) return;
     const terbaru = toko.pengguna.find(x => x.id === p.id) || p;
     const { id, ...data } = terbaru;
     simpanPengguna(p.id, { ...data, nama, nip, sapaan, peran, diubahOleh: uidSaya(), diubah: Date.now() });
     pergi("akun");
   };
   const hapus = document.getElementById("hapusAkun");
-  if (hapus) hapus.onclick = () => {
+  if (hapus) hapus.onclick = async () => {
     const ampuNama = ampu.map(namaMapel);
-    if (!confirm(`Hapus akun ${p.nama} (${p.email})?${ampuNama.length ? `\n\nDia juga dicabut dari pengampu: ${ampuNama.join(", ")}.` : ""}\n\nModul dan soal yang pernah dia buat tetap tersimpan.`)) return;
+    if (!(await tanyaYakin(`Hapus akun ${p.nama} (${p.email})?${ampuNama.length ? `\n\nDia juga dicabut dari pengampu: ${ampuNama.join(", ")}.` : ""}\n\nModul dan soal yang pernah dia buat tetap tersimpan.`, { bahaya: true, ya: "Hapus akun" }))) return;
     hapusPengguna(p.id);
     pergi("akun");
   };
   const nonaktif = document.getElementById("nonaktif");
-  if (nonaktif) nonaktif.onclick = () => {
-    if (!confirm(`Nonaktifkan ${p.nama}? Modul dan soalnya tetap tersimpan, cuma dia nggak bisa masuk sampai diaktifkan lagi.`)) return;
-    const { id, ...data } = p;
+  if (nonaktif) nonaktif.onclick = async () => {
+    if (!(await tanyaYakin(`Nonaktifkan ${p.nama}? Modul dan soalnya tetap tersimpan, cuma dia nggak bisa masuk sampai diaktifkan lagi.`, { bahaya: true, ya: "Nonaktifkan" }))) return;
+    const { id, ...data } = toko.pengguna.find(x => x.id === p.id) || p;
     simpanPengguna(p.id, { ...data, peran: "nonaktif", diubahOleh: uidSaya(), diubah: Date.now() });
     pergi("akun");
   };
@@ -443,7 +443,7 @@ function formMapel() {
   cekPengampu();
   pilihKelas.onchange = () => { pilihKelas.value = pilihKelas.value.trim().replace(/\s+/g, " "); cekPengampu(); };
 
-  form.onsubmit = (e) => {
+  form.onsubmit = async (e) => {
     e.preventDefault();
     const f = new FormData(form);
     const pengampu = f.getAll("pengampu");
@@ -453,9 +453,9 @@ function formMapel() {
     const kelas = f.get("kelas").trim().replace(/\s+/g, " ");
     const kembar = toko.mapel.find(x => x.id !== (lama && lama.id) &&
       x.nama.toLowerCase() === nama.toLowerCase() && x.jenjang === f.get("jenjang") && x.kelas === kelas);
-    if (kembar && !confirm(`Mapel ${nama} ${kelas} (${f.get("jenjang")}) sudah ada. Tetap bikin satu lagi?`)) return;
+    if (kembar && !(await tanyaYakin(`Mapel ${nama} ${kelas} (${f.get("jenjang")}) sudah ada. Tetap bikin satu lagi?`, { ya: "Tetap bikin" }))) return;
     const salah = ustadzahDiKelasPutra();
-    if (salah.length && !confirm(`Peringatan: ${kelas} kelas putra, tapi ${salah.join(", ")} ustadzah.\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan?`)) return;
+    if (salah.length && !(await tanyaYakin(`Peringatan: ${kelas} kelas putra, tapi ${salah.join(", ")} ustadzah.\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan?`, { ya: "Tetap simpan" }))) return;
 
     const baru = simpanMapelData({
       ...(lama || {}),
@@ -469,15 +469,16 @@ function formMapel() {
   };
 
   if (lama) {
-    document.getElementById("hapus").onclick = () => {
+    document.getElementById("hapus").onclick = async () => {
       const modul = modulMapel(lama.id);
       const nSoal = modul.reduce((x, y) => x + jumlahSoal(y), 0);
-      const yakin = confirm(
+      const yakin = await tanyaYakin(
         `Hapus mapel ${namaMapel(lama)}?\n\n` +
-        `${modul.length} modul, ${nSoal} soal, dan ${sumatifMapel(lama.id).length} ujian sumatif dari SEMUA pengampu ikut terhapus dan TIDAK bisa dikembalikan.`
+        `${modul.length} modul, ${nSoal} soal, dan ${sumatifMapel(lama.id).length} ujian sumatif dari SEMUA pengampu ikut terhapus dan TIDAK bisa dikembalikan.`,
+        { bahaya: true, ya: "Hapus mapel" }
       );
       if (!yakin) return;
-      if (modul.length && prompt(`Ketik HAPUS untuk memastikan.`) !== "HAPUS") return;
+      if (modul.length && (await minta(`Ketik HAPUS untuk memastikan.`, "", { bahaya: true, ya: "Hapus" })) !== "HAPUS") return;
       hapusMapelData(lama.id);
       hapusSisaKosong();
       pergi("kelolaMapel", { mapelId: null });
@@ -642,7 +643,7 @@ async function unduhCadangan(tombol, pesan) {
   wajibKurikulum();
   if (!isiCadanganSiap()) {
     const teks = "Data masih dimuat, tunggu sebentar lalu coba lagi.";
-    if (pesan) pesan.textContent = teks; else alert(teks);
+    if (pesan) pesan.textContent = teks; else kabar(teks);
     return false;
   }
   const data = dataCadangan();

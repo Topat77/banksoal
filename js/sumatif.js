@@ -107,7 +107,7 @@ function formSumatif() {
     const isian = { nama: f.get("nama").trim(), pelaksanaan: f.get("pelaksanaan").trim() };
     if (lama) {
       const t = ujianTerbaru(mp.id, lama.id);
-      if (!t) { alert("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return kembaliKeDaftar(); }
+      if (!t) { kabar("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return kembaliKeDaftar(); }
       simpanUjian(mp.id, { ...t, ...isian });
       pergi("sumatif");
     } else {
@@ -117,8 +117,8 @@ function formSumatif() {
   };
 
   if (lama) {
-    document.getElementById("hapus").onclick = () => {
-      if (!confirm(`Hapus "${lama.nama}"? Soal-soalnya tetap aman di modul masing-masing.`)) return;
+    document.getElementById("hapus").onclick = async () => {
+      if (!(await tanyaYakin(`Hapus "${lama.nama}"? Soal-soalnya tetap aman di modul masing-masing.`, { bahaya: true, ya: "Hapus ujian" }))) return;
       if (modeUAS()) hapusUAS(posisi.uasGrup, lama.id);
       else hapusSumatif(mp.id, lama.id);
       kembaliKeDaftar();
@@ -221,7 +221,7 @@ function layarSumatif() {
       butir: butirUntukDisimpan(mp.id, (sum.butir || []).map(kunciButir), sum),
       disalinDari: { nama: sum.namaPemilik || "", kelas: (mapelAsal(sum.id) || {}).kelas || "" }
     });
-    alert(`Ujian "${sum.nama}" sudah disalin jadi ujianmu di ${mp.kelas}. Sekarang kamu bisa mengubahnya sesuka hati.`);
+    kabar(`Ujian "${sum.nama}" sudah disalin jadi ujianmu di ${mp.kelas}. Sekarang kamu bisa mengubahnya sesuka hati.`);
     pergi("sumatif", { sumId: baru.id, uasGrup: null });
   });
   const saklar = document.getElementById("bagikanSum");
@@ -234,9 +234,9 @@ function layarSumatif() {
     tampilkan(true);
   };
   isi.querySelectorAll("[data-lepas]").forEach(b => {
-    b.onclick = () => {
+    b.onclick = async () => {
       const k = b.dataset.lepas;
-      if (k.startsWith(MODUL_UJIAN + ":") && !confirm("Hapus soal khusus ujian ini? Soal ini nggak ada di modul mana pun, jadi bakal hilang.")) return;
+      if (k.startsWith(MODUL_UJIAN + ":") && !(await tanyaYakin("Hapus soal khusus ujian ini? Soal ini nggak ada di modul mana pun, jadi bakal hilang.", { bahaya: true, ya: "Hapus soal" }))) return;
       simpanUrutan(urutan.filter(x => x !== k));
     };
   });
@@ -318,7 +318,7 @@ function layarPilihSoal() {
 
   tombol.onclick = () => {
     const t = ujianTerbaru(mp.id, sum.id);
-    if (!t) { alert("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return kembaliKeDaftar(); }
+    if (!t) { kabar("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return kembaliKeDaftar(); }
     const dicentang = kotak.filter(k => k.checked).map(k => k.value);
 
     if (usul) {
@@ -367,9 +367,9 @@ function formSoalUjian() {
   form.onsubmit = (e) => {
     e.preventDefault();
     const hasil = bacaIsianSoal(form, lamaButir ? lamaButir.soalId : buatId());
-    if (hasil.galat) return alert(hasil.galat);
+    if (hasil.galat) return kabar(hasil.galat);
     const t = ujianTerbaru(mp.id, sum.id);
-    if (!t) { alert("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return kembaliKeDaftar(); }
+    if (!t) { kabar("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return kembaliKeDaftar(); }
     const butirBaru = { modulId: MODUL_UJIAN, soalId: hasil.soal.id, salinan: { soal: { ...hasil.soal, bacaanId: null }, bacaan: null } };
     const butir = [...(t.butir || [])];
     const i = butir.findIndex(b => b.modulId === MODUL_UJIAN && b.soalId === hasil.soal.id);

@@ -597,9 +597,9 @@ function gagalSimpan(err) {
   console.error(err);
   const kode = err && err.code;
   if (kode === "permission-denied") {
-    alert("Gagal menyimpan: kamu nggak punya izin untuk perubahan ini.\n\nMungkin kamu sudah bukan pengampu mapel ini. Hubungi admin (TU).");
+    kabar("Gagal menyimpan: kamu nggak punya izin untuk perubahan ini.\n\nMungkin kamu sudah bukan pengampu mapel ini. Hubungi admin (TU).");
   } else {
-    alert("Gagal menyimpan.\n\n" + (err && err.message ? err.message : err));
+    kabar("Gagal menyimpan.\n\n" + (err && err.message ? err.message : err));
   }
   berubah(true);
 }
