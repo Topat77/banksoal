@@ -119,11 +119,12 @@ function formModul() {
       </div>`).join("") : `<p class="info">Belum ada pertemuan.</p>`;
 
     wadah.querySelectorAll("[data-hapus-pertemuan]").forEach(b => {
-      b.onclick = () => {
+      b.onclick = async () => {
         ambilKetikan();
         const id = b.dataset.hapusPertemuan;
         const dipakai = lama ? (lama.soal || []).filter(s => s.pertemuanId === id).length : 0;
-        if (dipakai && !confirm(`${dipakai} soal ditandai untuk pertemuan ini. Soalnya tetap ada, cuma pindah ke "Soal lainnya". Hapus pertemuan ini?`)) return;
+        if (dipakai && !(await tanyaYakin(`${dipakai} soal ditandai untuk pertemuan ini. Soalnya tetap ada, cuma pindah ke "Soal lainnya". Hapus pertemuan ini?`, { bahaya: true, ya: "Hapus pertemuan" }))) return;
+        ambilKetikan();
         daftar = daftar.filter(x => x.id !== id);
         gambarPertemuan();
       };
@@ -150,7 +151,7 @@ function formModul() {
     if (lama) {
       const terbaru = modulMapel(mp.id).find(x => x.id === lama.id);
       if (!terbaru) {
-        alert("Modul ini sudah dihapus (mungkin dari perangkat lain).");
+        kabar("Modul ini sudah dihapus (mungkin dari perangkat lain).");
         return pergi("mapel", { tab: "modul" });
       }
       const ada = new Set(pertemuan.map(p => p.id));
@@ -173,11 +174,12 @@ function formModul() {
   };
 
   if (lama) {
-    document.getElementById("hapus").onclick = () => {
-      const yakin = confirm(
+    document.getElementById("hapus").onclick = async () => {
+      const yakin = await tanyaYakin(
         `Hapus modul "${lama.judul}"?\n\n` +
         `${(lama.pertemuan || []).length} pertemuan, ${jumlahSoal(lama)} soal, dan ${(lama.bacaan || []).length} teks bacaan ikut terhapus. ` +
-        `Di ujian sumatif yang sudah memakai soalnya, soal tetap tercetak dari salinan terakhir. TIDAK bisa dikembalikan.`
+        `Di ujian sumatif yang sudah memakai soalnya, soal tetap tercetak dari salinan terakhir. TIDAK bisa dikembalikan.`,
+        { bahaya: true, ya: "Hapus modul" }
       );
       if (!yakin) return;
       hapusModul(mp.id, lama.id);
@@ -372,9 +374,10 @@ function layarModul() {
     b.onclick = () => pergi("formSoal", { soalId: b.dataset.edit, bacaanPilih: null, pertemuanPilih: null });
   });
   isi.querySelectorAll("[data-hapus]").forEach(b => {
-    b.onclick = () => {
-      if (!confirm("Hapus soal ini?\n\nKalau soal ini sudah dipakai di ujian sumatif, di sana tetap tercetak dari salinan terakhir.")) return;
-      simpanModul(mp.id, { ...m, soal: soal.filter(s => s.id !== b.dataset.hapus) });
+    b.onclick = async () => {
+      if (!(await tanyaYakin("Hapus soal ini?\n\nKalau soal ini sudah dipakai di ujian sumatif, di sana tetap tercetak dari salinan terakhir.", { bahaya: true, ya: "Hapus soal" }))) return;
+      const t = modulMapel(mp.id).find(y => y.id === m.id) || m;
+      simpanModul(mp.id, { ...t, soal: (t.soal || []).filter(s => s.id !== b.dataset.hapus) });
       tampilkan(true);
     };
   });
@@ -421,7 +424,7 @@ function formBacaan() {
 
   const ambilModulTerbaru = () => {
     const x = modulMapel(mp.id).find(y => y.id === m.id);
-    if (!x) { alert("Modul ini sudah dihapus (mungkin dari perangkat lain)."); pergi("mapel", { tab: "modul" }); }
+    if (!x) { kabar("Modul ini sudah dihapus (mungkin dari perangkat lain)."); pergi("mapel", { tab: "modul" }); }
     return x;
   };
 
@@ -440,14 +443,16 @@ function formBacaan() {
   };
 
   if (lama) {
-    document.getElementById("hapus").onclick = () => {
-      const t = ambilModulTerbaru();
+    document.getElementById("hapus").onclick = async () => {
+      let t = ambilModulTerbaru();
       if (!t) return;
       const dipakai = (t.soal || []).filter(s => s.bacaanId === lama.id);
       const pesan = dipakai.length
         ? `Hapus teks ini? ${dipakai.length} soal yang memakainya tetap ada, cuma nggak punya teks bacaan lagi.`
         : "Hapus teks bacaan ini?";
-      if (!confirm(pesan)) return;
+      if (!(await tanyaYakin(pesan, { bahaya: true, ya: "Hapus teks" }))) return;
+      t = ambilModulTerbaru();
+      if (!t) return;
       simpanModul(mp.id, {
         ...t,
         bacaan: (t.bacaan || []).filter(x => x.id !== lama.id),
@@ -639,13 +644,13 @@ function formSoal() {
     e.preventDefault();
     const f = new FormData(form);
     const hasil = bacaIsianSoal(form, lama ? lama.id : buatId());
-    if (hasil.galat) return alert(hasil.galat);
+    if (hasil.galat) return kabar(hasil.galat);
     // "dibuat" dipakai beranda buat ngitung soal baru bulan ini
     const baru = { ...hasil.soal, bacaanId: f.get("bacaanId") || null, pertemuanId: f.get("pertemuanId") || null, dibuat: (lama && lama.dibuat) || Date.now() };
 
     const t = modulMapel(mp.id).find(y => y.id === m.id);
     if (!t) {
-      alert("Modul ini sudah dihapus (mungkin dari perangkat lain).");
+      kabar("Modul ini sudah dihapus (mungkin dari perangkat lain).");
       return pergi("mapel", { tab: "modul" });
     }
     const daftar = [...(t.soal || [])];
@@ -729,25 +734,25 @@ function formSalin() {
       <button type="submit" class="tombol-utama">Salin sekarang</button>
     </form>`;
 
-  document.getElementById("form").onsubmit = (e) => {
+  document.getElementById("form").onsubmit = async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
     const dipilih = f.getAll("modul");
-    if (dipilih.length === 0) return alert("Centang minimal satu modul.");
+    if (dipilih.length === 0) return kabar("Centang minimal satu modul.");
     const tujuan = { semester: f.get("semester"), tahun: f.get("tahun").trim() };
     if (kunciSemester(tujuan) === kunciSemester(sem) &&
-        !confirm("Tujuannya sama dengan semester asal, jadi bakal ada modul kembar di semester ini. Lanjut?")) return;
+        !(await tanyaYakin("Tujuannya sama dengan semester asal, jadi bakal ada modul kembar di semester ini. Lanjut?", { ya: "Lanjut" }))) return;
 
     const sudahAda = modulMapel(mp.id).filter(m => milikSaya(m) && samaSemester(m, tujuan)).map(m => m.judul.toLowerCase());
     const kembar = milik.filter(m => dipilih.includes(m.id) && sudahAda.includes(m.judul.toLowerCase()));
     if (kembar.length && kunciSemester(tujuan) !== kunciSemester(sem) &&
-        !confirm(`Di ${namaSemester(tujuan)} sudah ada modul dengan judul sama:\n\n${kembar.map(m => "• " + m.judul).join("\n")}\n\nTetap salin?`)) return;
+        !(await tanyaYakin(`Di ${namaSemester(tujuan)} sudah ada modul dengan judul sama:\n\n${kembar.map(m => "• " + m.judul).join("\n")}\n\nTetap salin?`, { ya: "Tetap salin" }))) return;
 
     const jam = Date.now();
     milik.filter(m => dipilih.includes(m.id)).forEach((m, i) => {
       simpanModul(mp.id, { ...salinModulBaru(m, tujuan), dibuat: jam + i });
     });
-    alert(`${dipilih.length} modul berhasil disalin ke ${namaSemester(tujuan)}.`);
+    kabar(`${dipilih.length} modul berhasil disalin ke ${namaSemester(tujuan)}.`);
     pergi("mapel", { semester: kunciSemester(tujuan), tab: "modul" });
   };
 }

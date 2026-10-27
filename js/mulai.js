@@ -8,6 +8,7 @@ function fileKurang() {
   const cek = {
     "js/konfig.js": typeof KONFIG !== "undefined",
     "js/alat.js": typeof aman === "function",
+    "js/dialog.js": typeof tanyaYakin === "function",
     "js/aturan.js": typeof buatAturan === "function",
     "js/coba.js": typeof buatBackendCoba === "function",
     "js/toko.js": typeof mulaiAplikasi === "function",

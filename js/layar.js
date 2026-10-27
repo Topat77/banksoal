@@ -820,8 +820,8 @@ function layarLainnya() {
       document.getElementById("tersimpanLembaga").textContent = "Tersimpan";
     };
   }
-  document.getElementById("keluar").onclick = () => {
-    if (!coba && !confirm("Keluar dari akun ini?")) return;
+  document.getElementById("keluar").onclick = async () => {
+    if (!coba && !(await tanyaYakin("Keluar dari akun ini?", { ya: "Keluar" }))) return;
     toko.backend.keluar();
   };
   isi.querySelectorAll('[name="tema"]').forEach(r => r.onchange = () => pasangTema(r.value));
@@ -840,8 +840,8 @@ function layarLainnya() {
   }
   const reset = document.getElementById("resetCoba");
   if (reset) {
-    reset.onclick = () => {
-      if (!confirm("Semua perubahan di mode coba dihapus dan data contoh dikembalikan seperti semula. Lanjut?")) return;
+    reset.onclick = async () => {
+      if (!(await tanyaYakin("Semua perubahan di mode coba dihapus dan data contoh dikembalikan seperti semula. Lanjut?", { bahaya: true, ya: "Reset" }))) return;
       toko.backend.reset();
       pergi("beranda");
     };

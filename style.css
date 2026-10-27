@@ -1601,3 +1601,42 @@ label.pilih-peran .menu-pilih { min-width: 160px; }
 .info.kecil { font-size: 14px; }
 .kartu-sambut.kecil { grid-template-columns: minmax(0, 1fr); padding: 18px 20px; }
 .kartu-sambut.kecil h2 { font-size: 21px; }
+
+/* =====================================================
+   KOTAK DIALOG (pengganti confirm / alert / prompt bawaan browser)
+   HP: muncul dari bawah. Laptop: di tengah layar.
+   ===================================================== */
+.dialog-latar {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: rgba(4, 20, 14, .55);
+  animation: dialog-latar .15s ease-out;
+}
+.dialog {
+  display: flex; flex-direction: column; gap: 16px;
+  width: min(460px, 100%); max-height: calc(100vh - 32px); overflow-y: auto;
+  padding: 22px 20px 18px;
+  background: var(--lembar); color: var(--tinta);
+  border: 1px solid var(--kaca-garis); border-radius: 20px;
+  box-shadow: 0 18px 50px rgba(4, 20, 14, .3);
+  animation: dialog-naik .18s ease-out;
+}
+.dialog-pesan { margin: 0; font-size: 17px; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
+.dialog-isian { width: 100%; }
+.dialog-tombol { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.dialog-tombol button { flex: 1 1 140px; }
+.tombol-bahaya {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 48px; padding: 0 20px; border: none; border-radius: var(--sudut);
+  background: var(--merah); color: var(--di-atas-merah); font: inherit; font-weight: 700; cursor: pointer;
+}
+.tombol-bahaya:hover { filter: brightness(1.06); }
+body.ada-dialog { overflow: hidden; }
+@media (min-width: 700px) {
+  .dialog-latar { align-items: center; }
+  .dialog-tombol button { flex: 0 0 auto; min-width: 120px; }
+}
+@keyframes dialog-latar { from { opacity: 0; } }
+@keyframes dialog-naik { from { opacity: 0; transform: translateY(16px); } }
+@media (prefers-reduced-motion: reduce) { .dialog-latar, .dialog { animation: none; } }

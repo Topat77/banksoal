@@ -404,8 +404,8 @@ function layarAISoal() {
       el.querySelectorAll(`[name="kunci-${s.id}"]`).forEach(r => r.onchange = () => { s.kunci = Number(r.value); s.ragu = false; const t = el.querySelector(".tanda-ragu"); if (t) t.remove(); });
     });
 
-    document.getElementById("kosongkanDraf").onclick = () => {
-      if (!confirm(`Buang semua ${d.soal.length} soal di draft?`)) return;
+    document.getElementById("kosongkanDraf").onclick = async () => {
+      if (!(await tanyaYakin(`Buang semua ${d.soal.length} soal di draft?`, { bahaya: true, ya: "Buang semua" }))) return;
       d.soal = [];
       gambarDraf();
       tombol.querySelector("span").textContent = "Buat draft soal";
@@ -418,7 +418,7 @@ function layarAISoal() {
 // cek & rapikan draft yang dicentang, lalu simpan
 function simpanDrafAI(bahan, d, wadah) {
   const dipakai = d.soal.filter(s => s.pakai);
-  if (dipakai.length === 0) { alert("Belum ada soal yang dicentang \"Pakai\"."); return; }
+  if (dipakai.length === 0) { kabar("Belum ada soal yang dicentang \"Pakai\"."); return; }
 
   let salah = 0;
   const siap = [];
@@ -441,22 +441,22 @@ function simpanDrafAI(bahan, d, wadah) {
   if (salah) {
     const pertama = wadah.querySelector(".ada-salah");
     if (pertama) pertama.scrollIntoView({ block: "center" });
-    alert(`${salah} soal masih ada yang kurang. Lihat tulisan merah di soalnya.`);
+    kabar(`${salah} soal masih ada yang kurang. Lihat tulisan merah di soalnya.`);
     return;
   }
 
   const mp = bahan.mapel;
   if (bahan.untuk === "modul") {
     const t = modulMapel(mp.id).find(x => x.id === bahan.modul.id);
-    if (!t) { alert("Modul ini sudah dihapus (mungkin dari perangkat lain)."); return pergi("mapel", { tab: "modul" }); }
+    if (!t) { kabar("Modul ini sudah dihapus (mungkin dari perangkat lain)."); return pergi("mapel", { tab: "modul" }); }
     simpanModul(mp.id, { ...t, soal: [...(t.soal || []), ...siap] });
     drafAI = null;
     pergi("modul", { aiPertemuan: null });
   } else {
     const t = ujianTerbaru(mp.id, bahan.sum.id);
-    if (!t) { alert("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return kembaliKeDaftar(); }
+    if (!t) { kabar("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return kembaliKeDaftar(); }
     if (bahan.usul) {
-      if (t.status === "dikunci") { alert("UAS ini sudah dikunci TU, jadi nggak bisa diusulkan soal lagi."); return pergi("sumatif", { usul: false }); }
+      if (t.status === "dikunci") { kabar("UAS ini sudah dikunci TU, jadi nggak bisa diusulkan soal lagi."); return pergi("sumatif", { usul: false }); }
       for (const s of siap) {
         simpanUsulan(posisi.uasGrup, {
           id: buatId(), semester: t.semester, tahun: t.tahun,
@@ -466,7 +466,7 @@ function simpanDrafAI(bahan, d, wadah) {
         });
       }
       drafAI = null;
-      alert(`${siap.length} soal sudah dikirim sebagai usulan. Koordinator yang memutuskan dipakai atau nggak.`);
+      kabar(`${siap.length} soal sudah dikirim sebagai usulan. Koordinator yang memutuskan dipakai atau nggak.`);
       return pergi("sumatif", { usul: false });
     }
     const butir = [...(t.butir || []), ...siap.map(s => ({

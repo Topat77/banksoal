@@ -252,7 +252,8 @@ function layarSantri() {
   }
 
   // simpan satu baris (baris baru dibikin begitu namanya diisi)
-  function simpanBaris(tr) {
+  async function simpanBaris(tr) {
+    if (tr.dataset.menunggu) return;   // dialog "nama kembar" masih kebuka buat baris ini
     const v = ambil(tr);
     const absen = v.absen === "" ? "" : Math.round(Number(v.absen));
     if (tr.dataset.id) {
@@ -268,7 +269,12 @@ function layarSantri() {
       pesan.textContent = "Tersimpan";
     } else if (v.nama) {
       const kembar = toko.santri.find(x => x.jenjang === jenjang && x.kelas === kelas && x.aktif !== false && x.nama.toLowerCase() === v.nama.toLowerCase());
-      if (kembar && !confirm(`${v.nama} sudah ada di kelas ini. Tetap tambahkan sebagai siswa lain?`)) return;
+      if (kembar) {
+        tr.dataset.menunggu = "1";
+        const lanjut = await tanyaYakin(`${v.nama} sudah ada di kelas ini. Tetap tambahkan sebagai siswa lain?`, { ya: "Tetap tambahkan" });
+        delete tr.dataset.menunggu;
+        if (!lanjut || tr.dataset.id) return;
+      }
       const baru = simpanSantri({ id: buatId(), nama: v.nama, nis: v.nis, absen, jenjang, kelas, aktif: true });
       tr.dataset.id = baru.id;
       tr.querySelector('[data-f="nama"]').placeholder = "";
@@ -326,11 +332,11 @@ function layarSantri() {
   pasangBaris();
   cekAbsen();
 
-  badan.onclick = (e) => {
+  badan.onclick = async (e) => {
     const b = e.target.closest("[data-hapus-santri]");
     if (!b) return;
     const x = toko.santri.find(y => y.id === b.dataset.hapusSantri);
-    if (!x || !confirm(`Hapus ${x.nama} dari daftar siswa?\n\nNilai yang sudah diisi untuk siswa ini ikut nggak kepakai lagi.`)) return;
+    if (!x || !(await tanyaYakin(`Hapus ${x.nama} dari daftar siswa?\n\nNilai yang sudah diisi untuk siswa ini ikut nggak kepakai lagi.`, { bahaya: true, ya: "Hapus" }))) return;
     hapusSantri(x.id);
     b.closest("tr").remove();
     cekAbsen();
@@ -480,16 +486,13 @@ function layarNilai() {
   });
 
   isi.querySelectorAll("[data-tambah-kolom]").forEach(b => {
-    b.onclick = () => {
+    b.onclick = async () => {
       const g = KELOMPOK_NILAI.find(x => x.k === b.dataset.tambahKolom);
+      if (!(Number(bobot[g.k]) > 0) && !(await tanyaYakin(`Bobot ${g.nama} untuk mapel ${namaJenis(jenis).toLowerCase()} ${mp.jenjang} sekarang 0%, jadi kolom ini belum ikut dihitung di nilai akhir. Tetap tambah?\n\n(Bobot diatur admin.)`, { ya: "Tetap tambah" }))) return;
       const ada = lembar.kolom.filter(k => k.kelompok === g.k).length;
       const tunggal = g.k === "uts" || g.k === "uas" || g.k === "keaktifan";
       const label = tunggal && ada === 0 ? g.label : `${g.label} ${ada + 1}`;
       lembar.kolom.push({ id: buatId(), kelompok: g.k, label });
-      if (!(Number(bobot[g.k]) > 0) && !confirm(`Bobot ${g.nama} untuk mapel ${namaJenis(jenis).toLowerCase()} ${mp.jenjang} sekarang 0%, jadi kolom ini belum ikut dihitung di nilai akhir. Tetap tambah?\n\n(Bobot diatur admin.)`)) {
-        lembar.kolom.pop();
-        return;
-      }
       kirimNilaiTertunda();
       simpanLembarNilai(mp.id, lembar);
       tampilkan(true);
@@ -497,13 +500,13 @@ function layarNilai() {
   });
 
   isi.querySelectorAll("[data-kolom]").forEach(b => {
-    b.onclick = () => {
+    b.onclick = async () => {
       const k = lembar.kolom.find(x => x.id === b.dataset.kolom);
-      const nama = prompt(`Nama kolom (contoh: UH 2, Hafalan juz 30).\nKosongkan lalu OK untuk menghapus kolom ini.`, k.label);
+      const nama = await minta(`Nama kolom (contoh: UH 2, Hafalan juz 30).\nKosongkan lalu Simpan untuk menghapus kolom ini.`, k.label, { ya: "Simpan" });
       if (nama === null) return;
       if (!nama.trim()) {
         const terisi = Object.values(lembar.nilai).filter(n => n[k.id] !== undefined).length;
-        if (!confirm(`Hapus kolom "${k.label}"?${terisi ? `\n\n${terisi} nilai di kolom ini ikut terhapus.` : ""}`)) return;
+        if (!(await tanyaYakin(`Hapus kolom "${k.label}"?${terisi ? `\n\n${terisi} nilai di kolom ini ikut terhapus.` : ""}`, { bahaya: true, ya: "Hapus kolom" }))) return;
         lembar.kolom = lembar.kolom.filter(x => x.id !== k.id);
         for (const n of Object.values(lembar.nilai)) delete n[k.id];
       } else {
@@ -601,8 +604,8 @@ function layarBobot() {
       tulisTotal();
     };
   });
-  document.getElementById("simpanBobot").onclick = () => {
-    if (!tulisTotal() && !confirm("Total bobot belum pas 100%. Tetap simpan?\n\n(Nilai akhir tetap dihitung adil: dibagi total bobot yang ada.)")) return;
+  document.getElementById("simpanBobot").onclick = async () => {
+    if (!tulisTotal() && !(await tanyaYakin("Total bobot belum pas 100%. Tetap simpan?\n\n(Nilai akhir tetap dihitung adil: dibagi total bobot yang ada.)", { ya: "Tetap simpan" }))) return;
     const data = { diubah: Date.now(), diubahOleh: uidSaya() };
     for (const j of jenjang) data[j] = { umum: { ...isian[j].umum }, diniah: { ...isian[j].diniah } };
     simpanBobot(data);
