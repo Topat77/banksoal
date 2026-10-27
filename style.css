@@ -421,7 +421,7 @@ body:not([data-status="aktif"]) header { display: none; }
 /* =====================================================
    TEKS UMUM
    ===================================================== */
-.info { margin: 0; font-size: 16px; color: var(--tinta-redup); }
+.info { margin: 0; font-size: 16px; color: var(--tinta-redup); overflow-wrap: anywhere; }
 .info-utama { margin: 0; font-weight: 600; }
 .sapa { margin: 0; font-size: 18px; font-weight: 600; }
 .peringatan { margin: 0; font-size: 15px; color: var(--merah); }

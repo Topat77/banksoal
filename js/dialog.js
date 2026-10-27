@@ -70,12 +70,14 @@ function tampilDialog(o, selesai) {
   latar.appendChild(kotak);
   document.body.appendChild(latar);
   document.body.classList.add("ada-dialog");
+  if (typeof aturRiwayat === "function") aturRiwayat();   // back HP nutup kotak ini
 
   function tutup(hasil) {
     document.removeEventListener("keydown", tombolKeyboard, true);
     latar.remove();
     if (!document.querySelector(".dialog-latar")) document.body.classList.remove("ada-dialog");
     if (asal && typeof asal.focus === "function" && document.contains(asal)) asal.focus();
+    if (typeof aturRiwayat === "function") aturRiwayat();
     selesai(hasil);
   }
   const jawabYa = () => tutup(o.jenis === "minta" ? isian.value : o.jenis === "kabar" ? undefined : true);

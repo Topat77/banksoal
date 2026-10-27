@@ -184,6 +184,7 @@ function pesanGagalAI(err) {
   if (/JAWABAN_RUSAK/.test(t)) return "Jawaban AI-nya nggak kebaca. Coba tekan Buat draft soal sekali lagi.";
   if (/JAWABAN_KOSONG/.test(t)) return "AI nggak ngasih soal apa pun. Coba tambahin bahannya (target capaian, ringkasan, atau PDF), lalu coba lagi.";
   if (/\b429\b|quota|RESOURCE_EXHAUSTED|rate.?limit|too many requests/i.test(t)) return "Jatah AI gratis lagi habis atau kebanyakan permintaan. Tunggu sebentar (atau besok), atau kurangi jumlah soal.";
+  if (/\[50[034]\b|unavailable|overloaded/i.test(t)) return "Server AI Google lagi penuh. Tunggu beberapa menit, lalu coba lagi (jumlah soalnya dikurangi juga boleh).";
   if (/app.?check/i.test(t)) return "AI ditolak karena pengaman App Check. Admin perlu ngecek pengaturan App Check di Firebase (lihat tutorial).";
   if (/network-request-failed|Failed to fetch|NetworkError/i.test(t)) return "Gagal nyambung ke server AI. Cek sinyal, lalu coba lagi.";
   if (/not.*enabled|has not been used|PERMISSION_DENIED|403|api-not-enabled|genai config not found|config-not-found/i.test(t)) return "Fitur AI belum diaktifkan di Firebase. Admin perlu nyalain Firebase AI Logic dulu (lihat tutorial).";
@@ -194,7 +195,8 @@ function pesanGagalAI(err) {
 // pesan + kode aslinya (buat dilaporin kalau ada masalah)
 function pesanGagalAILengkap(err) {
   const kode = (err && (err.code || err.name)) || "";
-  const asli = String((err && err.message) || err || "").slice(0, 160);
+  // alamat server panjang dibuang: nggak berguna buat guru, dan bikin layar melebar
+  const asli = String((err && err.message) || err || "").replace(/Error fetching from \S+:?\s*/g, "").replace(/https?:\/\/\S+/g, "").trim().slice(0, 120);
   return `${pesanGagalAI(err)}${kode || asli ? ` (detail: ${[kode, asli].filter(Boolean).join(" · ")})` : ""}`;
 }
 
@@ -321,7 +323,12 @@ function layarAISoal() {
     if (!toko.backend.tanyaAI) { status.textContent = "Fitur AI belum tersedia di versi ini."; return; }
 
     tombol.disabled = true;
-    status.textContent = "AI lagi nyusun soal... biasanya 10–30 detik.";
+    // detik berjalan, biar kelihatan prosesnya masih jalan (bukan macet)
+    const mulai = Date.now();
+    let keterangan = "AI lagi nyusun soal...";
+    const tulisStatus = () => { status.textContent = `${keterangan} ${Math.round((Date.now() - mulai) / 1000)} detik`; };
+    tulisStatus();
+    const jam = setInterval(tulisStatus, 1000);
     try {
       const jawaban = await toko.backend.tanyaAI({
         perintah: susunPerintahAI(bahan, d),
@@ -331,7 +338,8 @@ function layarAISoal() {
           pertemuan: bahan.pilihan.filter(x => d.pilih.includes(x.id)).map(x => ({ nomor: x.nomor, judul: x.label, target: keModul ? x.pertemuan.target : (x.modul.pertemuan || []).map(p => p.target).filter(Boolean).join("; ") })),
           ringkasan: d.ringkasan, jumlahPG: d.jumlahPG, jumlahEsai: d.jumlahEsai, bacaan: keModul && d.pakaiBacaan ? bahan.bacaan.length : 0
         }
-      });
+      }, (teks) => { keterangan = teks; tulisStatus(); });
+      clearInterval(jam);
       if (drafAI !== d || posisi.layar !== "aiSoal") return;   // udah pindah layar
       const baru = bacaJawabanAI(jawaban, bahan);
       d.soal.push(...baru);
@@ -342,8 +350,10 @@ function layarAISoal() {
       document.getElementById("wadahDraf").scrollIntoView({ block: "start", behavior: "smooth" });
     } catch (err) {
       console.warn("AI gagal:", err);
+      clearInterval(jam);
       status.textContent = pesanGagalAILengkap(err);
     } finally {
+      clearInterval(jam);
       tombol.disabled = false;
     }
   };
@@ -547,13 +557,13 @@ function layarAIGenerator() {
   isi.querySelectorAll('[name="aiKe"]').forEach(r => r.onchange = () => pergi("aiGenerator", { aiMapel: mp.id, aiKe: r.value }));
   const buat = document.getElementById("aiBuatDulu");
   if (buat) buat.onclick = () => ke === "modul"
-    ? pergi("formModul", { mapelId: mp.id, modEditId: null, semester: kunciSemester(sem) })
-    : pergi("formSumatif", { mapelId: mp.id, sumEditId: null, uasGrup: null, semester: kunciSemester(sem) });
+    ? pergi("formModul", { mapelId: mp.id, modEditId: null, semester: kunciSemester(sem) , dariAI: true })
+    : pergi("formSumatif", { mapelId: mp.id, sumEditId: null, uasGrup: null, semester: kunciSemester(sem) , dariAI: true });
   document.getElementById("formAIGen").onsubmit = (e) => {
     e.preventDefault();
     const id = document.getElementById("aiTujuan").value;
     if (!id) return;
-    if (ke === "modul") pergi("aiSoal", { mapelId: mp.id, aiUntuk: "modul", modId: id, aiPertemuan: null, semester: kunciSemester(sem) });
-    else pergi("aiSoal", { mapelId: mp.id, aiUntuk: "sumatif", sumId: id, uasGrup: null, usul: false, semester: kunciSemester(sem) });
+    if (ke === "modul") pergi("aiSoal", { mapelId: mp.id, aiUntuk: "modul", modId: id, aiPertemuan: null, semester: kunciSemester(sem) , dariAI: true });
+    else pergi("aiSoal", { mapelId: mp.id, aiUntuk: "sumatif", sumId: id, uasGrup: null, usul: false, semester: kunciSemester(sem) , dariAI: true });
   };
 }
