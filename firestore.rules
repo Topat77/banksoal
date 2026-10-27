@@ -52,6 +52,84 @@ service cloud.firestore {
       return anggotaGrup(get(/databases/$(database)/documents/mapel/$(idMapel)).data.grup);
     }
 
+    // ---------- validasi isi dokumen ----------
+    // Biar akun guru yang disalahgunakan nggak bisa ngisi kolom sembarangan
+    // atau bikin dokumen kebesaran. Batasnya sengaja longgar.
+    function isi() {
+      return request.resource.data;
+    }
+    // dokumen baru: semua kolom harus dikenal. Ubah: cuma kolom yang BERUBAH yang dicek,
+    // jadi dokumen lama yang punya kolom versi dulu tetap bisa diedit.
+    function kolomDikenal(daftar) {
+      return resource == null
+        ? isi().keys().hasOnly(daftar)
+        : isi().diff(resource.data).affectedKeys().hasOnly(daftar);
+    }
+    // kolom yang nggak boleh berubah setelah dibuat (kalau dulu belum ada, boleh diisi)
+    function tetap(k) {
+      return resource == null || !(k in resource.data)
+        || (k in isi() && isi()[k] == resource.data[k]);
+    }
+    function teks(k, maks) {
+      return !(k in isi()) || (isi()[k] is string && isi()[k].size() <= maks);
+    }
+    function teksAtauKosong(k, maks) {
+      return !(k in isi()) || isi()[k] == null || (isi()[k] is string && isi()[k].size() <= maks);
+    }
+    function daftar(k, maks) {
+      return !(k in isi()) || (isi()[k] is list && isi()[k].size() <= maks);
+    }
+    function peta(k, maks) {
+      return !(k in isi()) || isi()[k] == null || (isi()[k] is map && isi()[k].size() <= maks);
+    }
+    function angka(k) {
+      return !(k in isi()) || isi()[k] is number;
+    }
+    function yaTidak(k) {
+      return !(k in isi()) || isi()[k] is bool;
+    }
+    function semesterTetap() {
+      return teks('semester', 20) && teks('tahun', 20) && tetap('semester') && tetap('tahun') && tetap('dibuat')
+        && angka('dibuat') && angka('diubah');
+    }
+    function modulValid() {
+      return kolomDikenal(['semester', 'tahun', 'judul', 'catatan', 'link', 'pemilik', 'namaPemilik',
+          'dibagikan', 'pertemuan', 'bacaan', 'soal', 'terkait', 'lanjutanDari', 'dibuat', 'diubah'])
+        && semesterTetap()
+        && teks('judul', 200) && teks('catatan', 5000) && teks('link', 500) && teks('namaPemilik', 100)
+        && yaTidak('dibagikan') && teksAtauKosong('lanjutanDari', 100)
+        && daftar('pertemuan', 100) && daftar('bacaan', 50) && daftar('soal', 500) && daftar('terkait', 50);
+    }
+    function sumatifValid() {
+      return kolomDikenal(['semester', 'tahun', 'nama', 'pelaksanaan', 'pemilik', 'namaPemilik',
+          'dibagikan', 'butir', 'disalinDari', 'dibuat', 'diubah'])
+        && semesterTetap()
+        && teks('nama', 200) && teks('pelaksanaan', 200) && teks('namaPemilik', 100)
+        && yaTidak('dibagikan') && daftar('butir', 200) && peta('disalinDari', 5);
+    }
+    // UAS yang ditulis koordinator (TU nggak dibatasi)
+    function uasValid() {
+      return kolomDikenal(['semester', 'tahun', 'nama', 'pelaksanaan', 'status', 'butir',
+          'dibuat', 'diubah', 'diubahOleh', 'namaPengubah', 'diajukan'])
+        && semesterTetap()
+        && teks('nama', 200) && teks('pelaksanaan', 200) && teks('namaPengubah', 100)
+        && isi().diubahOleh == request.auth.uid
+        && daftar('butir', 200) && angka('diajukan');
+    }
+    function usulanValid() {
+      return kolomDikenal(['semester', 'tahun', 'modulId', 'soalId', 'salinan', 'catatan',
+          'pemilik', 'namaPemilik', 'dibuat'])
+        && semesterTetap()
+        && teks('modulId', 100) && teks('soalId', 100) && teks('catatan', 2000) && teks('namaPemilik', 100)
+        && peta('salinan', 10);
+    }
+    // lembar nilai: kolom nilainya dinamis, jadi cuma dicek bentuk & ukurannya
+    function nilaiValid() {
+      return semesterTetap()
+        && daftar('kolom', 60) && peta('nilai', 300) && peta('hadir', 300)
+        && teks('namaPengubah', 100);
+    }
+
     // ---------- akun ----------
     match /pengguna/{uid} {
       allow read: if masuk() && (request.auth.uid == uid || kurikulum());
@@ -116,10 +194,12 @@ service cloud.firestore {
           || (resource.data.dibagikan == true && (pengampu(idMapel) || segrup(idMapel))));
         allow create: if aktif()
           && request.resource.data.pemilik == request.auth.uid
-          && pengampu(idMapel);
+          && pengampu(idMapel)
+          && modulValid();
         allow update: if aktif()
           && resource.data.pemilik == request.auth.uid
-          && request.resource.data.pemilik == request.auth.uid;
+          && request.resource.data.pemilik == request.auth.uid
+          && modulValid();
         allow delete: if aktif()
           && (resource.data.pemilik == request.auth.uid || kurikulum());
       }
@@ -128,7 +208,7 @@ service cloud.firestore {
       // admin cuma bisa lihat (buat pantauan dan rapor)
       match /nilai/{id} {
         allow read: if aktif() && (kurikulum() || pengampu(idMapel));
-        allow create, update: if aktif() && pengampu(idMapel);
+        allow create, update: if aktif() && pengampu(idMapel) && nilaiValid();
         // admin boleh menghapus, buat ngebersihin waktu mapelnya dihapus
         allow delete: if aktif() && (pengampu(idMapel) || kurikulum());
       }
@@ -142,10 +222,12 @@ service cloud.firestore {
           || (resource.data.dibagikan == true && (pengampu(idMapel) || segrup(idMapel))));
         allow create: if aktif()
           && request.resource.data.pemilik == request.auth.uid
-          && pengampu(idMapel);
+          && pengampu(idMapel)
+          && sumatifValid();
         allow update: if aktif()
           && resource.data.pemilik == request.auth.uid
-          && request.resource.data.pemilik == request.auth.uid;
+          && request.resource.data.pemilik == request.auth.uid
+          && sumatifValid();
         allow delete: if aktif()
           && (resource.data.pemilik == request.auth.uid || kurikulum());
       }
@@ -163,11 +245,12 @@ service cloud.firestore {
       match /uas/{id} {
         allow read: if aktif() && (kurikulum() || anggotaGrup(idGrup));
         allow create: if aktif() && (kurikulum()
-          || (koordinatorGrup(idGrup) && request.resource.data.status == 'draf'));
+          || (koordinatorGrup(idGrup) && request.resource.data.status == 'draf' && uasValid()));
         allow update: if aktif() && (kurikulum()
           || (koordinatorGrup(idGrup)
               && resource.data.status in ['draf', 'diajukan']
-              && request.resource.data.status in ['draf', 'diajukan']));
+              && request.resource.data.status in ['draf', 'diajukan']
+              && uasValid()));
         allow delete: if aktif() && (kurikulum()
           || (koordinatorGrup(idGrup) && resource.data.status == 'draf'));
       }
@@ -176,10 +259,12 @@ service cloud.firestore {
       match /usulan/{id} {
         allow read: if aktif() && (kurikulum() || anggotaGrup(idGrup));
         allow create: if aktif() && anggotaGrup(idGrup)
-          && request.resource.data.pemilik == request.auth.uid;
+          && request.resource.data.pemilik == request.auth.uid
+          && usulanValid();
         allow update: if aktif()
           && resource.data.pemilik == request.auth.uid
-          && request.resource.data.pemilik == request.auth.uid;
+          && request.resource.data.pemilik == request.auth.uid
+          && usulanValid();
         allow delete: if aktif() && (
           resource.data.pemilik == request.auth.uid
           || koordinatorGrup(idGrup)
