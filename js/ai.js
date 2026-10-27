@@ -184,6 +184,7 @@ function pesanGagalAI(err) {
   if (/JAWABAN_RUSAK/.test(t)) return "Jawaban AI-nya nggak kebaca. Coba tekan Buat draft soal sekali lagi.";
   if (/JAWABAN_KOSONG/.test(t)) return "AI nggak ngasih soal apa pun. Coba tambahin bahannya (target capaian, ringkasan, atau PDF), lalu coba lagi.";
   if (/\b429\b|quota|RESOURCE_EXHAUSTED|rate.?limit|too many requests/i.test(t)) return "Jatah AI gratis lagi habis atau kebanyakan permintaan. Tunggu sebentar (atau besok), atau kurangi jumlah soal.";
+  if (/timeout has expired|timed? ?out|deadline/i.test(t)) return "Server AI Google lagi lambat, jadi nggak ada jawaban. Coba lagi beberapa menit lagi (jumlah soalnya dikurangi juga boleh).";
   if (/\[50[034]\b|unavailable|overloaded/i.test(t)) return "Server AI Google lagi penuh. Tunggu beberapa menit, lalu coba lagi (jumlah soalnya dikurangi juga boleh).";
   if (/app.?check/i.test(t)) return "AI ditolak karena pengaman App Check. Admin perlu ngecek pengaturan App Check di Firebase (lihat tutorial).";
   if (/network-request-failed|Failed to fetch|NetworkError/i.test(t)) return "Gagal nyambung ke server AI. Cek sinyal, lalu coba lagi.";
