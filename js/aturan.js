@@ -30,6 +30,54 @@ function buatAturan(ambilDok, adminAwal) {
     return !!m && anggotaGrup(auth, m.grup);
   };
 
+  // ---- validasi isi dokumen (sama dengan fungsi-fungsi "Valid" di firestore.rules) ----
+  const sama = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const ada = (d, k) => Object.prototype.hasOwnProperty.call(d, k);
+  const jenisPeta = (x) => !!x && typeof x === "object" && !Array.isArray(x);
+  function kolomDikenal(lama, baru, daftar) {
+    if (!lama) return Object.keys(baru).every(k => daftar.includes(k));
+    const berubah = new Set([...Object.keys(baru), ...Object.keys(lama)]);
+    return [...berubah].filter(k => !sama(lama[k], baru[k])).every(k => daftar.includes(k));
+  }
+  const tetap = (lama, baru, k) => !lama || !ada(lama, k) || (ada(baru, k) && sama(baru[k], lama[k]));
+  const teks = (d, k, maks) => !ada(d, k) || (typeof d[k] === "string" && d[k].length <= maks);
+  const teksAtauKosong = (d, k, maks) => !ada(d, k) || d[k] === null || teks(d, k, maks);
+  const daftar = (d, k, maks) => !ada(d, k) || (Array.isArray(d[k]) && d[k].length <= maks);
+  const peta = (d, k, maks) => !ada(d, k) || d[k] === null || (jenisPeta(d[k]) && Object.keys(d[k]).length <= maks);
+  const angka = (d, k) => !ada(d, k) || typeof d[k] === "number";
+  const yaTidak = (d, k) => !ada(d, k) || typeof d[k] === "boolean";
+  const semesterTetap = (lama, b) =>
+    teks(b, "semester", 20) && teks(b, "tahun", 20) && tetap(lama, b, "semester") && tetap(lama, b, "tahun") &&
+    tetap(lama, b, "dibuat") && angka(b, "dibuat") && angka(b, "diubah");
+  const modulValid = (lama, b) =>
+    kolomDikenal(lama, b, ["semester", "tahun", "judul", "catatan", "link", "pemilik", "namaPemilik",
+      "dibagikan", "pertemuan", "bacaan", "soal", "terkait", "lanjutanDari", "dibuat", "diubah"]) &&
+    semesterTetap(lama, b) &&
+    teks(b, "judul", 200) && teks(b, "catatan", 5000) && teks(b, "link", 500) && teks(b, "namaPemilik", 100) &&
+    yaTidak(b, "dibagikan") && teksAtauKosong(b, "lanjutanDari", 100) &&
+    daftar(b, "pertemuan", 100) && daftar(b, "bacaan", 50) && daftar(b, "soal", 500) && daftar(b, "terkait", 50);
+  const sumatifValid = (lama, b) =>
+    kolomDikenal(lama, b, ["semester", "tahun", "nama", "pelaksanaan", "pemilik", "namaPemilik",
+      "dibagikan", "butir", "disalinDari", "dibuat", "diubah"]) &&
+    semesterTetap(lama, b) &&
+    teks(b, "nama", 200) && teks(b, "pelaksanaan", 200) && teks(b, "namaPemilik", 100) &&
+    yaTidak(b, "dibagikan") && daftar(b, "butir", 200) && peta(b, "disalinDari", 5);
+  const uasValid = (lama, b, auth) =>
+    kolomDikenal(lama, b, ["semester", "tahun", "nama", "pelaksanaan", "status", "butir",
+      "dibuat", "diubah", "diubahOleh", "namaPengubah", "diajukan"]) &&
+    semesterTetap(lama, b) &&
+    teks(b, "nama", 200) && teks(b, "pelaksanaan", 200) && teks(b, "namaPengubah", 100) &&
+    b.diubahOleh === auth.uid && daftar(b, "butir", 200) && angka(b, "diajukan");
+  const usulanValid = (lama, b) =>
+    kolomDikenal(lama, b, ["semester", "tahun", "modulId", "soalId", "salinan", "catatan",
+      "pemilik", "namaPemilik", "dibuat"]) &&
+    semesterTetap(lama, b) &&
+    teks(b, "modulId", 100) && teks(b, "soalId", 100) && teks(b, "catatan", 2000) && teks(b, "namaPemilik", 100) &&
+    peta(b, "salinan", 10);
+  const nilaiValid = (lama, b) =>
+    semesterTetap(lama, b) && daftar(b, "kolom", 60) && peta(b, "nilai", 300) && peta(b, "hadir", 300) &&
+    teks(b, "namaPengubah", 100);
+
   function bolehBaca(jalur, d, auth) {
     if (!auth) return false;
     const b = jalur.split("/");
@@ -84,7 +132,8 @@ function buatAturan(ambilDok, adminAwal) {
     // Admin boleh menghapus, buat ngebersihin waktu mapelnya dihapus.
     if (b[0] === "mapel" && b[2] === "nilai" && b.length === 4) {
       if (!aktif(auth)) return false;
-      return pengampu(auth, b[1]) || (baru === null && kurikulum(auth));
+      if (baru === null) return pengampu(auth, b[1]) || kurikulum(auth);
+      return pengampu(auth, b[1]) && nilaiValid(lama, baru);
     }
     // santri & kelas: diisi, diubah, dihapus admin; ustadz cuma lihat
     if (b[0] === "santri" && b.length === 2) return kurikulum(auth);
@@ -92,8 +141,9 @@ function buatAturan(ambilDok, adminAwal) {
 
     if (b[0] === "mapel" && (b[2] === "modul" || b[2] === "sumatif") && b.length === 4) {
       if (!aktif(auth)) return false;
-      if (!lama && baru) return baru.pemilik === auth.uid && pengampu(auth, b[1]);
-      if (lama && baru) return lama.pemilik === auth.uid && baru.pemilik === auth.uid;
+      const valid = b[2] === "modul" ? modulValid : sumatifValid;
+      if (!lama && baru) return baru.pemilik === auth.uid && pengampu(auth, b[1]) && valid(lama, baru);
+      if (lama && baru) return lama.pemilik === auth.uid && baru.pemilik === auth.uid && valid(lama, baru);
       return lama.pemilik === auth.uid || kurikulum(auth);
     }
 
@@ -105,15 +155,15 @@ function buatAturan(ambilDok, adminAwal) {
       if (kurikulum(auth)) return true;
       if (!koordinatorGrup(auth, b[1])) return false;
       const bisa = ["draf", "diajukan"];
-      if (!lama && baru) return baru.status === "draf";
-      if (lama && baru) return bisa.includes(lama.status) && bisa.includes(baru.status);
+      if (!lama && baru) return baru.status === "draf" && uasValid(lama, baru, auth);
+      if (lama && baru) return bisa.includes(lama.status) && bisa.includes(baru.status) && uasValid(lama, baru, auth);
       return lama.status === "draf";
     }
     // usulan soal UAS: dibuat pengampu grup, dihapus pemiliknya / koordinator / admin
     if (b[0] === "grup" && b[2] === "usulan" && b.length === 4) {
       if (!aktif(auth)) return false;
-      if (!lama && baru) return anggotaGrup(auth, b[1]) && baru.pemilik === auth.uid;
-      if (lama && baru) return lama.pemilik === auth.uid && baru.pemilik === auth.uid;
+      if (!lama && baru) return anggotaGrup(auth, b[1]) && baru.pemilik === auth.uid && usulanValid(lama, baru);
+      if (lama && baru) return lama.pemilik === auth.uid && baru.pemilik === auth.uid && usulanValid(lama, baru);
       return lama.pemilik === auth.uid || koordinatorGrup(auth, b[1]) || kurikulum(auth);
     }
     return false;
