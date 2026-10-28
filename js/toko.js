@@ -223,7 +223,8 @@ function pantauIsiMapel(id) {
   const uid = uidSaya();
   const wadah = () => toko.isi[id];
   const jalur = `mapel/${id}`;
-  const urut = (d) => d.sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0));
+  // item rusak di dalam modul / ujian diamankan dulu (lihat amankanDok di alat.js)
+  const urut = (d) => d.map(amankanDok).sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0));
   let jumlahSiap = 0;
   const perluSiap = sayaKurikulum() ? 3 : 5;
   const tandaiSiap = () => { if (++jumlahSiap >= perluSiap && wadah()) wadah().siap = true; };
@@ -251,7 +252,8 @@ function pantauIsiTetangga(id) {
   const b = toko.backend;
   const wadah = () => toko.isi[id];
   const jalur = `mapel/${id}`;
-  const urut = (d) => d.sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0));
+  // item rusak di dalam modul / ujian diamankan dulu (lihat amankanDok di alat.js)
+  const urut = (d) => d.map(amankanDok).sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0));
   let jumlahSiap = 0;
   const sekali = (f) => { let sudah = false; return (...x) => { f(...x); if (!sudah) { sudah = true; if (++jumlahSiap >= 2 && wadah()) wadah().siap = true; } }; };
   return [
@@ -321,9 +323,9 @@ function aturLanggananGrup() {
     toko.uas[id] = [];
     toko.usulan[id] = [];
     langgananGrup[id] = { henti: [
-      b.pantauKoleksi(`grup/${id}/uas`, [], d => { if (toko.uas[id]) { toko.uas[id] = d; berubah(); } }, laporGagal("UAS")),
+      b.pantauKoleksi(`grup/${id}/uas`, [], d => { if (toko.uas[id]) { toko.uas[id] = d.map(amankanDok); berubah(); } }, laporGagal("UAS")),
       b.pantauKoleksi(`grup/${id}/usulan`, [], d => {
-        if (toko.usulan[id]) { toko.usulan[id] = d.sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0)); berubah(); }
+        if (toko.usulan[id]) { toko.usulan[id] = d.map(amankanDok).sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0)); berubah(); }
       }, laporGagal("usulan UAS"))
     ] };
   }
@@ -615,9 +617,29 @@ function pasangDiDaftar(daftar, x) {
   else daftar.push(x);
 }
 
+// Firestore nolak dokumen di atas 1 MiB, jadi yang kegedean ditolak di sini, sebelum dikirim.
+// Yang nggak nambah gede (misal hapus soal) tetap boleh, biar modul kegedean masih bisa dikecilin.
+// hasilnya false kalau nggak boleh disimpan
+const sudahDiingatkanUkuran = new Set();
+function muatDiDok(baru, lama, jenis) {
+  const ukuran = ukuranDok(tanpaId(baru));
+  const kb = (n) => Math.round(n / 1024);
+  if (ukuran > BATAS_DOK.maks && (!lama || ukuran > ukuranDok(tanpaId(lama)))) {
+    kabar(`${jenis} ini kegedean (±${kb(ukuran)} KB, batasnya ±${kb(BATAS_DOK.maks)} KB), jadi perubahan ini NGGAK disimpan.\n\nPecah jadi dua ${jenis.toLowerCase()}, atau pendekin teks bacaan / soal yang panjang.`);
+    return false;
+  }
+  if (ukuran > BATAS_DOK.peringatan && !sudahDiingatkanUkuran.has(baru.id)) {
+    sudahDiingatkanUkuran.add(baru.id);
+    kabar(`${jenis} ini udah ±${kb(ukuran)} KB, mendekati batas ±${kb(BATAS_DOK.maks)} KB. Soal berikutnya sebaiknya ditaruh di ${jenis.toLowerCase()} baru.`);
+  }
+  return true;
+}
+
+// hasilnya null kalau nggak disimpan (kegedean)
 function simpanModul(idMapel, modul) {
   const baru = { ...salin(modul), pemilik: uidSaya(), namaPemilik: namaSaya(), diubah: Date.now() };
   if (!baru.dibuat) baru.dibuat = Date.now();
+  if (!muatDiDok(baru, modulMapel(idMapel).find(m => m.id === baru.id), "Modul")) return null;
   const w = toko.isi[idMapel];
   if (w) {
     if (w.modulSemua) pasangDiDaftar(w.modulSemua, baru);
@@ -645,6 +667,7 @@ function hapusModul(idMapel, idModul) {
 function simpanSumatif(idMapel, sum) {
   const baru = { ...salin(sum), pemilik: uidSaya(), namaPemilik: namaSaya(), diubah: Date.now() };
   if (!baru.dibuat) baru.dibuat = Date.now();
+  if (!muatDiDok(baru, sumatifMapel(idMapel).find(s => s.id === baru.id), "Ujian")) return null;
   const w = toko.isi[idMapel];
   if (w) pasangDiDaftar(w.sumatif, baru);
   toko.backend.tulis(`mapel/${idMapel}/sumatif/${baru.id}`, tanpaId(baru)).catch(gagalSimpan);
@@ -663,6 +686,7 @@ function hapusSumatif(idMapel, idSum) {
 function simpanUAS(gid, uas) {
   const baru = { ...salin(uas), diubah: Date.now(), diubahOleh: uidSaya(), namaPengubah: namaSaya() };
   if (!baru.dibuat) baru.dibuat = Date.now();
+  if (!muatDiDok(baru, (toko.uas[gid] || []).find(u => u.id === baru.id), "UAS")) return null;
   if (toko.uas[gid]) pasangDiDaftar(toko.uas[gid], baru);
   toko.backend.tulis(`grup/${gid}/uas/${baru.id}`, tanpaId(baru)).catch(gagalSimpan);
   berubah();
@@ -676,6 +700,7 @@ function hapusUAS(gid, id) {
 function simpanUsulan(gid, usulan) {
   const baru = { ...salin(usulan), pemilik: uidSaya(), namaPemilik: namaSaya() };
   if (!baru.dibuat) baru.dibuat = Date.now();
+  if (!muatDiDok(baru, (toko.usulan[gid] || []).find(u => u.id === baru.id), "Usulan")) return null;
   if (toko.usulan[gid]) pasangDiDaftar(toko.usulan[gid], baru);
   toko.backend.tulis(`grup/${gid}/usulan/${baru.id}`, tanpaId(baru)).catch(gagalSimpan);
   berubah();

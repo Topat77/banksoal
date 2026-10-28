@@ -175,7 +175,7 @@ function pasangAlurUAS(mp, u) {
         const salinan = x.salinan && x.salinan.soal ? { ...salin(x.salinan), soal: rapikanSoal(x.salinan.soal) } : salin(x.salinan);
         butir.push({ modulId: x.modulId, soalId: x.soalId, salinan });
       }
-      simpanUAS(gid, { ...u, butir });
+      if (!simpanUAS(gid, { ...u, butir })) return;   // kegedean: usulannya jangan dihapus dulu
       hapusUsulan(gid, x.id);
       tampilkan(true);
     };

@@ -79,6 +79,59 @@ function pasangDiJalur(obj, jalur, nilai) {
   else o[akhir] = salin(nilai);
 }
 
+// perkiraan ukuran dokumen di Firestore (byte), cara ngitungnya sama kayak Firestore:
+// teks = byte UTF-8 + 1, angka 8, ya/tidak & kosong 1, nama kolom ikut dihitung,
+// + 32 byte per dokumen + nama jalurnya (dikira-kira 200). Satu dokumen maksimal 1 MiB.
+const BATAS_DOK = { peringatan: 750 * 1024, maks: 900 * 1024 };
+function ukuranNilai(x) {
+  if (x === null || x === undefined || typeof x === "boolean") return 1;
+  if (typeof x === "string") return new TextEncoder().encode(x).length + 1;
+  if (typeof x === "number") return 8;
+  if (Array.isArray(x)) return x.reduce((n, y) => n + ukuranNilai(y), 0);
+  return Object.entries(x).reduce((n, [k, v]) => n + ukuranNilai(k) + ukuranNilai(v), 0);
+}
+function ukuranDok(isi) {
+  return ukuranNilai(isi) + 32 + 200;
+}
+
+// ====== DATA DARI DATABASE ======
+// Rules nggak bisa ngecek isi tiap item di dalam daftar, jadi modul / ujian bisa aja berisi
+// item rusak (null, angka, teks) dari akun lain atau versi lama. Sebelum dipakai layar,
+// bentuknya diamankan: item yang bukan objek dibuang, teks dipastikan teks.
+// Kolom lain dibiarkan apa adanya (nggak ada data yang dibuang selain item rusak).
+const adalahObjek = (x) => !!x && typeof x === "object" && !Array.isArray(x);
+const jadiTeks = (x) => typeof x === "string" ? x : typeof x === "number" ? String(x) : "";
+const daftarObjek = (x) => Array.isArray(x) ? x.filter(adalahObjek) : [];
+
+function amankanSoal(s) {
+  const h = { ...s, id: jadiTeks(s.id), teks: jadiTeks(s.teks) };
+  if ("pilihan" in s) h.pilihan = Array.isArray(s.pilihan) ? s.pilihan.map(jadiTeks) : [];
+  if ("pedoman" in s) h.pedoman = jadiTeks(s.pedoman);
+  return h;
+}
+function amankanSalinan(x) {
+  if (!adalahObjek(x)) return null;
+  return {
+    ...x,
+    soal: adalahObjek(x.soal) ? amankanSoal(x.soal) : null,
+    bacaan: adalahObjek(x.bacaan) ? { ...x.bacaan, judul: jadiTeks(x.bacaan.judul), teks: jadiTeks(x.bacaan.teks) } : null
+  };
+}
+// modul / sumatif / UAS / usulan
+function amankanDok(d) {
+  const h = { ...d };
+  for (const k of ["judul", "catatan", "link", "nama", "pelaksanaan", "namaPemilik", "namaPengubah", "status"]) {
+    if (k in d) h[k] = jadiTeks(d[k]);
+  }
+  if ("soal" in d) h.soal = daftarObjek(d.soal).map(amankanSoal);
+  if ("bacaan" in d) h.bacaan = daftarObjek(d.bacaan).map(b => ({ ...b, id: jadiTeks(b.id), judul: jadiTeks(b.judul), teks: jadiTeks(b.teks) }));
+  if ("pertemuan" in d) h.pertemuan = daftarObjek(d.pertemuan).map(p => ({ ...p, id: jadiTeks(p.id), target: jadiTeks(p.target) }));
+  if ("terkait" in d) h.terkait = Array.isArray(d.terkait) ? d.terkait.filter(x => typeof x === "string") : [];
+  if ("butir" in d) h.butir = daftarObjek(d.butir).map(b => ({ ...b, modulId: jadiTeks(b.modulId), soalId: jadiTeks(b.soalId), salinan: amankanSalinan(b.salinan) }));
+  if ("salinan" in d) h.salinan = amankanSalinan(d.salinan);
+  return h;
+}
+
 // ====== BENTUK SOAL ======
 // Firestore Rules nggak bisa ngecek isi tiap soal di dalam daftar (nggak ada perulangan),
 // jadi soal dirapikan di sini sebelum disimpan. Yang dirapikan cuma soal yang lagi

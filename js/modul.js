@@ -156,7 +156,7 @@ function formModul() {
       }
       const ada = new Set(pertemuan.map(p => p.id));
       const soal = (terbaru.soal || []).map(s => ada.has(s.pertemuanId) ? s : { ...s, pertemuanId: null });
-      simpanModul(mp.id, { ...terbaru, judul: f.get("judul").trim(), catatan: f.get("catatan").trim(), link, pertemuan, soal, ...relasi });
+      if (!simpanModul(mp.id, { ...terbaru, judul: f.get("judul").trim(), catatan: f.get("catatan").trim(), link, pertemuan, soal, ...relasi })) return;
       pergi("modul");
     } else {
       const baru = simpanModul(mp.id, {
@@ -169,6 +169,7 @@ function formModul() {
         ...relasi,
         pertemuan, bacaan: [], soal: []
       });
+      if (!baru) return;
       pergi("modul", { modId: baru.id });
     }
   };
@@ -437,7 +438,7 @@ function formBacaan() {
     const i = lama ? daftar.findIndex(x => x.id === lama.id) : -1;
     if (i >= 0) daftar[i] = { ...daftar[i], ...isian };
     else daftar.push({ id: buatId(), ...isian });
-    simpanModul(mp.id, { ...t, bacaan: daftar });
+    if (!simpanModul(mp.id, { ...t, bacaan: daftar })) return;
     pergi("modul");
   };
 
@@ -667,7 +668,7 @@ function formSoal() {
       if (pos >= 0) daftar.splice(pos + 1, 0, baru);
       else daftar.push(baru);
     }
-    simpanModul(mp.id, { ...t, soal: daftar });
+    if (!simpanModul(mp.id, { ...t, soal: daftar })) return;   // kegedean: isian soal tetap di form
     pergi("modul");
     // langsung lompat ke pertemuan soal tadi
     const tujuan = baru.pertemuanId && document.getElementById(`pertemuan-${baru.pertemuanId}`);
