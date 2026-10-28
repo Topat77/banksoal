@@ -17,7 +17,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache,
-  doc, collection, query, where, onSnapshot, setDoc, deleteDoc, deleteField
+  doc, collection, query, where, onSnapshot, setDoc, deleteDoc, deleteField, arrayUnion, arrayRemove,
+  runTransaction
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const SDK = "https://www.gstatic.com/firebasejs/12.19.0";
@@ -140,13 +141,17 @@ export async function buatBackendFirebase(konfig) {
 
     // simpan sebagian: cuma kolom yang disebut yang diubah, isi lain dokumen nggak disentuh
     // (jadi isian dari perangkat lain nggak ketimpa). perubahan: [[jalur kolom], nilai];
-    // nilai undefined = kolomnya dihapus
+    // nilai undefined = kolomnya dihapus; tambahKeDaftar / buangDariDaftar = arrayUnion / arrayRemove
     ubahSebagian(jalur, perubahan) {
       const isi = {};
+      const jadi = (nilai) => nilai === undefined ? deleteField()
+        : nilai && nilai._daftar === "tambah" ? arrayUnion(...bersih(nilai.isi))
+        : nilai && nilai._daftar === "buang" ? arrayRemove(...bersih(nilai.isi))
+        : bersih(nilai);
       for (const [kunci, nilai] of perubahan) {
         let o = isi;
         for (const k of kunci.slice(0, -1)) o = o[k] = o[k] || {};
-        o[kunci[kunci.length - 1]] = nilai === undefined ? deleteField() : bersih(nilai);
+        o[kunci[kunci.length - 1]] = jadi(nilai);
       }
       return setDoc(doc(db, jalur), isi, { merge: true });
     },

@@ -46,8 +46,22 @@ function klik(id, f) {
   if (el) el.onclick = f;
 }
 
+// isinya sama persis? (urutan kolom objek nggak ngaruh, kayak Firestore)
+function samaIsi(a, b) {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== "object" || typeof b !== "object" || Array.isArray(a) !== Array.isArray(b)) return false;
+  const ka = Object.keys(a), kb = Object.keys(b);
+  return ka.length === kb.length && ka.every(k => samaIsi(a[k], b[k]));
+}
+
+// penanda buat simpan sebagian (ubahSebagian): tambah / buang item di daftar tanpa ngirim
+// daftar utuh, jadi yang ditambah dari dua perangkat barengan sama-sama kesimpan.
+// Item yang isinya sama persis nggak dobel (kayak arrayUnion / arrayRemove di Firestore).
+const tambahKeDaftar = (...isi) => ({ _daftar: "tambah", isi });
+const buangDariDaftar = (...isi) => ({ _daftar: "buang", isi });
+
 // ubah satu nilai di dalam objek bertingkat, misal jalur ["nilai", idSantri, idKolom].
-// nilai undefined = dihapus
+// nilai undefined = dihapus; nilai tambahKeDaftar(..) / buangDariDaftar(..) = ubah isi daftar
 function pasangDiJalur(obj, jalur, nilai) {
   let o = obj;
   for (const k of jalur.slice(0, -1)) {
@@ -56,6 +70,12 @@ function pasangDiJalur(obj, jalur, nilai) {
   }
   const akhir = jalur[jalur.length - 1];
   if (nilai === undefined) delete o[akhir];
+  else if (nilai && nilai._daftar) {
+    const daftar = Array.isArray(o[akhir]) ? o[akhir] : [];
+    o[akhir] = nilai._daftar === "tambah"
+      ? [...daftar, ...nilai.isi.filter((x, i) => !daftar.some(y => samaIsi(x, y)) && nilai.isi.findIndex(y => samaIsi(x, y)) === i).map(salin)]
+      : daftar.filter(y => !nilai.isi.some(x => samaIsi(x, y)));
+  }
   else o[akhir] = salin(nilai);
 }
 

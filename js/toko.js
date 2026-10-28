@@ -844,17 +844,21 @@ function simpanLembarNilai(idMapel, lembar) {
 }
 // simpan sebagian lembar nilai: cuma sel yang berubah yang dikirim, biar isian dari HP lain
 // (atau pengampu lain) nggak ketimpa. perubahan: [[jalur], nilai], nilai undefined = dihapus.
-// Lembar yang belum pernah tersimpan dikirim utuh dulu.
+// Lembar yang belum pernah tersimpan juga dikirim sebagian: semester & tahun diisi, kolomnya
+// DITAMBAHKAN (bukan ditimpa), jadi dua HP yang bikin lembar yang sama pas offline digabung.
 function simpanNilaiSebagian(idMapel, lembar, perubahan) {
   const w = toko.isi[idMapel];
   const lama = w ? (w.nilai || []).find(x => x.id === lembar.id) : null;
-  if (!lama) return simpanLembarNilai(idMapel, lembar);
   const tanda = { diubah: Date.now(), diubahOleh: uidSaya(), namaPengubah: namaSaya() };
-  const baru = { ...salin(lama), ...tanda };
-  for (const [jalur, nilai] of perubahan) pasangDiJalur(baru, jalur, nilai);
-  pasangDiDaftar(w.nilai, baru);
-  toko.backend.ubahSebagian(`mapel/${idMapel}/nilai/${lembar.id}`,
-    [...perubahan, ...Object.entries(tanda).map(([k, v]) => [[k], v])]).catch(gagalSimpan);
+  const semua = [
+    ...(lama ? [] : [[["semester"], lembar.semester], [["tahun"], lembar.tahun], [["kolom"], tambahKeDaftar(...lembar.kolom)]]),
+    ...perubahan,
+    ...Object.entries(tanda).map(([k, v]) => [[k], v])
+  ];
+  const baru = lama ? salin(lama) : { id: lembar.id };
+  for (const [jalur, nilai] of semua) pasangDiJalur(baru, jalur, nilai);
+  if (w) pasangDiDaftar(w.nilai, baru);
+  toko.backend.ubahSebagian(`mapel/${idMapel}/nilai/${lembar.id}`, semua).catch(gagalSimpan);
   berubah();
   return baru;
 }
