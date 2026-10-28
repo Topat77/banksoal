@@ -204,7 +204,6 @@ function layarSumatif() {
   if (uas) html += htmlUsulanUAS(sum);
   isi.innerHTML = html;
 
-  const klik = (id, f) => { const el = document.getElementById(id); if (el) el.onclick = f; };
   klik("editSum", () => pergi("formSumatif", { sumEditId: sum.id }));
   klik("pilih", () => pergi("pilihSoal", { usul: false }));
   klik("soalUjian", () => pergi("formSoalUjian", { soalUjianId: null }));

@@ -13,6 +13,10 @@ function fileKurang() {
     "js/coba.js": typeof buatBackendCoba === "function",
     "js/toko.js": typeof mulaiAplikasi === "function",
     "js/layar.js": typeof tampilkan === "function",
+    "js/mapel.js": typeof layarMapel === "function",
+    "js/saya.js": typeof layarLainnya === "function",
+    "js/cari.js": typeof layarCari === "function",
+    "js/menupilih.js": typeof percantikPilihan === "function",
     "js/beranda.js": typeof layarBeranda === "function",
     "js/modul.js": typeof layarModul === "function",
     "js/sumatif.js": typeof layarSumatif === "function",
@@ -22,6 +26,7 @@ function fileKurang() {
     "js/docx.js": typeof buatDocx === "function",
     "js/cetak.js": typeof layarCetak === "function",
     "js/kurikulum.js": typeof layarAkun === "function",
+    "js/cadangan.js": typeof unduhCadangan === "function",
     "js/nilai.js": typeof layarNilai === "function",
     "js/rapor.js": typeof layarRapor === "function"
   };

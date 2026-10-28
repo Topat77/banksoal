@@ -323,8 +323,7 @@ function layarAISoal() {
 
   const status = document.getElementById("statusAI");
   const pasangLepasPdf = () => {
-    const l = document.getElementById("lepasPdf");
-    if (l) l.onclick = () => { d.pdf = null; tampilkan(true); };
+    klik("lepasPdf", () => { d.pdf = null; tampilkan(true); });
   };
   pasangLepasPdf();
   document.getElementById("pdfAI").onchange = async (e) => {
@@ -597,10 +596,9 @@ function layarAIGenerator() {
 
   document.getElementById("aiMapel").onchange = (e) => pergi("aiGenerator", { aiMapel: e.target.value });
   isi.querySelectorAll('[name="aiKe"]').forEach(r => r.onchange = () => pergi("aiGenerator", { aiMapel: mp.id, aiKe: r.value }));
-  const buat = document.getElementById("aiBuatDulu");
-  if (buat) buat.onclick = () => ke === "modul"
+  klik("aiBuatDulu", () => ke === "modul"
     ? pergi("formModul", { mapelId: mp.id, modEditId: null, semester: kunciSemester(sem) , dariAI: true })
-    : pergi("formSumatif", { mapelId: mp.id, sumEditId: null, uasGrup: null, semester: kunciSemester(sem) , dariAI: true });
+    : pergi("formSumatif", { mapelId: mp.id, sumEditId: null, uasGrup: null, semester: kunciSemester(sem) , dariAI: true }));
   document.getElementById("formAIGen").onsubmit = (e) => {
     e.preventDefault();
     const id = document.getElementById("aiTujuan").value;

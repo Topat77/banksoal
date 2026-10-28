@@ -20,13 +20,15 @@ Gak ada build step / npm. Semua file JS dimuat pakai `<script>` biasa dengan uru
 | `js/coba.js` | backend mode coba: data contoh di perangkat, bisa ganti-ganti akun |
 | `js/aturan.js` | salinan `firestore.rules` versi JS, dipakai mode coba |
 | `js/toko.js` | state global `toko`, login, peran, langganan data realtime, fungsi simpan |
-| `js/layar.js` | router (`posisi`, `pergi()`, `tampilkan()`, `daftarLayar`), menu samping & bawah |
+| `js/layar.js` | router (`posisi`, `pergi()`, `tampilkan()`, `daftarLayar`), layar status, menu samping & bawah |
+| `js/mapel.js`, `saya.js`, `cari.js` | halaman satu mapel + pilih semester, layar Saya, cari soal |
+| `js/menupilih.js` | tampilan menu pilihan pengganti `<select>` bawaan (otomatis buat semua select di layar) |
 | `js/beranda.js`, `modul.js`, `sumatif.js`, `uas.js`, `ai.js`, `cetak.js`, `docx.js`, `kop.js`, `kurikulum.js`, `nilai.js`, `rapor.js` | layar-layar fitur |
-| `js/alat.js`, `js/dialog.js` | alat bantu & dialog pengganti `confirm/alert/prompt` |
+| `js/cadangan.js` | unduh cadangan data (.json) + pengingatnya |
+| `js/alat.js`, `js/dialog.js` | alat bantu (`aman`, `klik`, `rapikanSoal`, ...) & dialog pengganti `confirm/alert/prompt` |
 | `sw.js` | service worker: file aplikasi ambil dari internet dulu, SDK Firebase & font pakai simpanan |
 | `firestore.rules` | aturan akses database |
-
-`js/data.js` sepertinya sisa versi lama (localStorage) dan **nggak dimuat** di mana pun. **Jangan dihapus tanpa tanya dulu.**
+| `tes/` | tes Node, nggak dimuat aplikasi |
 
 Peran akun:
 - `kurikulum`: admin/TU

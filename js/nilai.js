@@ -362,6 +362,8 @@ function kirimNilaiTertunda() {
   tundaNilai = null;
   simpanNilaiSebagian(t.idMapel, t.lembar, [...t.ubah.values()]);
 }
+// nilai yang belum sempat terkirim, dikirim waktu halaman ditutup
+window.addEventListener("pagehide", kirimNilaiTertunda);
 
 function layarNilai() {
   const mp = mapelAktif();
@@ -390,8 +392,7 @@ function layarNilai() {
          <button class="tombol-utama" id="keSantri">Isi daftar siswa</button>`
       : `<p class="kosong">Daftar siswa ${aman(mp.kelas)} ${aman(mp.jenjang)} belum diisi. Minta admin (TU) mengisinya dulu, nanti nama siswanya otomatis muncul di sini.</p>`;
     isi.innerHTML = h;
-    const ks = document.getElementById("keSantri");
-    if (ks) ks.onclick = () => pergi("santri", { kelasSantri: `${mp.jenjang}|${mp.kelas}`, dariNilai: true });
+    klik("keSantri", () => pergi("santri", { kelasSantri: `${mp.jenjang}|${mp.kelas}`, dariNilai: true }));
     return;
   }
 
@@ -438,8 +439,7 @@ function layarNilai() {
     <div class="aksi-teks"><button class="tombol-teks" id="keSantri">${sayaKurikulum() ? "Ubah" : "Lihat"} daftar siswa ${aman(mp.kelas)}</button></div>`;
   isi.innerHTML = h;
   document.getElementById("keSantri").onclick = () => pergi("santri", { kelasSantri: `${mp.jenjang}|${mp.kelas}`, dariNilai: true });
-  const kb = document.getElementById("keBobot");
-  if (kb) kb.onclick = () => pergi("bobot");
+  klik("keBobot", () => pergi("bobot"));
   if (!bisaIsi) return;
 
   // ---- perilaku ----

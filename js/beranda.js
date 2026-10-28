@@ -271,7 +271,6 @@ function layarBeranda() {
 
   isi.innerHTML = `<div class="beranda">${h}</div>`;
 
-  const klik = (id, f) => { const el = document.getElementById(id); if (el) el.onclick = f; };
   klik("keAkun", () => pergi("akun"));
   klik("kePantauan", () => pergi("pantauan"));
   klik("kePantauan2", () => pergi("pantauan"));
