@@ -156,6 +156,17 @@ export async function buatBackendFirebase(konfig) {
       return setDoc(doc(db, jalur), isi, { merge: true });
     },
 
+    // tulis cuma kalau dokumennya belum ada (dicek langsung ke server, butuh internet).
+    // Dipakai pulihkan cadangan, biar data yang masih ada nggak ketimpa. Hasilnya true kalau ditulis.
+    buatKalauBelumAda(jalur, isi) {
+      const ref = doc(db, jalur);
+      return runTransaction(db, async (t) => {
+        if ((await t.get(ref)).exists()) return false;
+        t.set(ref, bersih(isi));
+        return true;
+      });
+    },
+
     hapus(jalur) {
       return deleteDoc(doc(db, jalur));
     },

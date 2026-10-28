@@ -139,11 +139,13 @@ function buatAturan(ambilDok, adminAwal) {
     if (b[0] === "pengaturan" && b.length === 2) return kurikulum(auth);
     if (b[0] === "mapel" && b.length === 2) return kurikulum(auth);
 
-    // lembar nilai: cuma pengampu mapelnya yang boleh ngisi (admin cuma lihat).
+    // lembar nilai: cuma pengampu mapelnya yang boleh ngisi (admin cuma lihat,
+    // dan bikin lembar yang hilang dari cadangan).
     // Yang boleh menghapus cuma admin, buat ngebersihin waktu mapelnya dihapus.
     if (b[0] === "mapel" && b[2] === "nilai" && b.length === 4) {
       if (!aktif(auth)) return false;
       if (baru === null) return kurikulum(auth);
+      if (!lama) return (pengampu(auth, b[1]) || kurikulum(auth)) && nilaiValid(lama, baru);
       return pengampu(auth, b[1]) && nilaiValid(lama, baru);
     }
     // santri & kelas: diisi, diubah, dihapus admin; ustadz cuma lihat
@@ -153,7 +155,8 @@ function buatAturan(ambilDok, adminAwal) {
     if (b[0] === "mapel" && (b[2] === "modul" || b[2] === "sumatif") && b.length === 4) {
       if (!aktif(auth)) return false;
       const valid = b[2] === "modul" ? modulValid : sumatifValid;
-      if (!lama && baru) return baru.pemilik === auth.uid && pengampu(auth, b[1]) && valid(lama, baru);
+      // admin boleh BIKIN atas nama guru (mulihin dari cadangan); ngubah tetap cuma pemiliknya
+      if (!lama && baru) return ((baru.pemilik === auth.uid && pengampu(auth, b[1])) || kurikulum(auth)) && valid(lama, baru);
       if (lama && baru) return lama.pemilik === auth.uid && baru.pemilik === auth.uid && valid(lama, baru);
       return lama.pemilik === auth.uid || kurikulum(auth);
     }
@@ -173,7 +176,7 @@ function buatAturan(ambilDok, adminAwal) {
     // usulan soal UAS: dibuat pengampu grup, dihapus pemiliknya / koordinator / admin
     if (b[0] === "grup" && b[2] === "usulan" && b.length === 4) {
       if (!aktif(auth)) return false;
-      if (!lama && baru) return anggotaGrup(auth, b[1]) && baru.pemilik === auth.uid && usulanValid(lama, baru);
+      if (!lama && baru) return ((anggotaGrup(auth, b[1]) && baru.pemilik === auth.uid) || kurikulum(auth)) && usulanValid(lama, baru);
       if (lama && baru) return lama.pemilik === auth.uid && baru.pemilik === auth.uid && usulanValid(lama, baru);
       return lama.pemilik === auth.uid || koordinatorGrup(auth, b[1]) || kurikulum(auth);
     }

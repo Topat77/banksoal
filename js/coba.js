@@ -464,6 +464,16 @@ function buatBackendCoba() {
       simpanDb();
       kabariSemua();
     },
+    // sama kayak versi online: tulis cuma kalau dokumennya belum ada
+    async buatKalauBelumAda(jalur, isiBaru) {
+      if (db[jalur]) return false;
+      const baru = salin(isiBaru);
+      if (!aturan.bolehTulis(jalur, null, baru, auth)) throw galat("permission-denied");
+      db[jalur] = baru;
+      simpanDb();
+      kabariSemua();
+      return true;
+    },
     // sama kayak versi online: cuma kolom yang disebut yang diubah
     async ubahSebagian(jalur, perubahan) {
       const lama = db[jalur] || null;
