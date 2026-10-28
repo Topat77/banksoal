@@ -255,7 +255,7 @@ function layarAISoal() {
 
   const htmlPilihan = bahan.pilihan.length ? bahan.pilihan.map(x => `
       <label class="centang">
-        <input type="checkbox" name="pilihBahan" value="${x.id}" ${d.pilih.includes(x.id) ? "checked" : ""}>
+        <input type="checkbox" name="pilihBahan" value="${aman(x.id)}" ${d.pilih.includes(x.id) ? "checked" : ""}>
         <span dir="auto">${aman(x.label)} <small dir="auto">${aman(potong(x.sub, 90))}</small></span>
       </label>`).join("")
     : `<p class="info">${keModul ? "Modul ini belum punya pertemuan. Isi target capaiannya dulu, atau pakai ringkasan materi / PDF." : "Belum ada modul di semester ini. Pakai ringkasan materi / PDF aja."}</p>`;
@@ -404,10 +404,10 @@ function layarAISoal() {
     if (!wadah) return;
     if (d.soal.length === 0) { wadah.innerHTML = ""; return; }
     const opsiPertemuan = (s) => bahan.pilihan.map(x =>
-      `<option value="${x.id}" ${s.pertemuanId === x.id ? "selected" : ""}>${aman(x.label)}</option>`).join("") +
+      `<option value="${aman(x.id)}" ${s.pertemuanId === x.id ? "selected" : ""}>${aman(x.label)}</option>`).join("") +
       `<option value="" ${!s.pertemuanId ? "selected" : ""}>Belum ditentukan</option>`;
     const htmlSoal = (s, i) => `
-      <article class="soal draf-ai ${s.pakai ? "" : "dibuang"}" data-draf="${s.id}">
+      <article class="soal draf-ai ${s.pakai ? "" : "dibuang"}" data-draf="${aman(s.id)}">
         <div class="soal-atas">
           <label class="pakai-draf"><input type="checkbox" data-pakai ${s.pakai ? "checked" : ""}> <span>Pakai</span></label>
           <span class="nomor">${i + 1}.</span>
@@ -421,8 +421,8 @@ function layarAISoal() {
         <textarea data-f="teks" rows="3" class="teks-serif" dir="auto" aria-label="Pertanyaan soal ${i + 1}">${aman(s.teks)}</textarea>
         ${s.jenis === "PG" ? `<div class="kolom">${HURUF.map((h, j) => `
           <div class="opsi">
-            <input type="radio" name="kunci-${s.id}" value="${j}" id="k-${s.id}-${j}" ${s.kunci === j ? "checked" : ""}>
-            <label for="k-${s.id}-${j}" class="huruf" title="Jadikan kunci jawaban">${h}</label>
+            <input type="radio" name="kunci-${aman(s.id)}" value="${j}" id="k-${aman(s.id)}-${j}" ${s.kunci === j ? "checked" : ""}>
+            <label for="k-${aman(s.id)}-${j}" class="huruf" title="Jadikan kunci jawaban">${h}</label>
             <input data-pilihan="${j}" value="${aman(s.pilihan[j] || "")}" dir="auto" placeholder="Jawaban ${h}${j >= 4 ? " (opsional)" : ""}" aria-label="Soal ${i + 1} jawaban ${h}">
           </div>`).join("")}</div>`
         : `<label class="isian-kecil">Pedoman jawaban <textarea data-f="pedoman" rows="3" dir="auto">${aman(s.pedoman)}</textarea></label>`}
@@ -432,7 +432,7 @@ function layarAISoal() {
     const dipakai = d.soal.filter(s => s.pakai).length;
     wadah.innerHTML = `
       <h2 class="subjudul">Draft soal <small id="hitungDraf">${d.soal.length} soal · ${dipakai} dipakai</small></h2>
-      <p class="info">Cek tiap soal. Bisa langsung diedit di sini, kunci jawaban ditandai huruf yang hijau. Hilangkan centang "Pakai" atau tekan Buang buat soal yang nggak cocok.</p>
+      <p class="info">Cek tiap soal. Bisa langsung diedit di sini, kunci jawaban ditandai huruf yang dilingkari merah. Hilangkan centang "Pakai" atau tekan Buang buat soal yang nggak cocok.</p>
       <div class="kolom">${d.soal.map(htmlSoal).join("")}</div>
       <div class="baris-tombol bawah-draf">
         <button class="tombol-utama" id="simpanDraf">${labelSimpanAI(bahan, dipakai)}</button>
@@ -451,7 +451,7 @@ function layarAISoal() {
       el.querySelector("[data-buang]").onclick = () => { d.soal = d.soal.filter(x => x !== s); gambarDraf(); };
       el.querySelectorAll("[data-f]").forEach(inp => inp.oninput = inp.onchange = () => { s[inp.dataset.f] = inp.value || (inp.dataset.f === "pertemuanId" ? null : ""); });
       el.querySelectorAll("[data-pilihan]").forEach(inp => inp.oninput = () => { s.pilihan[Number(inp.dataset.pilihan)] = inp.value; });
-      el.querySelectorAll(`[name="kunci-${s.id}"]`).forEach(r => r.onchange = () => { s.kunci = Number(r.value); s.ragu = false; const t = el.querySelector(".tanda-ragu"); if (t) t.remove(); });
+      el.querySelectorAll(`[name="kunci-${CSS.escape(s.id)}"]`).forEach(r => r.onchange = () => { s.kunci = Number(r.value); s.ragu = false; const t = el.querySelector(".tanda-ragu"); if (t) t.remove(); });
     });
 
     document.getElementById("kosongkanDraf").onclick = async () => {
@@ -473,7 +473,7 @@ function simpanDrafAI(bahan, d, wadah) {
   let salah = 0;
   const siap = [];
   for (const s of dipakai) {
-    const el = wadah.querySelector(`[data-draf="${s.id}"]`);
+    const el = wadah.querySelector(`[data-draf="${CSS.escape(s.id)}"]`);
     const pesan = el && el.querySelector(".pesan-draf");
     let galat = "";
     const teks = s.teks.trim();
@@ -568,7 +568,7 @@ function layarAIGenerator() {
 
   h += `<form id="formAIGen" class="panel">
       <label>1. Mapel &amp; kelas
-        <select id="aiMapel">${diampu.map(m => `<option value="${m.id}" data-ket="${aman(namaJenis(jenisMapel(m)))} · ${aman(m.jenjang)}" ${m.id === mp.id ? "selected" : ""}>${aman(namaMapel(m))}</option>`).join("")}</select>
+        <select id="aiMapel">${diampu.map(m => `<option value="${aman(m.id)}" data-ket="${aman(namaJenis(jenisMapel(m)))} · ${aman(m.jenjang)}" ${m.id === mp.id ? "selected" : ""}>${aman(namaMapel(m))}</option>`).join("")}</select>
       </label>
       <fieldset>
         <legend>2. Soalnya mau dimasukkan ke mana?</legend>
@@ -579,7 +579,7 @@ function layarAIGenerator() {
       </fieldset>
       <label>3. ${ke === "modul" ? "Modul" : "Ujian"} (${aman(namaSemester(sem))})
         <select id="aiTujuan" ${pilihan.length ? "" : "disabled"}>${pilihan.length
-          ? pilihan.map(x => `<option value="${x.id}" data-ket="${ke === "modul" ? `${(x.pertemuan || []).length} pertemuan, ${jumlahSoal(x)} soal` : `${(x.butir || []).length} soal`}">${aman(ke === "modul" ? x.judul : x.nama)}</option>`).join("")
+          ? pilihan.map(x => `<option value="${aman(x.id)}" data-ket="${ke === "modul" ? `${(x.pertemuan || []).length} pertemuan, ${jumlahSoal(x)} soal` : `${(x.butir || []).length} soal`}">${aman(ke === "modul" ? x.judul : x.nama)}</option>`).join("")
           : `<option value="">${ke === "modul" ? "Belum ada modul" : "Belum ada ujian"}</option>`}</select>
       </label>
       ${pilihan.length ? "" : `<p class="info">${ke === "modul"

@@ -222,7 +222,7 @@ function layarPilihMapel() {
   if (!diampu.length) h += `<p class="kosong">Kamu belum ditugaskan ke mapel mana pun.</p>`;
   for (const k of kelompokJenis(diampu)) {
     h += `<p class="label-kelompok">Mapel ${namaJenis(k.jenis).toLowerCase()}</p><div class="daftar">${k.mapel.map(m => htmlBaris({
-      attr: `data-mapel="${m.id}"`, judulBaris: aman(m.nama), sub: `${aman(m.kelas)}, ${aman(m.jenjang)}`
+      attr: `data-mapel="${aman(m.id)}"`, judulBaris: aman(m.nama), sub: `${aman(m.kelas)}, ${aman(m.jenjang)}`
     })).join("")}</div>`;
   }
   isi.innerHTML = h;
@@ -418,7 +418,7 @@ function htmlBerandaGuru(sem, diampu) {
     h += `
       <section class="kartu-tugas">
         <p><b>Tugas kamu:</b> koordinator UAS ${aman(namaGrup(m))}. UAS-nya ${pesan}.</p>
-        <button class="tombol-utama" data-koor-mapel="${m.id}">${!u ? "Mulai susun UAS" : "Buka UAS"}</button>
+        <button class="tombol-utama" data-koor-mapel="${aman(m.id)}">${!u ? "Mulai susun UAS" : "Buka UAS"}</button>
       </section>`;
   }
 
@@ -442,7 +442,7 @@ function htmlBerandaGuru(sem, diampu) {
       for (const m of k.mapel) {
         const milik = modulMapel(m.id).filter(x => milikSaya(x) && samaSemester(x, sem));
         mapelHtml += htmlBaris({
-          attr: `data-mapel="${m.id}"`,
+          attr: `data-mapel="${aman(m.id)}"`,
           judulBaris: aman(m.nama),
           sub: `${aman(m.kelas)}, ${aman(m.jenjang)}`,
           kanan: isiMapelSiap(m.id) ? `${milik.length} modul` : ""

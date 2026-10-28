@@ -58,9 +58,9 @@ function formModul() {
 
   isi.innerHTML = `
     <form id="form">
-      <label>Judul modul <input name="judul" value="${aman(m.judul)}" placeholder="Teks Deskripsi" required></label>
+      <label>Judul modul <input name="judul" maxlength="200" value="${aman(m.judul)}" placeholder="Teks Deskripsi" required></label>
       <label>Tujuan pembelajaran (opsional)
-        <textarea name="catatan" rows="2" placeholder="Tujuan umum modul ini">${aman(m.catatan || "")}</textarea>
+        <textarea name="catatan" rows="2" maxlength="5000" placeholder="Tujuan umum modul ini">${aman(m.catatan || "")}</textarea>
       </label>
 
       <fieldset>
@@ -88,7 +88,7 @@ function formModul() {
       </fieldset>
 
       <label>Link file modul (opsional)
-        <input name="link" type="url" value="${aman(m.link || "")}" placeholder="https://drive.google.com/...">
+        <input name="link" type="url" maxlength="500" value="${aman(m.link || "")}" placeholder="https://drive.google.com/...">
       </label>
       <p class="info">Upload file modulnya ke Google Drive, atur aksesnya jadi "Siapa saja yang memiliki link", lalu tempel link-nya di sini. Isinya nanti tampil langsung di halaman modul.</p>
 
@@ -112,10 +112,10 @@ function formModul() {
     wadah.innerHTML = daftar.length ? daftar.map((p, i) => `
       <div class="isian-pertemuan">
         <div class="isian-pertemuan-atas">
-          <label for="target-${p.id}">Pertemuan ${i + 1}</label>
-          <button type="button" class="tombol-teks merah" data-hapus-pertemuan="${p.id}" aria-label="Hapus pertemuan ${i + 1}">Hapus</button>
+          <label for="target-${aman(p.id)}">Pertemuan ${i + 1}</label>
+          <button type="button" class="tombol-teks merah" data-hapus-pertemuan="${aman(p.id)}" aria-label="Hapus pertemuan ${i + 1}">Hapus</button>
         </div>
-        <textarea id="target-${p.id}" data-id="${p.id}" rows="2" dir="auto" placeholder="Target capaian pertemuan ${i + 1}">${aman(p.target)}</textarea>
+        <textarea id="target-${aman(p.id)}" data-id="${aman(p.id)}" rows="2" dir="auto" placeholder="Target capaian pertemuan ${i + 1}">${aman(p.target)}</textarea>
       </div>`).join("") : `<p class="info">Belum ada pertemuan.</p>`;
 
     wadah.querySelectorAll("[data-hapus-pertemuan]").forEach(b => {
@@ -278,8 +278,8 @@ function layarModul() {
         <div class="bacaan-bawah">
           <span class="info">Dipakai ${dipakai} soal</span>
           <span class="spasi"></span>
-          ${boleh ? `<button class="tombol-kecil" data-edit-bacaan="${b.id}">Ubah</button>
-          <button class="tombol-kecil" data-soal-bacaan="${b.id}">+ Soal untuk teks ini</button>` : ""}
+          ${boleh ? `<button class="tombol-kecil" data-edit-bacaan="${aman(b.id)}">Ubah</button>
+          <button class="tombol-kecil" data-soal-bacaan="${aman(b.id)}">+ Soal untuk teks ini</button>` : ""}
         </div>
       </article>`;
   }
@@ -303,7 +303,7 @@ function layarModul() {
 
   for (const k of kelompok) {
     kanan += `
-      <section class="pertemuan" id="pertemuan-${k.p.id}">
+      <section class="pertemuan" id="pertemuan-${aman(k.p.id)}">
         <div class="pertemuan-kepala">
           <h3>Pertemuan ${k.nomor}</h3>
           <span class="info">${k.soal.length} soal</span>
@@ -313,8 +313,8 @@ function layarModul() {
       kanan += kartuSoal(s, { nomor: ++nomorSoal, pertama: i === 0, terakhir: i === k.soal.length - 1, mode: boleh ? "modul" : "lihat", bacaan: bacaan.find(b => b.id === s.bacaanId) });
     });
     kanan += `<div class="baris-tombol">
-        ${boleh ? `<button class="tombol-kedua" data-soal-pertemuan="${k.p.id}">+ Soal pertemuan ${k.nomor}</button>` : ""}
-        ${k.soal.length ? `<button class="tombol-teks" data-cetak-pertemuan="${k.p.id}">Cetak soal pertemuan ini</button>` : ""}
+        ${boleh ? `<button class="tombol-kedua" data-soal-pertemuan="${aman(k.p.id)}">+ Soal pertemuan ${k.nomor}</button>` : ""}
+        ${k.soal.length ? `<button class="tombol-teks" data-cetak-pertemuan="${aman(k.p.id)}">Cetak soal pertemuan ini</button>` : ""}
       </div>
       </section>`;
   }
@@ -504,7 +504,7 @@ function kartuSoal(s, o) {
         <button class="panah" data-turun="${aman(id)}" aria-label="Turunkan soal" ${o.terakhir ? "disabled" : ""}>↓</button>
         <span class="spasi"></span>`;
     if (o.mode === "modul") {
-      html += `<button data-edit="${s.id}">Ubah</button><button data-hapus="${s.id}" class="hapus">Hapus</button>`;
+      html += `<button data-edit="${aman(s.id)}">Ubah</button><button data-hapus="${aman(s.id)}" class="hapus">Hapus</button>`;
     } else if (o.ubahUjian) {
       html += `<button data-ubah-ujian="${aman(s.id)}">Ubah</button><button data-lepas="${aman(id)}" class="hapus">Hapus</button>`;
     } else {
@@ -598,9 +598,9 @@ function formSoal() {
   tombolKembali.hidden = false;
 
   const opsiPertemuan = pertemuan.map((p, i) =>
-    `<option value="${p.id}" ${s.pertemuanId === p.id ? "selected" : ""}>Pertemuan ${i + 1}${p.target ? ": " + aman(potong(p.target, 50)) : ""}</option>`).join("");
+    `<option value="${aman(p.id)}" ${s.pertemuanId === p.id ? "selected" : ""}>Pertemuan ${i + 1}${p.target ? ": " + aman(potong(p.target, 50)) : ""}</option>`).join("");
   const opsiBacaan = bacaan.map(b =>
-    `<option value="${b.id}" ${s.bacaanId === b.id ? "selected" : ""}>${aman(b.judul || potong(b.teks, 40))}</option>`).join("");
+    `<option value="${aman(b.id)}" ${s.bacaanId === b.id ? "selected" : ""}>${aman(b.judul || potong(b.teks, 40))}</option>`).join("");
 
   isi.innerHTML = `
     <form id="form">
@@ -724,7 +724,7 @@ function formSalin() {
         <div class="kolom daftar-centang">
           ${milik.map(m => `
             <label class="centang">
-              <input type="checkbox" name="modul" value="${m.id}" ${!posisi.salinModul || posisi.salinModul === m.id ? "checked" : ""}>
+              <input type="checkbox" name="modul" value="${aman(m.id)}" ${!posisi.salinModul || posisi.salinModul === m.id ? "checked" : ""}>
               <span dir="auto">${aman(m.judul)} <small>${(m.pertemuan || []).length} pertemuan, ${jumlahSoal(m)} soal</small></span>
             </label>`).join("")}
         </div>

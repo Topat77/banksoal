@@ -56,7 +56,7 @@ function layarCari() {
     let h = `<p class="info">${hasil.length} soal ketemu${hasil.length > 100 ? ", ditampilkan 100 pertama" : ""}</p><div class="daftar">`;
     for (const x of hasil.slice(0, 100)) {
       h += `
-        <button class="baris hasil" data-mapel="${x.mp.id}" data-mod="${x.m.id}">
+        <button class="baris hasil" data-mapel="${aman(x.mp.id)}" data-mod="${aman(x.m.id)}">
           <span class="baris-isi">
             <span class="teks-hasil" dir="auto">${x.lain ? aman(potong(x.s.teks, 120)) : sorot(x.s.teks, kata)}</span>
             ${x.lain ? `<span class="baris-sub">${x.lain.label}: <span dir="auto">${sorot(potong(x.lain.teks, 120), kata)}</span></span>` : ""}

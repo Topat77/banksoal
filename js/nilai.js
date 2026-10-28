@@ -189,7 +189,7 @@ function layarSantri() {
     } else {
       h += `<div class="wadah-tabel-santri"><table class="tabel-santri lihat">
           <thead><tr><th class="kol-absen">No. Absen</th><th class="kol-nis">NIS</th><th>Nama siswa</th></tr></thead>
-          <tbody id="badanSantri">${daftar.map(x => `<tr data-id="${x.id}"><td class="tengah">${aman(x.absen ?? "")}</td><td>${aman(x.nis || "")}</td><td>${aman(x.nama)}</td></tr>`).join("")}</tbody>
+          <tbody id="badanSantri">${daftar.map(x => `<tr data-id="${aman(x.id)}"><td class="tengah">${aman(x.absen ?? "")}</td><td>${aman(x.nis || "")}</td><td>${aman(x.nama)}</td></tr>`).join("")}</tbody>
         </table></div>`;
     }
     isi.innerHTML = h;
@@ -200,9 +200,9 @@ function layarSantri() {
   // ---------- admin: tabel bisa diketik ----------
   const pasangTab = () => pasangTabJenjang("santri", { kelasSantri: null });
   const barisKosong = 3;
-  const tombolHapus = (x) => `<button class="tombol-hapus-kecil" data-hapus-santri="${x.id}" aria-label="Hapus ${aman(x.nama)}" title="Hapus siswa">×</button>`;
+  const tombolHapus = (x) => `<button class="tombol-hapus-kecil" data-hapus-santri="${aman(x.id)}" aria-label="Hapus ${aman(x.nama)}" title="Hapus siswa">×</button>`;
   const htmlBarisSantri = (x) => `
-    <tr data-id="${x ? x.id : ""}">
+    <tr data-id="${x ? aman(x.id) : ""}">
       <td><input data-f="absen" type="number" inputmode="numeric" min="1" step="1" value="${x && x.absen !== undefined && x.absen !== null ? aman(x.absen) : ""}" aria-label="No. absen"></td>
       <td><input data-f="nis" inputmode="numeric" value="${x ? aman(x.nis || "") : ""}" aria-label="NIS"></td>
       <td><input data-f="nama" value="${x ? aman(x.nama) : ""}" aria-label="Nama siswa" placeholder="${x ? "" : "Nama siswa baru"}"></td>
@@ -302,7 +302,7 @@ function layarSantri() {
       const sel = b.split("\t");
       sel.forEach((isiSel, j) => {
         const f = urutanKolom[mulaiKolom + j];
-        if (f) tr.querySelector(`[data-f="${f}"]`).value = isiSel.trim();
+        if (f) tr.querySelector(`[data-f="${CSS.escape(f)}"]`).value = isiSel.trim();
       });
       simpanBaris(tr);
       jumlah++;
@@ -325,7 +325,7 @@ function layarSantri() {
           if (e.key !== "Enter") return;
           e.preventDefault();
           simpanBaris(tr);
-          const berikut = tr.nextElementSibling && tr.nextElementSibling.querySelector(`[data-f="${inp.dataset.f}"]`);
+          const berikut = tr.nextElementSibling && tr.nextElementSibling.querySelector(`[data-f="${CSS.escape(inp.dataset.f)}"]`);
           if (berikut) berikut.focus();
         };
       });
@@ -420,7 +420,7 @@ function layarNilai() {
     <table class="lembar-nilai">
       <thead><tr>
         <th class="kol-nama">Siswa</th>
-        ${kolom.map(k => `<th class="kol-${k.kelompok}">${bisaIsi ? `<button class="judul-kolom" data-kolom="${k.id}" title="Ketuk untuk ganti nama / hapus">${aman(k.label)}</button>` : `<span class="judul-kolom">${aman(k.label)}</span>`}</th>`).join("")}
+        ${kolom.map(k => `<th class="kol-${aman(k.kelompok)}">${bisaIsi ? `<button class="judul-kolom" data-kolom="${aman(k.id)}" title="Ketuk untuk ganti nama / hapus">${aman(k.label)}</button>` : `<span class="judul-kolom">${aman(k.label)}</span>`}</th>`).join("")}
         <th class="kol-hadir">Hadir</th><th class="kol-hadir">Sakit</th><th class="kol-hadir">Izin</th>
         <th class="kol-akhir">Akhir</th>
       </tr></thead><tbody>`;
@@ -429,10 +429,10 @@ function layarNilai() {
     const hd = lembar.hadir[s.id] || {};
     const hasil = hitungNilai(lembar, s.id, mp);
     const kunciIsi = bisaIsi ? "" : " readonly tabindex=\"-1\"";
-    h += `<tr data-santri="${s.id}">
+    h += `<tr data-santri="${aman(s.id)}">
       <th class="kol-nama" scope="row"><span class="nomor-santri">${aman(noAbsen(s, i + 1))}</span>${aman(s.nama)}</th>
-      ${kolom.map(k => `<td><input type="number" inputmode="decimal" min="0" max="100" step="any" aria-label="${aman(k.label)} ${aman(s.nama)}" data-nilai="${k.id}" value="${n[k.id] ?? ""}"${kunciIsi}></td>`).join("")}
-      ${["hadir", "sakit", "izin"].map(x => `<td><input type="number" inputmode="numeric" min="0" step="1" aria-label="${x} ${aman(s.nama)}" data-hadir="${x}" value="${hd[x] ?? ""}"${kunciIsi}></td>`).join("")}
+      ${kolom.map(k => `<td><input type="number" inputmode="decimal" min="0" max="100" step="any" aria-label="${aman(k.label)} ${aman(s.nama)}" data-nilai="${aman(k.id)}" value="${aman(n[k.id] ?? "")}"${kunciIsi}></td>`).join("")}
+      ${["hadir", "sakit", "izin"].map(x => `<td><input type="number" inputmode="numeric" min="0" step="1" aria-label="${x} ${aman(s.nama)}" data-hadir="${x}" value="${aman(hd[x] ?? "")}"${kunciIsi}></td>`).join("")}
       <td class="kol-akhir" data-akhir>${angkaRapi(hasil.akhir)}</td>
     </tr>`;
   });
@@ -479,7 +479,7 @@ function layarNilai() {
       if (e.key !== "Enter") return;
       e.preventDefault();
       const tr = inp.closest("tr").nextElementSibling;
-      const sel = inp.dataset.nilai ? `[data-nilai="${inp.dataset.nilai}"]` : `[data-hadir="${inp.dataset.hadir}"]`;
+      const sel = inp.dataset.nilai ? `[data-nilai="${CSS.escape(inp.dataset.nilai)}"]` : `[data-hadir="${CSS.escape(inp.dataset.hadir)}"]`;
       const berikut = tr && tr.querySelector(sel);
       if (berikut) berikut.focus();
     };

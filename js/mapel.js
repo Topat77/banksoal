@@ -47,7 +47,7 @@ function layarMapel() {
   const kelasDari = (x) => { const asal = mapelAsal(x.id); return asal ? asal.kelas : ""; };
 
   const barisModul = (m, nomor, dariOrangLain, denganKelas) => htmlBaris({
-    attr: `data-mod="${m.id}"`,
+    attr: `data-mod="${aman(m.id)}"`,
     nomor,
     judulBaris: aman(m.judul),
     arahJudul: true,
@@ -99,7 +99,7 @@ function layarMapel() {
     const milik = semuaSum.filter(milikSaya);
     const lain = semuaSum.filter(s => !milikSaya(s));
     const barisSum = (s, denganNama, denganKelas) => htmlBaris({
-      attr: `data-sum="${s.id}"`,
+      attr: `data-sum="${aman(s.id)}"`,
       judulBaris: aman(s.nama),
       sub: `${denganKelas ? `${aman(kelasDari(s))} · ` : ""}${aman(s.pelaksanaan || "Pelaksanaan belum diisi")}, ${(s.butir || []).length} soal${denganNama ? ` · ${aman(s.namaPemilik)}` : ""}`,
       tanda: !denganNama && s.dibagikan ? "Dibagikan" : "",

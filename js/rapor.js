@@ -80,7 +80,7 @@ function layarRapor() {
     santri.forEach((s, i) => {
       const r = nilaiRapor(s, sem);
       h += htmlBaris({
-        attr: `data-santri="${s.id}"`,
+        attr: `data-santri="${aman(s.id)}"`,
         nomor: aman(noAbsen(s, i + 1)),
         judulBaris: aman(s.nama),
         sub: r.kosong ? `${r.kosong} mapel belum ada nilai` : "Semua mapel sudah dinilai",
