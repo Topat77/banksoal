@@ -39,6 +39,39 @@ function salin(x) {
   return x === undefined ? undefined : JSON.parse(JSON.stringify(x));
 }
 
+// ====== BENTUK SOAL ======
+// Firestore Rules nggak bisa ngecek isi tiap soal di dalam daftar (nggak ada perulangan),
+// jadi soal dirapikan di sini sebelum disimpan. Yang dirapikan cuma soal yang lagi
+// dibuat / diedit / disalin; soal lain di modul yang sama dibiarkan apa adanya.
+//   PG  : { id, jenis: "PG",   teks, pilihan: [5 teks], kunci: 0-4, pertemuanId, bacaanId, dibuat }
+//   Esai: { id, jenis: "Esai", teks, pedoman,                       pertemuanId, bacaanId, dibuat }
+const BATAS_SOAL = { teks: 5000, pilihan: 1000, pedoman: 5000 };
+
+function rapikanSoal(s) {
+  const teks = (x) => typeof x === "string" ? x : "";
+  const idAtauNull = (x) => typeof x === "string" && x ? x : null;
+  // sama kayak kartuSoal: yang bukan "PG" dianggap esai
+  const hasil = { id: String(s.id), jenis: s.jenis === "PG" ? "PG" : "Esai", teks: teks(s.teks) };
+  if (hasil.jenis === "PG") {
+    hasil.pilihan = HURUF.map((h, i) => teks((s.pilihan || [])[i]));
+    hasil.kunci = Number.isInteger(s.kunci) && s.kunci >= 0 && s.kunci < HURUF.length ? s.kunci : 0;
+  } else {
+    hasil.pedoman = teks(s.pedoman);
+  }
+  hasil.pertemuanId = idAtauNull(s.pertemuanId);
+  hasil.bacaanId = idAtauNull(s.bacaanId);
+  if (typeof s.dibuat === "number") hasil.dibuat = s.dibuat;
+  return hasil;
+}
+
+// pesan galat kalau ada teks soal yang kepanjangan, atau "" kalau aman
+function galatPanjangSoal(s) {
+  if ((s.teks || "").length > BATAS_SOAL.teks) return `Pertanyaannya kepanjangan (maks. ${BATAS_SOAL.teks} huruf).`;
+  if ((s.pilihan || []).some(x => (x || "").length > BATAS_SOAL.pilihan)) return `Ada pilihan jawaban yang kepanjangan (maks. ${BATAS_SOAL.pilihan} huruf).`;
+  if ((s.pedoman || "").length > BATAS_SOAL.pedoman) return `Pedoman jawabannya kepanjangan (maks. ${BATAS_SOAL.pedoman} huruf).`;
+  return "";
+}
+
 // ====== SEMESTER ======
 // Juli–Desember = semester Ganjil tahun ini/tahun depan, Januari–Juni = Genap
 function semesterSekarang() {

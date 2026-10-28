@@ -442,12 +442,13 @@ function simpanDrafAI(bahan, d, wadah) {
     if (!teks) galat = "Pertanyaannya masih kosong.";
     else if (s.jenis === "PG" && pilihan.filter(Boolean).length < 2) galat = "Isi minimal 2 pilihan jawaban.";
     else if (s.jenis === "PG" && !pilihan[s.kunci]) galat = "Kunci jawaban yang dipilih masih kosong.";
+    else galat = galatPanjangSoal({ teks, pilihan: s.jenis === "PG" ? pilihan : [], pedoman: s.jenis === "PG" ? "" : s.pedoman });
     if (pesan) pesan.textContent = galat;
     if (el) el.classList.toggle("ada-salah", !!galat);
     if (galat) { salah++; continue; }
-    siap.push(s.jenis === "PG"
+    siap.push(rapikanSoal(s.jenis === "PG"
       ? { id: buatId(), jenis: "PG", teks, pilihan, kunci: s.kunci, pertemuanId: s.pertemuanId || null, bacaanId: s.bacaanId || null, dibuat: Date.now() }
-      : { id: buatId(), jenis: "Esai", teks, pedoman: (s.pedoman || "").trim(), pertemuanId: s.pertemuanId || null, bacaanId: s.bacaanId || null, dibuat: Date.now() });
+      : { id: buatId(), jenis: "Esai", teks, pedoman: (s.pedoman || "").trim(), pertemuanId: s.pertemuanId || null, bacaanId: s.bacaanId || null, dibuat: Date.now() }));
   }
   if (salah) {
     const pertama = wadah.querySelector(".ada-salah");
@@ -496,7 +497,7 @@ function labelSimpanAI(bahan, n) {
 }
 
 // ikon kecil buat tombol AI (bintang berkilau)
-const IKON_AI = `<svg viewBox="0 0 24 24" aria-hidden="true" class="ikon-ai"><path d="M12 3l1.8 4.9L19 9.7l-5.2 1.8L12 16.4l-1.8-4.9L5 9.7l5.2-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>`;
+const IKON_AI = `<svg viewBox="0 0 24 24" aria-hidden="true" class="ikon-ai"><path d="M12 3l1.8 4.9L19 9.7l-5.2 1.8L12 16.4l-1.8-4.9L5 9.7l5.2-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>`;
 
 // =====================================================
 //  AI GENERATOR — pintu depan buat bikin soal pakai AI
