@@ -129,6 +129,19 @@ service cloud.firestore {
         && daftar('kolom', 60) && peta('nilai', 300) && peta('hadir', 300)
         && teks('namaPengubah', 100);
     }
+    // kolom yang berubah (atau dokumen baru)
+    function berubah(k) {
+      return resource == null || isi().diff(resource.data).affectedKeys().hasAny([k]);
+    }
+    // profil akun: cuma kolom yang dipakai aplikasi. Ukuran cuma dicek kalau kolomnya berubah,
+    // jadi profil lama tetap bisa di-update (misal waktu nyatat terakhirMasuk).
+    function profilValid() {
+      return kolomDikenal(['nama', 'email', 'foto', 'peran', 'sapaan', 'nip',
+          'dibuat', 'terakhirMasuk', 'diubah', 'diubahOleh'])
+        && (!berubah('nama') || (isi().nama is string && isi().nama.size() <= 100))
+        && (!berubah('nip') || teksAtauKosong('nip', 30))
+        && (!berubah('foto') || teks('foto', 2000));
+    }
 
     // ---------- akun ----------
     match /pengguna/{uid} {
@@ -136,20 +149,22 @@ service cloud.firestore {
 
       // daftar pertama kali: selalu "menunggu", kecuali email admin awal
       allow create: if masuk() && request.auth.uid == uid
+        && profilValid()
         && request.resource.data.email == request.auth.token.email
         && (request.resource.data.peran == 'menunggu'
             || (request.resource.data.peran == 'kurikulum'
                 && request.auth.token.email_verified == true
                 && request.auth.token.email in emailAdminAwal()));
 
-      // ubah profil sendiri boleh, tapi nggak boleh ngubah peran, email, & sapaan sendiri
+      // ubah profil sendiri boleh, tapi nggak boleh ngubah peran, email, sapaan, & NIP sendiri
       // (sapaan ustadz/ustadzah nentuin kelas putra/putri yang boleh diajar, jadi diatur admin).
       // Admin boleh ngubah akun siapa pun (setujui, tolak, nonaktifkan).
-      allow update: if masuk() && (
+      allow update: if masuk() && profilValid() && (
         (request.auth.uid == uid
           && request.resource.data.peran == resource.data.peran
           && request.resource.data.email == resource.data.email
-          && request.resource.data.get('sapaan', null) == resource.data.get('sapaan', null))
+          && request.resource.data.get('sapaan', null) == resource.data.get('sapaan', null)
+          && request.resource.data.get('nip', null) == resource.data.get('nip', null))
         || kurikulum());
 
       allow delete: if kurikulum();
@@ -209,8 +224,8 @@ service cloud.firestore {
       match /nilai/{id} {
         allow read: if aktif() && (kurikulum() || pengampu(idMapel));
         allow create, update: if aktif() && pengampu(idMapel) && nilaiValid();
-        // admin boleh menghapus, buat ngebersihin waktu mapelnya dihapus
-        allow delete: if aktif() && (pengampu(idMapel) || kurikulum());
+        // yang boleh menghapus cuma admin, buat ngebersihin waktu mapelnya dihapus
+        allow delete: if kurikulum();
       }
 
       // ujian sumatif: pemiliknya + kurikulum; kalau dibagikan,

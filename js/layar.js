@@ -774,7 +774,7 @@ function layarLainnya() {
     <section class="bagian">
       <h2>Profil</h2>
       <form id="formProfil">
-        <label>Nama yang tampil <input name="nama" value="${aman(s.nama || "")}" required placeholder="Ustadzah Aminah"></label>
+        <label>Nama yang tampil <input name="nama" value="${aman(s.nama || "")}" required maxlength="100" placeholder="Ustadzah Aminah"></label>
         <p class="info">Muncul di modul dan ujian yang kamu buat, dan di daftar pengampu.</p>
         <p class="info"><b>Sapaan:</b> ${sapaanPengguna(s) ? SAPAAN[sapaanPengguna(s)] : "belum diatur"} · diatur TU di halaman Akun, karena ngaruh ke kelas putra/putri yang boleh diajar.</p>
         <div class="baris-tombol">
