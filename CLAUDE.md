@@ -46,7 +46,9 @@ Firestore: `pengguna`, `pengaturan`, `kelas`, `santri`, `mapel/{id}/{modul,nilai
 - **Backend:** kalau nambah fungsi di `firebase.js`, tambahin juga yang setara di `coba.js`.
 - **Layar baru:** daftarin di `daftarLayar` (`js/layar.js`); kalau isinya form, masukin juga ke `LAYAR_DIAM`.
 - **Soal baru / diedit / disalin:** lewatin `rapikanSoal()` (`js/alat.js`) sebelum disimpan. Rules nggak bisa ngecek isi tiap soal di dalam daftar, jadi bentuknya dijaga di situ.
-- **Lembar nilai:** simpan pakai `simpanNilaiSebagian()` (cuma sel yang berubah), jangan kirim lembar utuh, biar isian dari perangkat lain nggak ketimpa.
+- **Data modul / ujian dari database:** lewatin `amankanDok()` (`js/alat.js`) sebelum dipakai layar. Item rusak di daftar (null, angka) bisa aja ada, dan rules nggak bisa nolak.
+- **Simpan modul / ujian / UAS / usulan:** `simpanModul()` dkk. ngembaliin `null` kalau dokumennya kegedean (`ukuranDok()`, Firestore maks. 1 MiB). Kalau habis nyimpan langsung pindah layar, cek dulu hasilnya biar isian guru nggak hilang.
+- **Lembar nilai:** simpan pakai `simpanNilaiSebagian()` (cuma sel yang berubah), jangan kirim lembar utuh, biar isian dari perangkat lain nggak ketimpa. Nambah/buang item daftar pakai `tambahKeDaftar()` / `buangDariDaftar()` (jadi `arrayUnion` / `arrayRemove`).
 - **CSP** ada di `<meta>` `index.html`. Pakai layanan / domain baru → tambahin di situ. Script tema inline di `<head>` diizinkan lewat hash: kalau isinya diubah, hash di CSP juga harus diganti.
 
 ## Nyoba di lokal
@@ -55,4 +57,15 @@ Kalau `apiKey` di `konfig.js` dikosongin, aplikasi jalan di mode coba tanpa Fire
 Auto-refresh Live Server **nggak jalan**, karena script yang disisipin Live Server keblokir CSP. Aplikasinya tetap jalan normal, cuma habis nyimpan file harus refresh manual (Ctrl+R). Pesan "Refused to execute inline script" dari Live Server di Console boleh diabaikan.
 
 ## Tes
-`node tes/aturan.tes.js`: ngetes `js/aturan.js` (salinan rules) dan alat bantu data. Jalanin tiap ngubah rules/aturan.js, dan tambahin kasusnya. Folder `tes/` nggak dimuat aplikasi, jadi nggak perlu didaftarin di `index.html`/`sw.js`.
+Folder `tes/` nggak dimuat aplikasi, jadi nggak perlu didaftarin di `index.html`/`sw.js`. Tiap ngubah rules / `aturan.js`, jalanin dua-duanya dan tambahin kasusnya.
+- `node tes/aturan.tes.js`: cepat, tanpa pasang apa-apa. Ngetes `js/aturan.js` (salinan rules), alat bantu data, dan render soal rusak.
+- `cd tes/rules && npm install && npm run tes`: ngetes **`firestore.rules` yang asli** di Firebase Emulator. Butuh Java 21 (`winget install EclipseAdoptium.Temurin.21.JDK`) dan `npm i -g firebase-tools`. Project-nya `demo-banksoal`, jadi nggak perlu login dan nggak nyentuh data beneran. Kalau `java` belum kebaca, buka terminal baru (atau set `JAVA_HOME`).
+
+## Kuota Firestore (paket gratis: 50.000 baca / hari)
+Tiap buka aplikasi (atau balik setelah >30 menit nggak aktif), semua langganan dibaca ulang. 1 dokumen = 1 baca; query kosong tetap 1 baca. Kira-kira per buka:
+- **Guru:** 3 (profil + pengaturan) + semua `mapel` + semua `grup` + semua `kelas` + siswa di kelasnya + tiap mapel yang diampu (lembar nilai + modul & sumatif miliknya + yang dibagikan) + tiap mapel tetangga (modul & sumatif dibagikan) + UAS & usulan grupnya.
+  Contoh 60 mapel, 10 grup, 12 kelas, guru ngampu 2 mapel, ±5 modul per mapel → **±150–200 baca**. 100 guru × 3 kali buka sehari ≈ **45.000–60.000**, udah di batas.
+- **TU:** 3 + semua mapel, grup, kelas, **semua siswa**, **semua akun** + isi **semua** mapel (nilai, modul, sumatif) + UAS & usulan semua grup. Contoh 300 siswa, 60 mapel → **±1.500 baca** per buka.
+- Modul, sumatif, dan nilai diambil **semua semester**, jadi angkanya naik terus tiap tahun.
+
+Cek di Firebase Console → Firestore → **Usage** (grafik Reads per hari). Kalau mendekati 50.000: (1) filter modul/sumatif/nilai per semester aktif, (2) guru nggak usah langganan semua `mapel`, (3) isi mapel buat TU dimuat waktu dibuka aja. Kalau kuota habis, aplikasi berhenti sinkron sampai reset (jam 00.00 waktu Pasifik ≈ 14.00/15.00 WIB).

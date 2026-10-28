@@ -500,7 +500,7 @@ function simpanDrafAI(bahan, d, wadah) {
   if (bahan.untuk === "modul") {
     const t = modulMapel(mp.id).find(x => x.id === bahan.modul.id);
     if (!t) { kabar("Modul ini sudah dihapus (mungkin dari perangkat lain)."); return pergi("mapel", { tab: "modul" }); }
-    simpanModul(mp.id, { ...t, soal: [...(t.soal || []), ...siap] });
+    if (!simpanModul(mp.id, { ...t, soal: [...(t.soal || []), ...siap] })) return;   // kegedean: draft tetap ada
     drafAI = null;
     pergi("modul", { aiPertemuan: null });
   } else {
@@ -524,7 +524,7 @@ function simpanDrafAI(bahan, d, wadah) {
       modulId: MODUL_UJIAN, soalId: s.id,
       salinan: { soal: { ...s, pertemuanId: null, bacaanId: null }, bacaan: null }
     }))];
-    simpanUjian(mp.id, { ...t, butir });
+    if (!simpanUjian(mp.id, { ...t, butir })) return;   // kegedean: draft tetap ada
     drafAI = null;
     pergi("sumatif");
   }

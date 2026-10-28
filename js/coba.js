@@ -12,11 +12,11 @@ const KUNCI_COBA = "banksoal-coba-data-v4";   // v4: guru punya NIP
 const KUNCI_COBA_AKUN = "banksoal-coba-akun";
 
 const AKUN_CONTOH = [
-  { uid: "u-aminah",  nama: "Ustadzah Aminah",  email: "aminah@contoh.id",  ket: "Ustadzah, B. Indonesia 7B1 (putri), koordinator UAS B. Indonesia kelas 7" },
-  { uid: "u-hasan",   nama: "Ustadz Hasan",     email: "hasan@contoh.id",   ket: "Ustadz, ngajar di 7A1 & 8A1 (putra)" },
-  { uid: "u-yusuf",   nama: "Ustadz Yusuf",     email: "yusuf@contoh.id",   ket: "Ustadz, B. Indonesia 7A2 (satu grup dengan 7A1 & 7B1)" },
-  { uid: "u-kur",     nama: "Admin TU",         email: "kurikulum@contoh.id", ket: "Admin (TU): guru, mapel, siswa, bobot, rapor" },
-  { uid: "u-baru",    nama: "Ustadz Fadil",     email: "fadil@contoh.id",   ket: "Akun baru, belum disetujui" }
+  { uid: "u-aminah",  nama: "Ustadzah Aminah",  email: "aminah@contoh.id", emailTerverifikasi: true, ket: "Ustadzah, B. Indonesia 7B1 (putri), koordinator UAS B. Indonesia kelas 7" },
+  { uid: "u-hasan",   nama: "Ustadz Hasan",     email: "hasan@contoh.id", emailTerverifikasi: true, ket: "Ustadz, ngajar di 7A1 & 8A1 (putra)" },
+  { uid: "u-yusuf",   nama: "Ustadz Yusuf",     email: "yusuf@contoh.id", emailTerverifikasi: true, ket: "Ustadz, B. Indonesia 7A2 (satu grup dengan 7A1 & 7B1)" },
+  { uid: "u-kur",     nama: "Admin TU",         email: "kurikulum@contoh.id", emailTerverifikasi: true, ket: "Admin (TU): guru, mapel, siswa, bobot, rapor" },
+  { uid: "u-baru",    nama: "Ustadz Fadil",     email: "fadil@contoh.id", emailTerverifikasi: true, ket: "Akun baru, belum disetujui" }
 ];
 
 function dataAwalCoba() {
@@ -463,6 +463,16 @@ function buatBackendCoba() {
       db[jalur] = baru;
       simpanDb();
       kabariSemua();
+    },
+    // sama kayak versi online: tulis cuma kalau dokumennya belum ada
+    async buatKalauBelumAda(jalur, isiBaru) {
+      if (db[jalur]) return false;
+      const baru = salin(isiBaru);
+      if (!aturan.bolehTulis(jalur, null, baru, auth)) throw galat("permission-denied");
+      db[jalur] = baru;
+      simpanDb();
+      kabariSemua();
+      return true;
     },
     // sama kayak versi online: cuma kolom yang disebut yang diubah
     async ubahSebagian(jalur, perubahan) {

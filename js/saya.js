@@ -86,6 +86,7 @@ function layarLainnya() {
   };
   const uc = document.getElementById("unduhCadangan");
   if (uc) uc.onclick = () => unduhCadangan(uc, document.getElementById("pesanCadangan"));
+  pasangPulihkanCadangan();
   const fl = document.getElementById("formLembaga");
   if (fl) {
     fl.onsubmit = (e) => {

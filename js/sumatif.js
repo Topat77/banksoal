@@ -334,7 +334,7 @@ function layarPilihSoal() {
     // yang lama dijaga urutannya; butir yang nggak tampil di sini (misal salinan) tetap dipertahankan
     const tetap = sekarang.filter(k => !tampil.has(k) || dicentang.includes(k));
     const tambahan = dicentang.filter(k => !sekarang.includes(k));
-    simpanUjian(mp.id, { ...t, butir: butirUntukDisimpan(mp.id, [...tetap, ...tambahan], t) });
+    if (!simpanUjian(mp.id, { ...t, butir: butirUntukDisimpan(mp.id, [...tetap, ...tambahan], t) })) return;
     pergi("sumatif");
   };
 }
@@ -374,7 +374,7 @@ function formSoalUjian() {
     const i = butir.findIndex(b => b.modulId === MODUL_UJIAN && b.soalId === hasil.soal.id);
     if (i >= 0) butir[i] = butirBaru;
     else butir.push(butirBaru);
-    simpanUjian(mp.id, { ...t, butir });
+    if (!simpanUjian(mp.id, { ...t, butir })) return;   // kegedean: isian soal tetap di form
     pergi("sumatif");
   };
 }

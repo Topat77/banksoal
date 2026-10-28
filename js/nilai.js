@@ -71,13 +71,15 @@ function rataRata(daftar) {
 
 function lembarBaru(mapel, sem) {
   const bobot = bobotUntuk(mapel.jenjang, jenisMapel(mapel));
+  // id kolom bawaan sengaja tetap (bukan acak): kalau dua HP bikin lembar yang sama pas offline,
+  // kolomnya digabung jadi satu, nggak dobel
   const kolom = [
-    { id: buatId(), kelompok: "tugas", label: "Tugas 1" },
-    { id: buatId(), kelompok: "uh", label: "UH 1" },
-    { id: buatId(), kelompok: "uts", label: "UTS" },
-    { id: buatId(), kelompok: "uas", label: "UAS" }
+    { id: "k-tugas-1", kelompok: "tugas", label: "Tugas 1" },
+    { id: "k-uh-1", kelompok: "uh", label: "UH 1" },
+    { id: "k-uts", kelompok: "uts", label: "UTS" },
+    { id: "k-uas", kelompok: "uas", label: "UAS" }
   ];
-  if (bobot.keaktifan > 0) kolom.push({ id: buatId(), kelompok: "keaktifan", label: "Keaktifan" });
+  if (bobot.keaktifan > 0) kolom.push({ id: "k-keaktifan", kelompok: "keaktifan", label: "Keaktifan" });
   return {
     id: idLembarNilai(sem), semester: sem.semester, tahun: sem.tahun,
     kolom, nilai: {}, hadir: {}
@@ -490,9 +492,11 @@ function layarNilai() {
       const ada = lembar.kolom.filter(k => k.kelompok === g.k).length;
       const tunggal = g.k === "uts" || g.k === "uas" || g.k === "keaktifan";
       const label = tunggal && ada === 0 ? g.label : `${g.label} ${ada + 1}`;
-      lembar.kolom.push({ id: buatId(), kelompok: g.k, label });
+      const kolomBaru = { id: buatId(), kelompok: g.k, label };
+      lembar.kolom.push(kolomBaru);
       kirimNilaiTertunda();
-      simpanNilaiSebagian(mp.id, lembar, [[["kolom"], lembar.kolom]]);
+      // ditambahkan, bukan ngirim daftar utuh: kolom yang ditambah dari perangkat lain nggak hilang
+      simpanNilaiSebagian(mp.id, lembar, [[["kolom"], tambahKeDaftar(kolomBaru)]]);
       tampilkan(true);
     };
   });
@@ -506,16 +510,20 @@ function layarNilai() {
       if (!nama.trim()) {
         const terisi = Object.values(lembar.nilai).filter(n => n[k.id] !== undefined).length;
         if (!(await tanyaYakin(`Hapus kolom "${k.label}"?${terisi ? `\n\n${terisi} nilai di kolom ini ikut terhapus.` : ""}`, { bahaya: true, ya: "Hapus kolom" }))) return;
+        // dibuang dari daftar (bukan ngirim daftar utuh), biar kolom baru dari perangkat lain nggak ikut hilang
+        perubahan.push([["kolom"], buangDariDaftar(salin(k))]);
         lembar.kolom = lembar.kolom.filter(x => x.id !== k.id);
         for (const [sid, n] of Object.entries(lembar.nilai)) {
           if (n[k.id] !== undefined) perubahan.push([["nilai", sid, k.id], undefined]);
           delete n[k.id];
         }
       } else {
+        // ganti nama masih ngirim daftar utuh (jarang, dan urutan kolom harus tetap)
         k.label = nama.trim();
+        perubahan.push([["kolom"], lembar.kolom]);
       }
       kirimNilaiTertunda();
-      simpanNilaiSebagian(mp.id, lembar, [[["kolom"], lembar.kolom], ...perubahan]);
+      simpanNilaiSebagian(mp.id, lembar, perubahan);
       tampilkan(true);
     };
   });

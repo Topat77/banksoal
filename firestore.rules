@@ -202,14 +202,14 @@ service cloud.firestore {
       // modul: pemiliknya + kurikulum selalu bisa lihat;
       // pengampu lain mapel ini, dan pengampu kelas lain di grupnya,
       // bisa lihat kalau modulnya dibagikan
+      // (admin boleh BIKIN atas nama guru, buat mulihin dari cadangan; ngubah tetap cuma pemiliknya)
       match /modul/{id} {
         allow read: if aktif() && (
           kurikulum()
           || resource.data.pemilik == request.auth.uid
           || (resource.data.dibagikan == true && (pengampu(idMapel) || segrup(idMapel))));
         allow create: if aktif()
-          && request.resource.data.pemilik == request.auth.uid
-          && pengampu(idMapel)
+          && ((request.resource.data.pemilik == request.auth.uid && pengampu(idMapel)) || kurikulum())
           && modulValid();
         allow update: if aktif()
           && resource.data.pemilik == request.auth.uid
@@ -220,10 +220,11 @@ service cloud.firestore {
       }
 
       // lembar nilai satu semester: diisi pengampu mapel ini aja;
-      // admin cuma bisa lihat (buat pantauan dan rapor)
+      // admin cuma bisa lihat (buat pantauan dan rapor), dan bikin lembar yang hilang dari cadangan
       match /nilai/{id} {
         allow read: if aktif() && (kurikulum() || pengampu(idMapel));
-        allow create, update: if aktif() && pengampu(idMapel) && nilaiValid();
+        allow create: if aktif() && (pengampu(idMapel) || kurikulum()) && nilaiValid();
+        allow update: if aktif() && pengampu(idMapel) && nilaiValid();
         // yang boleh menghapus cuma admin, buat ngebersihin waktu mapelnya dihapus
         allow delete: if kurikulum();
       }
@@ -236,8 +237,7 @@ service cloud.firestore {
           || resource.data.pemilik == request.auth.uid
           || (resource.data.dibagikan == true && (pengampu(idMapel) || segrup(idMapel))));
         allow create: if aktif()
-          && request.resource.data.pemilik == request.auth.uid
-          && pengampu(idMapel)
+          && ((request.resource.data.pemilik == request.auth.uid && pengampu(idMapel)) || kurikulum())
           && sumatifValid();
         allow update: if aktif()
           && resource.data.pemilik == request.auth.uid
@@ -273,8 +273,8 @@ service cloud.firestore {
       // usulan soal UAS dari pengampu di grup; diterima / ditolak koordinator
       match /usulan/{id} {
         allow read: if aktif() && (kurikulum() || anggotaGrup(idGrup));
-        allow create: if aktif() && anggotaGrup(idGrup)
-          && request.resource.data.pemilik == request.auth.uid
+        allow create: if aktif()
+          && ((anggotaGrup(idGrup) && request.resource.data.pemilik == request.auth.uid) || kurikulum())
           && usulanValid();
         allow update: if aktif()
           && resource.data.pemilik == request.auth.uid
