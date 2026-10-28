@@ -24,7 +24,7 @@ function layarAkun() {
 
   const pilihSapaan = (p) => `
           <label class="pilih-peran">Sapaan
-            <select data-sapaan="${p.id}">
+            <select data-sapaan="${aman(p.id)}">
               <option value="" ${!sapaanPengguna(p) ? "selected" : ""}>Belum diatur</option>
               <option value="ustadz" ${sapaanPengguna(p) === "ustadz" ? "selected" : ""}>Ustadz</option>
               <option value="ustadzah" ${sapaanPengguna(p) === "ustadzah" ? "selected" : ""}>Ustadzah</option>
@@ -45,8 +45,8 @@ function layarAkun() {
           </div>
           <div class="baris-tombol">
             ${pilihSapaan(p)}
-            <button class="tombol-utama" data-setujui="${p.id}">Setujui</button>
-            <button class="tombol-teks merah" data-tolak="${p.id}">Tolak</button>
+            <button class="tombol-utama" data-setujui="${aman(p.id)}">Setujui</button>
+            <button class="tombol-teks merah" data-tolak="${aman(p.id)}">Tolak</button>
           </div>
         </article>`;
     }
@@ -67,7 +67,7 @@ function layarAkun() {
           <td class="kol-nip">${aman(p.nip || "")}</td>
           <td class="kol-mapel"><span class="mapel-guru">${ampu.length ? aman(ampu.join(", ")) : "Belum mengampu mapel"}</span></td>
           <td class="kol-status"><span class="tanda-status ${p.peran === "kurikulum" ? "admin" : ""}">${p.peran === "kurikulum" ? "Admin TU" : "Aktif"}</span></td>
-          <td class="kol-aksi"><button class="tombol-kecil" data-ubah-guru="${p.id}">Ubah</button></td>
+          <td class="kol-aksi"><button class="tombol-kecil" data-ubah-guru="${aman(p.id)}">Ubah</button></td>
         </tr>`;
       }).join("")}</tbody>
     </table></div>
@@ -83,7 +83,7 @@ function layarAkun() {
             <span>${aman(p.email)}</span>
             <small>${p.peran === "ditolak" ? "Ditolak" : "Dinonaktifkan"}</small>
           </div>
-          <div class="baris-tombol"><button class="tombol-kedua" data-aktifkan="${p.id}">Aktifkan lagi</button>${akunBisaDihapus(p) ? `<button class="tombol-teks merah" data-hapus-akun="${p.id}">Hapus</button>` : ""}</div>
+          <div class="baris-tombol"><button class="tombol-kedua" data-aktifkan="${aman(p.id)}">Aktifkan lagi</button>${akunBisaDihapus(p) ? `<button class="tombol-teks merah" data-hapus-akun="${aman(p.id)}">Hapus</button>` : ""}</div>
         </article>`;
     }
     h += `</div>`;
@@ -322,7 +322,7 @@ function layarKelolaMapel() {
       const nama = (m.pengampu || []).map(u => namaPengguna(u) || (m.namaPengampu || {})[u]).filter(Boolean);
       const takSesuai = pengampuTakSesuai(m);
       h += htmlBaris({
-        attr: `data-mapel="${m.id}"`,
+        attr: `data-mapel="${aman(m.id)}"`,
         judulBaris: aman(m.nama),
         sub: `${aman(m.kelas)} · ${nama.length ? aman(nama.join(", ")) : "<em>belum ada pengampu</em>"}`,
         tanda: takSesuai.length ? "Ustadzah di kelas putra" : nama.length ? "" : "Belum ada pengampu",
@@ -359,7 +359,7 @@ function formMapel() {
     .sort((a, b) => (a.nama || "").localeCompare(b.nama || "", "id"));
   const pilihPengampu = calon.length ? calon.map(p => `
       <label class="centang">
-        <input type="checkbox" name="pengampu" value="${p.id}" data-sapaan-pengampu="${aman(sapaanPengguna(p) || "")}" ${(m.pengampu || []).includes(p.id) ? "checked" : ""}>
+        <input type="checkbox" name="pengampu" value="${aman(p.id)}" data-sapaan-pengampu="${aman(sapaanPengguna(p) || "")}" ${(m.pengampu || []).includes(p.id) ? "checked" : ""}>
         <span class="isi-centang"><b>${aman(p.nama)}</b><small>${sapaanPengguna(p) ? `${SAPAAN[sapaanPengguna(p)]} · ` : ""}${aman(p.email)}</small></span>
       </label>`).join("") : `<p class="info">Belum ada akun aktif. Setujui akun ustadz dulu di halaman Akun.</p>`;
 
@@ -419,7 +419,7 @@ function formMapel() {
   form.nama.addEventListener("input", () => {
     if (jenisDipilih) return;
     const j = tebakJenis(form.nama.value);
-    form.querySelector(`[name=jenis][value="${j}"]`).checked = true;
+    form.querySelector(`[name=jenis][value="${CSS.escape(j)}"]`).checked = true;
   });
 
   // ustadzah yang dicentang di kelas putra (rombel A) → peringatan
@@ -467,6 +467,7 @@ function formMapel() {
 
   if (lama) {
     document.getElementById("hapus").onclick = async () => {
+      if (!isiMapelSiap(lama.id)) { kabar("Data masih dimuat, coba lagi sebentar."); return; }
       const modul = modulMapel(lama.id);
       const nSoal = modul.reduce((x, y) => x + jumlahSoal(y), 0);
       const yakin = await tanyaYakin(
@@ -476,7 +477,8 @@ function formMapel() {
       );
       if (!yakin) return;
       if (modul.length && (await minta(`Ketik HAPUS untuk memastikan.`, "", { bahaya: true, ya: "Hapus" })) !== "HAPUS") return;
-      hapusMapelData(lama.id);
+      // dialog tadi bisa lama; kalau datanya ternyata belum siap, jangan lanjut
+      if (!hapusMapelData(lama.id)) { kabar("Data masih dimuat, coba lagi sebentar."); return; }
       hapusSisaKosong();
       pergi("kelolaMapel", { mapelId: null });
     };
@@ -551,7 +553,7 @@ function layarPantauan() {
 
     h += `
       <section class="kartu-pantau">
-        <button class="kartu-pantau-judul" data-mapel="${mp.id}">
+        <button class="kartu-pantau-judul" data-mapel="${aman(mp.id)}">
           <span><strong>${aman(mp.nama)}</strong><small>${aman(mp.kelas)}</small></span>
           <span class="baris-panah" aria-hidden="true">›</span>
         </button>`;

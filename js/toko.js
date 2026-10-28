@@ -322,10 +322,10 @@ function aturLanggananGrup() {
     if (langgananGrup[id]) continue;
     toko.uas[id] = [];
     toko.usulan[id] = [];
-    langgananGrup[id] = { henti: [
-      b.pantauKoleksi(`grup/${id}/uas`, [], d => { if (toko.uas[id]) { toko.uas[id] = d.map(amankanDok); berubah(); } }, laporGagal("UAS")),
+    langgananGrup[id] = { siap: { uas: false, usulan: false }, henti: [
+      b.pantauKoleksi(`grup/${id}/uas`, [], d => { if (toko.uas[id]) { toko.uas[id] = d.map(amankanDok); langgananGrup[id].siap.uas = true; berubah(); } }, laporGagal("UAS")),
       b.pantauKoleksi(`grup/${id}/usulan`, [], d => {
-        if (toko.usulan[id]) { toko.usulan[id] = d.map(amankanDok).sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0)); berubah(); }
+        if (toko.usulan[id]) { toko.usulan[id] = d.map(amankanDok).sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0)); langgananGrup[id].siap.usulan = true; berubah(); }
       }, laporGagal("usulan UAS"))
     ] };
   }
@@ -419,6 +419,11 @@ function sumatifMapel(idMapel) {
 function isiMapelSiap(idMapel) {
   const w = toko.isi[idMapel];
   return !!w && w.siap;
+}
+// UAS & usulan grup sudah selesai dimuat dari database (belum = daftar masih kosong sementara)
+function isiGrupSiap(idGrup) {
+  const l = langgananGrup[idGrup];
+  return !!l && l.siap.uas && l.siap.usulan;
 }
 function samaSemester(x, sem) {
   return x.semester === sem.semester && x.tahun === sem.tahun;
@@ -734,6 +739,8 @@ function simpanMapelData(mapel) {
 }
 
 function hapusMapelData(idMapel) {
+  // isi mapel belum selesai dimuat: daftar modul/ujian/nilai masih kosong sementara, jadi yang ada di database bakal ketinggalan
+  if (!isiMapelSiap(idMapel)) return false;
   // isi mapel dihapus dulu satu-satu (database nggak ngehapus isi otomatis).
   // Nggak ditunggu: tanpa sinyal, penghapusan antre dan dikirim nanti.
   for (const m of modulMapel(idMapel)) toko.backend.hapus(`mapel/${idMapel}/modul/${m.id}`).catch(gagalSimpan);
@@ -743,6 +750,7 @@ function hapusMapelData(idMapel) {
   aturLanggananMapel();
   toko.backend.hapus(`mapel/${idMapel}`).catch(gagalSimpan);
   berubah();
+  return true;
 }
 
 function simpanPengguna(uid, data) {
@@ -842,12 +850,15 @@ function hapusPengguna(uid) {
 function hapusSisaKosong() {
   const b = toko.backend;
   const grupAda = new Set(toko.mapel.map(idGrup));
+  // grup yang dilewati (isinya belum selesai dimuat, atau ada UAS yang sudah dikunci) dibiarkan utuh
+  const dilewati = new Set();
   for (const g of toko.grup.filter(g => !grupAda.has(g.id))) {
+    if (!isiGrupSiap(g.id) || (toko.uas[g.id] || []).some(u => u.status === "dikunci")) { dilewati.add(g.id); continue; }
     for (const u of (toko.uas[g.id] || [])) b.hapus(`grup/${g.id}/uas/${u.id}`).catch(gagalSimpan);
     for (const u of (toko.usulan[g.id] || [])) b.hapus(`grup/${g.id}/usulan/${u.id}`).catch(gagalSimpan);
     b.hapus(`grup/${g.id}`).catch(gagalSimpan);
   }
-  toko.grup = toko.grup.filter(g => grupAda.has(g.id));
+  toko.grup = toko.grup.filter(g => grupAda.has(g.id) || dilewati.has(g.id));
   const kelasAda = new Set([...toko.mapel.map(m => idKelas(m.jenjang, m.kelas)), ...toko.santri.map(s => idKelas(s.jenjang, s.kelas))]);
   for (const k of toko.kelas.filter(k => !kelasAda.has(k.id))) b.hapus(`kelas/${k.id}`).catch(gagalSimpan);
   toko.kelas = toko.kelas.filter(k => kelasAda.has(k.id));
