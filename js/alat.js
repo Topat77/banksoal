@@ -39,6 +39,13 @@ function salin(x) {
   return x === undefined ? undefined : JSON.parse(JSON.stringify(x));
 }
 
+// pasang aksi klik ke tombol, kalau tombolnya memang ada di layar
+// (banyak tombol cuma muncul buat peran / keadaan tertentu)
+function klik(id, f) {
+  const el = document.getElementById(id);
+  if (el) el.onclick = f;
+}
+
 // ubah satu nilai di dalam objek bertingkat, misal jalur ["nilai", idSantri, idKolom].
 // nilai undefined = dihapus
 function pasangDiJalur(obj, jalur, nilai) {

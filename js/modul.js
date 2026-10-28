@@ -342,7 +342,6 @@ function layarModul() {
     </div>`;
 
   // --- tombol-tombol ---
-  const klik = (id, f) => { const el = document.getElementById(id); if (el) el.onclick = f; };
   klik("editModul", () => pergi("formModul", { modEditId: m.id }));
   klik("salinModul", () => pergi("formSalin", { salinDari: "modul", salinModul: m.id }));
   klik("tambahBacaan", () => pergi("formBacaan", { bacaanId: null }));

@@ -225,20 +225,18 @@ function formGuru() {
     simpanPengguna(p.id, { ...data, nama, nip, sapaan, peran, diubahOleh: uidSaya(), diubah: Date.now() });
     pergi("akun");
   };
-  const hapus = document.getElementById("hapusAkun");
-  if (hapus) hapus.onclick = async () => {
+  klik("hapusAkun", async () => {
     const ampuNama = ampu.map(namaMapel);
     if (!(await tanyaYakin(`Hapus akun ${p.nama} (${p.email})?${ampuNama.length ? `\n\nDia juga dicabut dari pengampu: ${ampuNama.join(", ")}.` : ""}\n\nModul dan soal yang pernah dia buat tetap tersimpan.`, { bahaya: true, ya: "Hapus akun" }))) return;
     hapusPengguna(p.id);
     pergi("akun");
-  };
-  const nonaktif = document.getElementById("nonaktif");
-  if (nonaktif) nonaktif.onclick = async () => {
+  });
+  klik("nonaktif", async () => {
     if (!(await tanyaYakin(`Nonaktifkan ${p.nama}? Modul dan soalnya tetap tersimpan, cuma dia nggak bisa masuk sampai diaktifkan lagi.`, { bahaya: true, ya: "Nonaktifkan" }))) return;
     const { id, ...data } = toko.pengguna.find(x => x.id === p.id) || p;
     simpanPengguna(p.id, { ...data, peran: "nonaktif", diubahOleh: uidSaya(), diubah: Date.now() });
     pergi("akun");
-  };
+  });
 }
 
 // =====================================================

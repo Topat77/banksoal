@@ -68,16 +68,14 @@ function htmlKartuUAS(mp, sem) {
 
 function pasangKartuUAS(mp, sem) {
   const gid = idGrup(mp);
-  const buka = document.getElementById("bukaUAS");
-  if (buka) buka.onclick = () => bukaUAS(gid, sem, mp.id);
-  const mulai = document.getElementById("mulaiUAS");
-  if (mulai) mulai.onclick = () => {
+  klik("bukaUAS", () => bukaUAS(gid, sem, mp.id));
+  klik("mulaiUAS", () => {
     simpanUAS(gid, {
       id: idLembarNilai(sem), semester: sem.semester, tahun: sem.tahun,
       nama: "Sumatif Akhir Semester", pelaksanaan: "", status: "draf", butir: []
     });
     bukaUAS(gid, sem, mp.id);
-  };
+  });
 }
 
 // ---- bagian alur di layar UAS: tombol, keterangan, dan usulan soal (di bawah daftar soal) ----
@@ -144,7 +142,6 @@ function htmlUsulanUAS(u) {
 
 function pasangAlurUAS(mp, u) {
   const gid = posisi.uasGrup;
-  const klik = (id, f) => { const el = document.getElementById(id); if (el) el.onclick = f; };
   // dipakai setelah dialog konfirmasi: ambil versi UAS terbaru, siapa tau berubah selama dialog kebuka
   const ganti = (perubahan) => {
     const t = (toko.uas[gid] || []).find(x => x.id === u.id) || u;

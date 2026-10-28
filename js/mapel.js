@@ -154,12 +154,9 @@ function layarMapel() {
       pergi("sumatif", { sumId: b.dataset.sum, uasGrup: null, ...(keAsal ? { mapelId: asal.id } : {}) });
     };
   });
-  const salinSemua = document.getElementById("salinSemua");
-  if (salinSemua) salinSemua.onclick = () => pergi("formSalin", { salinDari: "mapel", salinModul: null });
-  const isiNilai = document.getElementById("isiNilai");
-  if (isiNilai) isiNilai.onclick = () => pergi("nilai");
-  const ubah = document.getElementById("ubahMapel");
-  if (ubah) ubah.onclick = () => pergi("formMapel", { mapelEditId: mp.id, dariMapel: true });
+  klik("salinSemua", () => pergi("formSalin", { salinDari: "mapel", salinModul: null }));
+  klik("isiNilai", () => pergi("nilai"));
+  klik("ubahMapel", () => pergi("formMapel", { mapelEditId: mp.id, dariMapel: true }));
 }
 
 // ====== PILIH SEMESTER LAIN ======

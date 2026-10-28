@@ -94,10 +94,8 @@ function layarRapor() {
   isi.innerHTML = h;
   pasangPilihRapor();
   isi.querySelectorAll(".baris[data-santri]").forEach(b => b.onclick = () => pergi("raporCetak", { raporSantri: b.dataset.santri }));
-  const ck = document.getElementById("cetakKelas");
-  if (ck) ck.onclick = () => pergi("raporCetak", { raporSantri: null });
-  const ks = document.getElementById("keSantri");
-  if (ks) ks.onclick = () => pergi("santri", { kelasSantri: kunciKelas, dariNilai: false });
+  klik("cetakKelas", () => pergi("raporCetak", { raporSantri: null }));
+  klik("keSantri", () => pergi("santri", { kelasSantri: kunciKelas, dariNilai: false }));
 }
 
 function pasangPilihRapor() {
