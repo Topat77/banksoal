@@ -11,12 +11,12 @@
 //
 //  Kalau nambah file baru di aplikasi, tambahkan juga ke daftar INTI.
 // =====================================================
-const VERSI = "banksoal-v17";
+const VERSI = "banksoal-v18";
 const INTI = [
   "./", "index.html", "style.css", "manifest.webmanifest",
   "ikon-192.png", "ikon-512.png", "ikon-maskable-512.png", "ikon-apple-180.png",
   "js/konfig.js", "js/alat.js", "js/dialog.js", "js/aturan.js", "js/coba.js", "js/toko.js",
-  "js/layar.js", "js/beranda.js", "js/modul.js", "js/sumatif.js", "js/uas.js", "js/ai.js", "js/kop.js", "js/docx.js", "js/cetak.js", "js/kurikulum.js", "js/nilai.js", "js/rapor.js",
+  "js/layar.js", "js/mapel.js", "js/saya.js", "js/cari.js", "js/menupilih.js", "js/beranda.js", "js/modul.js", "js/sumatif.js", "js/uas.js", "js/ai.js", "js/kop.js", "js/docx.js", "js/cetak.js", "js/kurikulum.js", "js/nilai.js", "js/rapor.js",
   "js/firebase.js", "js/mulai.js"
 ];
 const LUAR_TETAP = [/^https:\/\/www\.gstatic\.com\/firebasejs\//, /^https:\/\/fonts\.(googleapis|gstatic)\.com\//];

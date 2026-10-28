@@ -362,6 +362,8 @@ function kirimNilaiTertunda() {
   tundaNilai = null;
   simpanNilaiSebagian(t.idMapel, t.lembar, [...t.ubah.values()]);
 }
+// nilai yang belum sempat terkirim, dikirim waktu halaman ditutup
+window.addEventListener("pagehide", kirimNilaiTertunda);
 
 function layarNilai() {
   const mp = mapelAktif();
