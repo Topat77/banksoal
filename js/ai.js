@@ -18,6 +18,8 @@
 const AI_MAKS_PDF_MB = 15;
 const AI_MAKS_PG = 30;
 const AI_MAKS_ESAI = 10;
+// bahan (tanpa PDF) di bawah segini huruf dianggap tipis: AI gampang ngarang, jadi guru diingetin dulu
+const AI_BAHAN_TIPIS = 300;
 const TINGKAT_AI = { campur: "Campur", mudah: "Mudah", sedang: "Sedang", sulit: "Sulit (HOTS)" };
 const BAHASA_AI = { ikut: "Ikut bahasa materi", indonesia: "Bahasa Indonesia", arab: "Bahasa Arab" };
 
@@ -66,6 +68,30 @@ function drafBaru(bahan) {
   };
 }
 
+// ---------- cek bahan sebelum dikirim ----------
+// modul yang jadi bahan (modul ini, atau modul-modul yang dicentang buat ujian)
+function modulBahanAI(bahan, d) {
+  if (bahan.untuk === "modul") return [bahan.modul];
+  return bahan.pilihan.filter(x => d.pilih.includes(x.id)).map(x => x.modul);
+}
+// banyaknya huruf bahan yang beneran dikirim (tanpa PDF)
+function panjangBahanAI(bahan, d) {
+  let teks = d.ringkasan.trim();
+  if (bahan.untuk === "modul") {
+    teks += bahan.modul.catatan || "";
+    for (const x of bahan.pilihan.filter(x => d.pilih.includes(x.id))) teks += x.pertemuan.target || "";
+    if (d.pakaiBacaan) for (const b of bahan.bacaan) teks += b.teks || "";
+  } else {
+    for (const m of modulBahanAI(bahan, d)) teks += (m.catatan || "") + (m.pertemuan || []).map(p => p.target || "").join("");
+  }
+  return teks.replace(/\s+/g, " ").length;
+}
+// modul yang file-nya di Google Drive/Docs (AI nggak bisa buka link-nya)
+function modulDriveAI(bahan, d) {
+  return modulBahanAI(bahan, d).filter(m => m && linkPratinjau(m.link));
+}
+const PESAN_DRIVE_AI = "File modul di Google Drive nggak dibaca AI. Biar soalnya sesuai isi file itu, download PDF-nya lalu pilih di bagian c.";
+
 // ---------- susun perintah ke AI ----------
 function susunPerintahAI(bahan, d) {
   const mp = bahan.mapel;
@@ -98,7 +124,9 @@ function susunPerintahAI(bahan, d) {
   baris.push("", "TUGAS:");
   baris.push(`Buat tepat ${d.jumlahPG} soal pilihan ganda dan ${d.jumlahEsai} soal esai.`);
   baris.push("Aturan:");
-  baris.push("- Semua soal harus sesuai bahan di atas. Jangan keluar dari materi.");
+  baris.push("- Semua soal, kunci jawaban, dan pedoman HARUS bisa dijawab dari bahan di atas. Jangan keluar dari materi.");
+  baris.push("- Jangan menambah fakta, angka, tanggal, nama tokoh, ayat, hadits, atau dalil yang tidak ada di bahan. Kalau mengutip ayat atau hadits, tulis persis seperti di bahan.");
+  baris.push("- Kalau bahannya tidak cukup untuk jumlah soal yang diminta, buat lebih sedikit soal saja. Jangan mengarang supaya jumlahnya pas.");
   baris.push("- Pilihan ganda: 4 pilihan jawaban, tepat satu yang benar, pengecohnya masuk akal, posisi jawaban benar diacak.");
   baris.push("- Jangan tulis huruf (A., B., ...) di depan pilihan jawaban.");
   baris.push("- Esai: sertakan pedoman jawaban berupa poin-poin yang diharapkan.");
@@ -254,6 +282,7 @@ function layarAISoal() {
           <input type="file" id="pdfAI" accept="application/pdf" hidden>
           <span class="info" id="namaPdf">${d.pdf ? `${aman(d.pdf.nama)} <button class="tombol-teks merah" id="lepasPdf" type="button">Lepas</button>` : `Maks. ${AI_MAKS_PDF_MB} MB. Link Google Drive nggak bisa dibaca AI, jadi download dulu PDF-nya lalu pilih di sini.`}</span>
         </div>
+        ${!d.pdf && keModul && modulDriveAI(bahan, d).length ? `<p class="pemberitahuan-kecil" id="ingatDrive">${PESAN_DRIVE_AI}</p>` : ""}
       </section>
 
       <section class="bagian">
@@ -308,6 +337,8 @@ function layarAISoal() {
       d.pdf = { nama: f.name, mime: "application/pdf", ukuran: f.size, data: await bacaFileBase64(f) };
       status.textContent = "";
       document.getElementById("namaPdf").innerHTML = `${aman(f.name)} <button class="tombol-teks merah" id="lepasPdf" type="button">Lepas</button>`;
+      const ingatDrive = document.getElementById("ingatDrive");
+      if (ingatDrive) ingatDrive.hidden = true;
       pasangLepasPdf();
     } catch {
       status.textContent = "File-nya gagal dibaca. Coba pilih ulang.";
@@ -322,6 +353,14 @@ function layarAISoal() {
     if (!adaBahan) { status.textContent = "Pilih minimal satu bahan: target capaian, ringkasan materi, atau file PDF."; return; }
     if (!navigator.onLine && !coba) { status.textContent = pesanGagalAI(new Error("network")); return; }
     if (!toko.backend.tanyaAI) { status.textContent = "Fitur AI belum tersedia di versi ini."; return; }
+
+    // bahan tipis / file cuma di Drive: AI gampang ngarang, jadi diingetin dulu
+    if (!d.pdf) {
+      const ingat = [];
+      if (panjangBahanAI(bahan, d) < AI_BAHAN_TIPIS) ingat.push("Bahannya masih sedikit. Kalau bahannya tipis, AI gampang ngarang fakta, dalil, atau contoh yang nggak ada di materi. Biar lebih akurat, tempel ringkasan materi atau pilih file PDF modulnya.");
+      if (modulDriveAI(bahan, d).length) ingat.push(PESAN_DRIVE_AI);
+      if (ingat.length && !(await tanyaYakin(`${ingat.join("\n\n")}\n\nTetap buat soal sekarang?`, { ya: "Tetap buat" }))) return;
+    }
 
     tombol.disabled = true;
     // detik berjalan, biar kelihatan prosesnya masih jalan (bukan macet)
@@ -345,7 +384,8 @@ function layarAISoal() {
       const baru = bacaJawabanAI(jawaban, bahan);
       d.soal.push(...baru);
       const ragu = baru.filter(x => x.ragu).length;
-      status.textContent = `${baru.length} soal baru masuk draft.${ragu ? ` ${ragu} soal kuncinya belum jelas, cek ya.` : ""}`;
+      const diminta = d.jumlahPG + d.jumlahEsai;
+      status.textContent = `${baru.length} soal baru masuk draft.${baru.length < diminta ? ` (Diminta ${diminta}; AI bikin lebih sedikit karena bahannya terbatas.)` : ""}${ragu ? ` ${ragu} soal kuncinya belum jelas, cek ya.` : ""}`;
       tombol.querySelector("span").textContent = "Buat lagi (ditambah ke draft)";
       gambarDraf();
       document.getElementById("wadahDraf").scrollIntoView({ block: "start", behavior: "smooth" });
