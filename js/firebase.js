@@ -144,8 +144,8 @@ export async function buatBackendFirebase(konfig) {
 
     // kirim perintah (+ PDF kalau ada) ke Gemini lewat Firebase AI Logic.
     // Kunci API-nya disimpan di server Firebase, nggak ada di kode ini.
-    // Server AI kadang penuh (503) atau diam aja (lambat). Model utama dicoba ulang 2x kalau penuh;
-    // kalau lambat, kuota habis, atau tetap penuh, pindah ke model cadangan.
+    // Server AI kadang penuh (5xx) atau diam aja (lambat). Model utama dicoba ulang 2x kalau penuh;
+    // kalau lambat, kuota habis, modelnya nggak ditemukan (404), atau tetap penuh, pindah ke model cadangan.
     // kabarProses(teks) dipanggil tiap kali mau nyoba ulang / pindah model, buat ditampilin ke guru.
     async tanyaAI({ perintah, pdf }, kabarProses = () => {}) {
       const bagian = [{ text: perintah }];
@@ -181,15 +181,17 @@ export async function buatBackendFirebase(konfig) {
           if (nama === utama) galatUtama = galatUtama || err;
           else galatLain = galatLain || err;
           const lambat = kelamaan(err);
-          const penuh = [500, 503, 504].includes(kode);
-          if (nama === utama && (lambat || penuh || kode === 429)) utamaBermasalahSampai = Date.now() + LAMA_PAKAI_CADANGAN;
+          const penuh = kode >= 500;
+          const hilang = kode === 404 || /\bnot found\b/i.test(String(err && err.message));
+          if (nama === utama && (lambat || penuh || hilang || kode === 429)) utamaBermasalahSampai = Date.now() + LAMA_PAKAI_CADANGAN;
           if (lambat) { alasan = "Server AI lambat"; i = lompatKeModelLain(i) - 1; continue; }
           // kuota satu model habis (429): langsung coba model lain (jatahnya terpisah)
           if (kode === 429) { alasan = "Jatah AI model ini habis"; i = lompatKeModelLain(i) - 1; continue; }
+          // model nggak ditemukan (misal namanya udah diganti Google): langsung coba model lain
+          if (hilang) { alasan = "Model AI nggak ditemukan"; i = lompatKeModelLain(i) - 1; continue; }
           if (penuh) { alasan = "Server AI masih penuh"; continue; }
-          // galat lain (misal model cadangan nggak ada): coba model berikutnya kalau ada
-          alasan = "Model AI bermasalah";
-          if (nama !== utama) continue;
+          // galat lain (izin / App Check / permintaan nggak valid): model lain juga nggak bakal bisa,
+          // jadi langsung ditampilkan
           throw err;
         }
       }

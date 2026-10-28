@@ -11,7 +11,7 @@
 //
 //  Kalau nambah file baru di aplikasi, tambahkan juga ke daftar INTI.
 // =====================================================
-const VERSI = "banksoal-v16";
+const VERSI = "banksoal-v17";
 const INTI = [
   "./", "index.html", "style.css", "manifest.webmanifest",
   "ikon-192.png", "ikon-512.png", "ikon-maskable-512.png", "ikon-apple-180.png",
