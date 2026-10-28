@@ -464,6 +464,16 @@ function buatBackendCoba() {
       simpanDb();
       kabariSemua();
     },
+    // sama kayak versi online: cuma kolom yang disebut yang diubah
+    async ubahSebagian(jalur, perubahan) {
+      const lama = db[jalur] || null;
+      const baru = salin(lama || {});
+      for (const [kunci, nilai] of perubahan) pasangDiJalur(baru, kunci, nilai);
+      if (!aturan.bolehTulis(jalur, lama, baru, auth)) { kabariSemua(); throw galat("permission-denied"); }
+      db[jalur] = baru;
+      simpanDb();
+      kabariSemua();
+    },
     async hapus(jalur) {
       const lama = db[jalur] || null;
       if (!lama) return;

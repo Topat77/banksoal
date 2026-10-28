@@ -842,3 +842,19 @@ function simpanLembarNilai(idMapel, lembar) {
   berubah();
   return baru;
 }
+// simpan sebagian lembar nilai: cuma sel yang berubah yang dikirim, biar isian dari HP lain
+// (atau pengampu lain) nggak ketimpa. perubahan: [[jalur], nilai], nilai undefined = dihapus.
+// Lembar yang belum pernah tersimpan dikirim utuh dulu.
+function simpanNilaiSebagian(idMapel, lembar, perubahan) {
+  const w = toko.isi[idMapel];
+  const lama = w ? (w.nilai || []).find(x => x.id === lembar.id) : null;
+  if (!lama) return simpanLembarNilai(idMapel, lembar);
+  const tanda = { diubah: Date.now(), diubahOleh: uidSaya(), namaPengubah: namaSaya() };
+  const baru = { ...salin(lama), ...tanda };
+  for (const [jalur, nilai] of perubahan) pasangDiJalur(baru, jalur, nilai);
+  pasangDiDaftar(w.nilai, baru);
+  toko.backend.ubahSebagian(`mapel/${idMapel}/nilai/${lembar.id}`,
+    [...perubahan, ...Object.entries(tanda).map(([k, v]) => [[k], v])]).catch(gagalSimpan);
+  berubah();
+  return baru;
+}

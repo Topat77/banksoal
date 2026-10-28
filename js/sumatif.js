@@ -73,7 +73,7 @@ function butirUntukDisimpan(idMapel, daftarKunci, sumLama) {
     const s = m && (m.soal || []).find(x => x.id === soalId);
     if (s) {
       const bacaan = (m.bacaan || []).find(x => x.id === s.bacaanId) || null;
-      return { modulId, soalId, salinan: salin({ soal: s, bacaan, judulModul: m.judul, namaPemilik: m.namaPemilik || "" }) };
+      return { modulId, soalId, salinan: salin({ soal: rapikanSoal(s), bacaan, judulModul: m.judul, namaPemilik: m.namaPemilik || "" }) };
     }
     const b = lama.get(k);
     return b ? salin(b) : null;
@@ -370,7 +370,7 @@ function formSoalUjian() {
     if (hasil.galat) return kabar(hasil.galat);
     const t = ujianTerbaru(mp.id, sum.id);
     if (!t) { kabar("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return kembaliKeDaftar(); }
-    const butirBaru = { modulId: MODUL_UJIAN, soalId: hasil.soal.id, salinan: { soal: { ...hasil.soal, bacaanId: null }, bacaan: null } };
+    const butirBaru = { modulId: MODUL_UJIAN, soalId: hasil.soal.id, salinan: { soal: rapikanSoal({ ...hasil.soal, bacaanId: null }), bacaan: null } };
     const butir = [...(t.butir || [])];
     const i = butir.findIndex(b => b.modulId === MODUL_UJIAN && b.soalId === hasil.soal.id);
     if (i >= 0) butir[i] = butirBaru;

@@ -524,12 +524,12 @@ function htmlIsianSoal(s) {
       <div class="opsi">
         <input type="radio" name="kunci" value="${i}" id="kunci${i}" ${i === (s.kunci || 0) ? "checked" : ""}>
         <label for="kunci${i}" class="huruf" title="Jadikan kunci jawaban">${h}</label>
-        <input name="pilihan${i}" value="${aman(isian)}" placeholder="Jawaban ${h}${i === 4 ? " (opsional)" : ""}" aria-label="Jawaban ${h}">
+        <input name="pilihan${i}" value="${aman(isian)}" maxlength="${BATAS_SOAL.pilihan}" placeholder="Jawaban ${h}${i === 4 ? " (opsional)" : ""}" aria-label="Jawaban ${h}">
       </div>`;
   });
   return `
       <label>Pertanyaan
-        <textarea name="teks" rows="4" class="teks-serif" required placeholder="Ketik soalnya di sini...">${aman(s.teks || "")}</textarea>
+        <textarea name="teks" rows="4" class="teks-serif" required maxlength="${BATAS_SOAL.teks}" placeholder="Ketik soalnya di sini...">${aman(s.teks || "")}</textarea>
       </label>
 
       <fieldset>
@@ -547,7 +547,7 @@ function htmlIsianSoal(s) {
       </fieldset>
 
       <label id="bagianEsai">Pedoman jawaban
-        <textarea name="pedoman" rows="3" placeholder="Poin-poin jawaban yang diharapkan">${aman(s.pedoman || "")}</textarea>
+        <textarea name="pedoman" rows="3" maxlength="${BATAS_SOAL.pedoman}" placeholder="Poin-poin jawaban yang diharapkan">${aman(s.pedoman || "")}</textarea>
       </label>`;
 }
 
@@ -573,7 +573,9 @@ function bacaIsianSoal(form, id) {
   } else {
     soal.pedoman = f.get("pedoman").trim();
   }
-  return { soal };
+  const galat = galatPanjangSoal(soal);
+  if (galat) return { galat };
+  return { soal: rapikanSoal(soal) };
 }
 
 function formSoal() {
@@ -646,7 +648,7 @@ function formSoal() {
     const hasil = bacaIsianSoal(form, lama ? lama.id : buatId());
     if (hasil.galat) return kabar(hasil.galat);
     // "dibuat" dipakai beranda buat ngitung soal baru bulan ini
-    const baru = { ...hasil.soal, bacaanId: f.get("bacaanId") || null, pertemuanId: f.get("pertemuanId") || null, dibuat: (lama && lama.dibuat) || Date.now() };
+    const baru = rapikanSoal({ ...hasil.soal, bacaanId: f.get("bacaanId") || null, pertemuanId: f.get("pertemuanId") || null, dibuat: (lama && lama.dibuat) || Date.now() });
 
     const t = modulMapel(mp.id).find(y => y.id === m.id);
     if (!t) {

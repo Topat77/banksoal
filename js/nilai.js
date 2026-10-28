@@ -354,12 +354,13 @@ function layarSantri() {
 let tundaNilai = null;     // simpan ditunda sebentar biar nggak nulis tiap ketikan
 let lembarAktif = null;    // salinan lembar yang lagi diisi
 
+// yang dikirim cuma sel yang berubah, bukan satu lembar utuh
 function kirimNilaiTertunda() {
   if (!tundaNilai) return;
   clearTimeout(tundaNilai.waktu);
   const t = tundaNilai;
   tundaNilai = null;
-  simpanLembarNilai(t.idMapel, t.lembar);
+  simpanNilaiSebagian(t.idMapel, t.lembar, [...t.ubah.values()]);
 }
 
 function layarNilai() {
@@ -443,9 +444,12 @@ function layarNilai() {
 
   // ---- perilaku ----
   const status = document.getElementById("statusSimpan");
-  const simpanNanti = () => {
+  const simpanNanti = (jalur, nilai) => {
+    if (tundaNilai && tundaNilai.lembar !== lembar) kirimNilaiTertunda();
     if (tundaNilai) clearTimeout(tundaNilai.waktu);
-    tundaNilai = { idMapel: mp.id, lembar, waktu: setTimeout(kirimNilaiTertunda, 700) };
+    else tundaNilai = { idMapel: mp.id, lembar, ubah: new Map() };
+    tundaNilai.ubah.set(jalur.join("/"), [jalur, nilai]);
+    tundaNilai.waktu = setTimeout(kirimNilaiTertunda, 700);
     status.textContent = "Menyimpan...";
     setTimeout(() => { if (!tundaNilai && status.isConnected) status.textContent = "Tersimpan"; }, 800);
   };
@@ -462,17 +466,11 @@ function layarNilai() {
       const salah = !kosong && (Number.isNaN(v) || v < 0 || (inp.dataset.nilai && v > 100));
       inp.classList.toggle("salah", salah);
       if (salah) return;
-      if (inp.dataset.nilai) {
-        lembar.nilai[sid] = lembar.nilai[sid] || {};
-        if (kosong) delete lembar.nilai[sid][inp.dataset.nilai];
-        else lembar.nilai[sid][inp.dataset.nilai] = v;
-      } else {
-        lembar.hadir[sid] = lembar.hadir[sid] || {};
-        if (kosong) delete lembar.hadir[sid][inp.dataset.hadir];
-        else lembar.hadir[sid][inp.dataset.hadir] = Math.round(v);
-      }
+      const jalur = inp.dataset.nilai ? ["nilai", sid, inp.dataset.nilai] : ["hadir", sid, inp.dataset.hadir];
+      const isian = kosong ? undefined : (inp.dataset.nilai ? v : Math.round(v));
+      pasangDiJalur(lembar, jalur, isian);
       segarkanAkhir(tr);
-      simpanNanti();
+      simpanNanti(jalur, isian);
     };
     // Enter = pindah ke santri berikutnya di kolom yang sama (kayak Excel)
     inp.onkeydown = (e) => {
@@ -494,7 +492,7 @@ function layarNilai() {
       const label = tunggal && ada === 0 ? g.label : `${g.label} ${ada + 1}`;
       lembar.kolom.push({ id: buatId(), kelompok: g.k, label });
       kirimNilaiTertunda();
-      simpanLembarNilai(mp.id, lembar);
+      simpanNilaiSebagian(mp.id, lembar, [[["kolom"], lembar.kolom]]);
       tampilkan(true);
     };
   });
@@ -504,16 +502,20 @@ function layarNilai() {
       const k = lembar.kolom.find(x => x.id === b.dataset.kolom);
       const nama = await minta(`Nama kolom (contoh: UH 2, Hafalan juz 30).\nKosongkan lalu Simpan untuk menghapus kolom ini.`, k.label, { ya: "Simpan" });
       if (nama === null) return;
+      const perubahan = [];
       if (!nama.trim()) {
         const terisi = Object.values(lembar.nilai).filter(n => n[k.id] !== undefined).length;
         if (!(await tanyaYakin(`Hapus kolom "${k.label}"?${terisi ? `\n\n${terisi} nilai di kolom ini ikut terhapus.` : ""}`, { bahaya: true, ya: "Hapus kolom" }))) return;
         lembar.kolom = lembar.kolom.filter(x => x.id !== k.id);
-        for (const n of Object.values(lembar.nilai)) delete n[k.id];
+        for (const [sid, n] of Object.entries(lembar.nilai)) {
+          if (n[k.id] !== undefined) perubahan.push([["nilai", sid, k.id], undefined]);
+          delete n[k.id];
+        }
       } else {
         k.label = nama.trim();
       }
       kirimNilaiTertunda();
-      simpanLembarNilai(mp.id, lembar);
+      simpanNilaiSebagian(mp.id, lembar, [[["kolom"], lembar.kolom], ...perubahan]);
       tampilkan(true);
     };
   });

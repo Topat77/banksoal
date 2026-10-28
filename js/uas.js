@@ -175,7 +175,8 @@ function pasangAlurUAS(mp, u) {
       if (!x) return;
       const butir = [...(u.butir || [])];
       if (!butir.some(y => kunciButir(y) === kunciButir(x))) {
-        butir.push({ modulId: x.modulId, soalId: x.soalId, salinan: salin(x.salinan) });
+        const salinan = x.salinan && x.salinan.soal ? { ...salin(x.salinan), soal: rapikanSoal(x.salinan.soal) } : salin(x.salinan);
+        butir.push({ modulId: x.modulId, soalId: x.soalId, salinan });
       }
       simpanUAS(gid, { ...u, butir });
       hapusUsulan(gid, x.id);

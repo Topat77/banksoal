@@ -606,7 +606,8 @@ function layarPantauan() {
 //  Admin bisa baca semuanya, jadi file ini lengkap: akun, mapel, modul,
 //  soal, ujian sumatif, lembar nilai, santri, dan pengaturan.
 // =====================================================
-const BATAS_HARI_CADANGAN = 30;
+// paket gratis nggak punya backup otomatis, jadi TU diingetin tiap 2 minggu
+const BATAS_HARI_CADANGAN = 14;
 
 function isiCadanganSiap() {
   return toko.mapel.every(m => isiMapelSiap(m.id));
@@ -621,12 +622,12 @@ function dataCadangan() {
   const isi = (id) => toko.isi[id] || {};
   return {
     aplikasi: KONFIG.namaAplikasi,
-    versiCadangan: 2,
+    versiCadangan: 3,   // 3: pengguna ikut NIP & sapaan
     dibuat: new Date().toISOString(),
     oleh: (toko.saya && toko.saya.email) || "",
     lembaga: salin(toko.lembaga),
     bobot: salin(toko.bobot),
-    pengguna: toko.pengguna.map(p => ({ id: p.id, nama: p.nama, email: p.email, peran: p.peran, dibuat: p.dibuat || null })),
+    pengguna: toko.pengguna.map(p => ({ id: p.id, nama: p.nama, email: p.email, peran: p.peran, nip: p.nip || "", sapaan: p.sapaan || null, dibuat: p.dibuat || null })),
     santri: salin(toko.santri),
     mapel: toko.mapel.map(m => ({
       ...salin(m),
@@ -670,8 +671,8 @@ function htmlBagianCadangan() {
   return `
     <section class="bagian">
       <h2>Cadangan data</h2>
-      <p class="info">Unduh semua isi aplikasi (akun, mapel, modul, soal, ujian, nilai, dan siswa) jadi satu file. Simpan di Google Drive atau flashdisk, biar kalau ada yang kehapus nggak sengaja, datanya masih ada. Saran: unduh tiap akhir bulan dan sebelum ujian.</p>
-      <p class="info"><b>${terakhir}</b>${hari !== null && hari >= BATAS_HARI_CADANGAN ? " Sudah lebih dari sebulan, sebaiknya unduh lagi." : ""}</p>
+      <p class="info">Unduh semua isi aplikasi (akun, mapel, modul, soal, ujian, nilai, dan siswa) jadi satu file. Simpan di Google Drive atau flashdisk, biar kalau ada yang kehapus nggak sengaja, datanya masih ada. Firebase versi gratis nggak nyimpen cadangan otomatis, jadi ini satu-satunya cadangan. Saran: unduh tiap 2 minggu dan sebelum ujian.</p>
+      <p class="info"><b>${terakhir}</b>${hari !== null && hari >= BATAS_HARI_CADANGAN ? ` Sudah ${hari} hari, sebaiknya unduh lagi.` : ""}</p>
       <div class="baris-tombol">
         <button class="tombol-kedua" id="unduhCadangan">Unduh cadangan (.json)</button>
         <span class="info" id="pesanCadangan" role="status"></span>
