@@ -188,6 +188,9 @@ harap("pilihan 1001 huruf ditolak", !!galatPanjangSoal({ teks: "t", pilihan: ["x
 grup("Admin awal wajib email terverifikasi (sama kayak firestore.rules)");
 {
   const profilAdmin = { nama: "Admin", email: "tu@x", foto: "", peran: "kurikulum", dibuat: 1, terakhirMasuk: 1 };
+  boleh("daftar biasa tanpa sapaan & NIP", bolehTulis("pengguna/x", null, { ...profilAdmin, email: "x@x", peran: "menunggu" }, { uid: "x", email: "x@x" }));
+  tolak("daftar dengan sapaan ditolak", bolehTulis("pengguna/x", null, { ...profilAdmin, email: "x@x", peran: "menunggu", sapaan: "ustadz" }, { uid: "x", email: "x@x" }));
+  tolak("daftar dengan NIP ditolak", bolehTulis("pengguna/x", null, { ...profilAdmin, email: "x@x", peran: "menunggu", nip: "123" }, { uid: "x", email: "x@x" }));
   boleh("email terverifikasi → jadi admin", bolehTulis("pengguna/tu2", null, profilAdmin, { uid: "tu2", email: "tu@x", emailTerverifikasi: true }));
   tolak("email belum terverifikasi → ditolak", bolehTulis("pengguna/tu2", null, profilAdmin, { uid: "tu2", email: "tu@x", emailTerverifikasi: false }));
   tolak("email lain nggak bisa jadi admin", bolehTulis("pengguna/x", null, { ...profilAdmin, email: "x@x" }, { uid: "x", email: "x@x", emailTerverifikasi: true }));

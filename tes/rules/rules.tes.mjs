@@ -163,6 +163,8 @@ test("admin awal wajib email terverifikasi", async () => {
   await assertFails(tulis(sebagai("tu3", ADMIN_AWAL, false), "pengguna/tu3", profil));
   await assertFails(tulis(sebagai("x", "x@x"), "pengguna/x", { ...profil, email: "x@x" }));
   await assertSucceeds(tulis(sebagai("x", "x@x"), "pengguna/x", { ...profil, email: "x@x", peran: "menunggu" }));
+  await assertFails(tulis(sebagai("x", "x@x"), "pengguna/x", { ...profil, email: "x@x", peran: "menunggu", sapaan: "ustadz" }));
+  await assertFails(tulis(sebagai("x", "x@x"), "pengguna/x", { ...profil, email: "x@x", peran: "menunggu", nip: "123" }));
 });
 
 test("nilai: disimpan sebagian dari dua perangkat, cuma pengampu", async () => {
