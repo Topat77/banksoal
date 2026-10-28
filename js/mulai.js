@@ -26,6 +26,7 @@ function fileKurang() {
     "js/docx.js": typeof buatDocx === "function",
     "js/cetak.js": typeof layarCetak === "function",
     "js/kurikulum.js": typeof layarAkun === "function",
+    "js/cadangan.js": typeof unduhCadangan === "function",
     "js/nilai.js": typeof layarNilai === "function",
     "js/rapor.js": typeof layarRapor === "function"
   };
