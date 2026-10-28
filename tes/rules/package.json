@@ -1,0 +1,13 @@
+{
+  "name": "banksoal-tes-rules",
+  "private": true,
+  "description": "Tes firestore.rules di Firebase Emulator. Cuma buat ngetes, nggak dimuat aplikasi.",
+  "type": "module",
+  "scripts": {
+    "tes": "firebase emulators:exec --config firebase.json --project demo-banksoal --only firestore \"node --test rules.tes.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "6.0.0",
+    "firebase": "13.1.0"
+  }
+}

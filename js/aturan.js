@@ -126,7 +126,8 @@ function buatAturan(ambilDok, adminAwal) {
     if (b[0] === "pengguna" && b.length === 2) {
       if (!lama && baru) {
         return auth.uid === b[1] && profilValid(lama, baru) && baru.email === auth.email &&
-          (baru.peran === "menunggu" || (baru.peran === "kurikulum" && adminAwal.includes(auth.email)));
+          (baru.peran === "menunggu" ||
+           (baru.peran === "kurikulum" && auth.emailTerverifikasi === true && adminAwal.includes(auth.email)));
       }
       if (lama && baru) {
         return profilValid(lama, baru) && (
