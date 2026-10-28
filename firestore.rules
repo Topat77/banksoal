@@ -148,9 +148,12 @@ service cloud.firestore {
       allow read: if masuk() && (request.auth.uid == uid || kurikulum());
 
       // daftar pertama kali: selalu "menunggu", kecuali email admin awal
+      // sapaan & NIP cuma boleh diisi admin, jadi waktu daftar nggak boleh ada
       allow create: if masuk() && request.auth.uid == uid
         && profilValid()
         && request.resource.data.email == request.auth.token.email
+        && request.resource.data.get('sapaan', null) == null
+        && request.resource.data.get('nip', null) == null
         && (request.resource.data.peran == 'menunggu'
             || (request.resource.data.peran == 'kurikulum'
                 && request.auth.token.email_verified == true

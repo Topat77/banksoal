@@ -95,8 +95,8 @@ function formSumatif() {
 
   isi.innerHTML = `
     <form id="form">
-      <label>Nama ujian <input name="nama" value="${aman(s.nama)}" placeholder="Sumatif Tengah Semester" required></label>
-      <label>Pelaksanaan <input name="pelaksanaan" value="${aman(s.pelaksanaan || "")}" placeholder="Minggu ke-9"></label>
+      <label>Nama ujian <input name="nama" maxlength="200" value="${aman(s.nama)}" placeholder="Sumatif Tengah Semester" required></label>
+      <label>Pelaksanaan <input name="pelaksanaan" maxlength="200" value="${aman(s.pelaksanaan || "")}" placeholder="Minggu ke-9"></label>
       <button type="submit" class="tombol-utama">${lama ? "Simpan" : "Lanjut pilih soal"}</button>
       ${lama ? `<button type="button" class="tombol-hapus" id="hapus">Hapus ujian ini</button>` : ""}
     </form>`;
@@ -112,6 +112,7 @@ function formSumatif() {
       pergi("sumatif");
     } else {
       const baru = simpanSumatif(mp.id, { id: buatId(), semester: sem.semester, tahun: sem.tahun, ...isian, dibagikan: false, butir: [] });
+      if (!baru) return;
       pergi("pilihSoal", { sumId: baru.id, uasGrup: null });
     }
   };
@@ -220,6 +221,7 @@ function layarSumatif() {
       butir: butirUntukDisimpan(mp.id, (sum.butir || []).map(kunciButir), sum),
       disalinDari: { nama: sum.namaPemilik || "", kelas: (mapelAsal(sum.id) || {}).kelas || "" }
     });
+    if (!baru) return;
     kabar(`Ujian "${sum.nama}" sudah disalin jadi ujianmu di ${mp.kelas}. Sekarang kamu bisa mengubahnya sesuka hati.`);
     pergi("sumatif", { sumId: baru.id, uasGrup: null });
   });

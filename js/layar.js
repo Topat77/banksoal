@@ -347,7 +347,7 @@ function gambarStatus() {
           <p class="pemberitahuan coba">Mode coba: data contoh, tersimpan di perangkat ini saja. Pilih akun contoh untuk mencoba.</p>
           <div class="daftar">`;
       for (const a of toko.backend.akunContoh) {
-        h += htmlBaris({ attr: `data-akun="${a.uid}"`, judulBaris: aman(a.nama), sub: aman(a.ket) });
+        h += htmlBaris({ attr: `data-akun="${aman(a.uid)}"`, judulBaris: aman(a.nama), sub: aman(a.ket) });
       }
       h += `</div>`;
     } else {
@@ -499,7 +499,7 @@ function gambarSamping() {
       h += `<p class="menu-jenis">${namaJenis(jenisTadi)}</p>`;
     }
     const mapelIni = grup === "mapel" && m.id === posisi.mapelId;
-    h += `<button class="menu-item ${mapelIni && posisi.layar === "mapel" ? "aktif" : ""}" data-mapel="${m.id}">
+    h += `<button class="menu-item ${mapelIni && posisi.layar === "mapel" ? "aktif" : ""}" data-mapel="${aman(m.id)}">
             <span>${aman(m.nama)}</span><small>${aman(m.kelas)}</small>
           </button>`;
     if (!mapelIni) continue;
@@ -510,14 +510,14 @@ function gambarSamping() {
     h += `<div class="menu-anak"><p class="menu-catatan">${aman(namaSemester(sem))}</p>`;
     modul.forEach((x, i) => {
       const ini = x.id === posisi.modId && (["modul", "formSoal", "formBacaan", "formModul"].includes(posisi.layar) || (posisi.layar === "aiSoal" && posisi.aiUntuk === "modul"));
-      h += `<button class="menu-item kecil ${ini ? "aktif" : ""}" data-mapel="${m.id}" data-mod="${x.id}">
+      h += `<button class="menu-item kecil ${ini ? "aktif" : ""}" data-mapel="${aman(m.id)}" data-mod="${aman(x.id)}">
               <span class="menu-nomor">${i + 1}</span><span dir="auto">${aman(x.judul)}</span>
             </button>`;
     });
     const sumIni = ["sumatif", "pilihSoal", "formSumatif", "formSoalUjian"].includes(posisi.layar) ||
                    (posisi.layar === "aiSoal" && posisi.aiUntuk === "sumatif") ||
                    (posisi.layar === "cetak" && posisi.cetakDari === "sumatif");
-    h += `<button class="menu-item kecil ${sumIni ? "aktif" : ""}" data-mapel="${m.id}" data-tab-ke="sumatif">Sumatif (${sumatif.length})</button>`;
+    h += `<button class="menu-item kecil ${sumIni ? "aktif" : ""}" data-mapel="${aman(m.id)}" data-tab-ke="sumatif">Sumatif (${sumatif.length})</button>`;
     h += `</div>`;
   }
 
