@@ -39,6 +39,19 @@ function salin(x) {
   return x === undefined ? undefined : JSON.parse(JSON.stringify(x));
 }
 
+// ubah satu nilai di dalam objek bertingkat, misal jalur ["nilai", idSantri, idKolom].
+// nilai undefined = dihapus
+function pasangDiJalur(obj, jalur, nilai) {
+  let o = obj;
+  for (const k of jalur.slice(0, -1)) {
+    if (!o[k] || typeof o[k] !== "object" || Array.isArray(o[k])) o[k] = {};
+    o = o[k];
+  }
+  const akhir = jalur[jalur.length - 1];
+  if (nilai === undefined) delete o[akhir];
+  else o[akhir] = salin(nilai);
+}
+
 // ====== BENTUK SOAL ======
 // Firestore Rules nggak bisa ngecek isi tiap soal di dalam daftar (nggak ada perulangan),
 // jadi soal dirapikan di sini sebelum disimpan. Yang dirapikan cuma soal yang lagi
@@ -53,7 +66,7 @@ function rapikanSoal(s) {
   // sama kayak kartuSoal: yang bukan "PG" dianggap esai
   const hasil = { id: String(s.id), jenis: s.jenis === "PG" ? "PG" : "Esai", teks: teks(s.teks) };
   if (hasil.jenis === "PG") {
-    hasil.pilihan = HURUF.map((h, i) => teks((s.pilihan || [])[i]));
+    hasil.pilihan = HURUF.map((_, i) => teks((s.pilihan || [])[i]));
     hasil.kunci = Number.isInteger(s.kunci) && s.kunci >= 0 && s.kunci < HURUF.length ? s.kunci : 0;
   } else {
     hasil.pedoman = teks(s.pedoman);

@@ -17,7 +17,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache,
-  doc, collection, query, where, onSnapshot, setDoc, deleteDoc
+  doc, collection, query, where, onSnapshot, setDoc, deleteDoc, deleteField
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const SDK = "https://www.gstatic.com/firebasejs/12.19.0";
@@ -136,6 +136,19 @@ export async function buatBackendFirebase(konfig) {
     // tapi datanya langsung tampil di perangkat ini.
     tulis(jalur, isi) {
       return setDoc(doc(db, jalur), bersih(isi));
+    },
+
+    // simpan sebagian: cuma kolom yang disebut yang diubah, isi lain dokumen nggak disentuh
+    // (jadi isian dari perangkat lain nggak ketimpa). perubahan: [[jalur kolom], nilai];
+    // nilai undefined = kolomnya dihapus
+    ubahSebagian(jalur, perubahan) {
+      const isi = {};
+      for (const [kunci, nilai] of perubahan) {
+        let o = isi;
+        for (const k of kunci.slice(0, -1)) o = o[k] = o[k] || {};
+        o[kunci[kunci.length - 1]] = nilai === undefined ? deleteField() : bersih(nilai);
+      }
+      return setDoc(doc(db, jalur), isi, { merge: true });
     },
 
     hapus(jalur) {
