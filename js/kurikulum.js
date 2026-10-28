@@ -177,7 +177,7 @@ function formGuru() {
 
   isi.innerHTML = `
     <form id="form">
-      <label>Nama yang tampil <input name="nama" value="${aman(p.nama || "")}" required></label>
+      <label>Nama yang tampil <input name="nama" value="${aman(p.nama || "")}" required maxlength="100"></label>
       <label>NIP <input name="nip" value="${aman(p.nip || "")}" inputmode="numeric" placeholder="Boleh dikosongkan" maxlength="30" autocomplete="off"></label>
       <div class="dua-kolom">
         <label>Sapaan

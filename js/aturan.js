@@ -77,6 +77,15 @@ function buatAturan(ambilDok, adminAwal) {
   const nilaiValid = (lama, b) =>
     semesterTetap(lama, b) && daftar(b, "kolom", 60) && peta(b, "nilai", 300) && peta(b, "hadir", 300) &&
     teks(b, "namaPengubah", 100);
+  // profil akun: ukuran cuma dicek kalau kolomnya berubah, biar profil lama tetap bisa di-update
+  const berubahKolom = (lama, b, k) => !lama || ada(lama, k) !== ada(b, k) || !sama(lama[k], b[k]);
+  const profilValid = (lama, b) =>
+    kolomDikenal(lama, b, ["nama", "email", "foto", "peran", "sapaan", "nip",
+      "dibuat", "terakhirMasuk", "diubah", "diubahOleh"]) &&
+    (!berubahKolom(lama, b, "nama") || (typeof b.nama === "string" && b.nama.length <= 100)) &&
+    (!berubahKolom(lama, b, "nip") || teksAtauKosong(b, "nip", 30)) &&
+    (!berubahKolom(lama, b, "foto") || teks(b, "foto", 2000));
+  const nilaiKolom = (d, k) => ada(d, k) ? d[k] : null;
 
   function bolehBaca(jalur, d, auth) {
     if (!auth) return false;
@@ -116,12 +125,14 @@ function buatAturan(ambilDok, adminAwal) {
 
     if (b[0] === "pengguna" && b.length === 2) {
       if (!lama && baru) {
-        return auth.uid === b[1] && baru.email === auth.email &&
+        return auth.uid === b[1] && profilValid(lama, baru) && baru.email === auth.email &&
           (baru.peran === "menunggu" || (baru.peran === "kurikulum" && adminAwal.includes(auth.email)));
       }
       if (lama && baru) {
-        return (auth.uid === b[1] && baru.peran === lama.peran && baru.email === lama.email &&
-                (baru.sapaan || null) === (lama.sapaan || null)) || kurikulum(auth);
+        return profilValid(lama, baru) && (
+          (auth.uid === b[1] && baru.peran === lama.peran && baru.email === lama.email &&
+           (baru.sapaan || null) === (lama.sapaan || null) &&
+           sama(nilaiKolom(baru, "nip"), nilaiKolom(lama, "nip"))) || kurikulum(auth));
       }
       return kurikulum(auth);
     }
@@ -129,10 +140,10 @@ function buatAturan(ambilDok, adminAwal) {
     if (b[0] === "mapel" && b.length === 2) return kurikulum(auth);
 
     // lembar nilai: cuma pengampu mapelnya yang boleh ngisi (admin cuma lihat).
-    // Admin boleh menghapus, buat ngebersihin waktu mapelnya dihapus.
+    // Yang boleh menghapus cuma admin, buat ngebersihin waktu mapelnya dihapus.
     if (b[0] === "mapel" && b[2] === "nilai" && b.length === 4) {
       if (!aktif(auth)) return false;
-      if (baru === null) return pengampu(auth, b[1]) || kurikulum(auth);
+      if (baru === null) return kurikulum(auth);
       return pengampu(auth, b[1]) && nilaiValid(lama, baru);
     }
     // santri & kelas: diisi, diubah, dihapus admin; ustadz cuma lihat

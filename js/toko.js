@@ -84,7 +84,7 @@ function akunBerubah(akun) {
 function buatProfil(akun) {
   const adminAwal = (KONFIG.adminAwal || []).map(e => e.toLowerCase()).includes((akun.email || "").toLowerCase());
   toko.backend.tulis(`pengguna/${akun.uid}`, {
-    nama: akun.nama || akun.email,
+    nama: (akun.nama || akun.email || "").slice(0, 100),
     email: akun.email,
     foto: akun.foto || "",
     peran: adminAwal ? "kurikulum" : "menunggu",
