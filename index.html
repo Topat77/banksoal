@@ -51,7 +51,15 @@
         <button id="tombolTema" class="tombol-tema" aria-label="Ganti mode terang/gelap"></button>
       </header>
 
-      <main id="isi"><p class="kosong">Memuat...</p></main>
+      <!-- layar pembuka sebelum JS jalan (sama kayak htmlPembuka() di js/layar.js) -->
+      <main id="isi">
+        <div class="pembuka" role="status" aria-label="Memuat">
+          <img src="ikon-192.png" alt="" width="84" height="84">
+          <b>Bank Soal</b>
+          <small>PKBM Imam Syafi'i</small>
+          <span class="pembuka-garis"></span>
+        </div>
+      </main>
     </div>
   </div>
 

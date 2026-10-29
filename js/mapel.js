@@ -15,7 +15,7 @@ function layarMapel() {
   tombolKembali.hidden = false;
 
   if (!isiMapelSiap(mp.id)) {
-    isi.innerHTML = `<p class="kosong">Memuat isi mapel...</p>`;
+    isi.innerHTML = htmlKerangka();
     return;
   }
 

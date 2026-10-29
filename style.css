@@ -310,6 +310,34 @@ body:not([data-status="aktif"]) main { margin: 0 auto; padding-bottom: 40px; }
 body:not([data-status="aktif"]) header { display: none; }
 
 .layar-status { display: flex; flex-direction: column; gap: 14px; max-width: 520px; width: 100%; margin: 6vh auto 0; }
+
+/* ---- layar pembuka (waktu aplikasi baru dibuka): ikon + nama + garis jalan ---- */
+.pembuka {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; min-height: 72vh; text-align: center;
+}
+.pembuka img { width: 84px; height: 84px; margin-bottom: 14px; border-radius: 22px; box-shadow: var(--bayang); }
+.pembuka b { font-family: var(--huruf-judul); font-size: 22px; font-weight: 800; color: var(--tinta); }
+.pembuka small { font-size: 14px; color: var(--tinta-redup); }
+.pembuka-garis {
+  position: relative; width: 120px; height: 3px; margin-top: 22px;
+  border-radius: 3px; background: var(--garis); overflow: hidden;
+}
+.pembuka-garis::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 40%;
+  border-radius: inherit; background: var(--hijau);
+  animation: garis-jalan 1.1s ease-in-out infinite;
+}
+@keyframes garis-jalan { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+
+/* ---- kerangka kartu (waktu isi satu layar masih dimuat) ---- */
+.kerangka { display: flex; flex-direction: column; gap: 12px; }
+.kerangka span {
+  display: block; height: 76px; border-radius: var(--sudut); background: var(--garis);
+  animation: kerangka-denyut 1.2s ease-in-out infinite alternate;
+}
+.kerangka span:first-child { width: 45%; height: 26px; }
+@keyframes kerangka-denyut { from { opacity: .5; } to { opacity: 1; } }
 .kartu-status {
   padding: 24px 22px;
   background: var(--lembar);
