@@ -75,11 +75,13 @@ function xmlAman(t) {
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
 }
 
-// satu potong tulisan. o: { b, i, sz (setengah poin), arab }
+// satu potong tulisan. o: { b, i, sz (setengah poin), arab, font, warna }
 function wRun(teks, o = {}) {
   let rPr = "";
+  if (o.font) rPr += `<w:rFonts w:ascii="${o.font}" w:hAnsi="${o.font}"/>`;
   if (o.b) rPr += "<w:b/><w:bCs/>";
   if (o.i) rPr += "<w:i/><w:iCs/>";
+  if (o.warna) rPr += `<w:color w:val="${o.warna}"/>`;
   if (o.sz) rPr += `<w:sz w:val="${o.sz}"/><w:szCs w:val="${o.szCs || o.sz}"/>`;
   if (o.arab) rPr += "<w:rtl/>";
   const isi = String(teks ?? "").split("\n").map(t => `<w:t xml:space="preserve">${xmlAman(t)}</w:t>`).join("<w:br/>");
@@ -134,7 +136,7 @@ function wKopSederhana(info) {
 }
 
 function wJudulUjian(info, tambahan) {
-  const judul = info.namaUjian.toUpperCase() + (info.paket ? ` (PAKET ${info.paket})` : "") + tambahan;
+  const judul = info.namaUjian.toUpperCase() + (info.paket ? ` (TIPE ${info.paket})` : "") + tambahan;
   return wPara(wTeks(judul, { b: true, sz: 24 }), { jc: "center", sebelum: 160, setelah: 120, rtl: arah(info.namaUjian) === "rtl" });
 }
 
@@ -188,8 +190,46 @@ function wDaftarSoal(items, denganKunci, mulai = 1) {
   return h;
 }
 
-function wLembarSoal(info, pg, esai) {
-  let h = wJudulUjian(info, "") + wInfoUjian(info) + wIdentitas();
+// ====== KOP LEMBAR ASESMEN (sama kayak file KOP_ASESMEN_*.docx sekolah) ======
+// logo melayang di kiri (rIdKopAsesmen), 4 baris di tengah, lalu kotak identitas bergaris ganda
+function wKopAsesmen(info, tambahan, nomorGambar) {
+  const cx = 694966, cy = 685800;   // ukuran logo di file aslinya (EMU)
+  const logo = `<w:r><w:rPr><w:noProof/></w:rPr><w:drawing><wp:anchor distT="0" distB="0" distL="114300" distR="114300" simplePos="0" relativeHeight="${251659264 + nomorGambar}" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="column"><wp:posOffset>202607</wp:posOffset></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>66676</wp:posOffset></wp:positionV><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/><wp:docPr id="${nomorGambar}" name="Logo PKBM ${nomorGambar}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="logo-pkbm.png"/><pic:cNvPicPr><a:picLocks noChangeAspect="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdKopAsesmen"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r>`;
+  const baris = (isi, o) => wPara(isi, { jc: "center", setelah: 0, ...o });
+  const judul = info.judulKop.toUpperCase();
+  let h = baris(logo + wRun(KOP_ASESMEN.lembaga, { font: "Abadi", sz: 32 }));
+  h += baris(wRun(judul, { font: "Abadi", b: true, sz: 32 }));
+  h += baris(wRun(kejarAsesmen(info.jenjang).kejar, { font: "Arial", sz: 28 }));
+  h += baris(wRun(`Tahun Pelajaran ${info.tahun || "......./........"}`, { font: "Arial", sz: 28 }));
+  h += `<w:p><w:pPr><w:spacing w:before="0" w:after="0"/><w:rPr><w:sz w:val="2"/></w:rPr></w:pPr></w:p>`;
+
+  // kotak identitas: garis ganda atas & bawah, garis tunggal kiri & kanan (persis file aslinya)
+  const sel = (t, lebar) => `<w:tc><w:tcPr><w:tcW w:w="${lebar}" w:type="dxa"/></w:tcPr>${wPara(wTeks(t, { sz: 24 }), { setelah: 0 })}</w:tc>`;
+  const isi = (t) => t ? `: ${t}` : ":";
+  const kolom = [2253, 3079, 2024, 3118];
+  const data = [
+    ["Mata Pelajaran", isi(info.mapel), "Nama Peserta", ":"],
+    ["Hari/Tanggal", ":", "No. Ujian", ":"],
+    ["Waktu", isi(info.waktu), "Nilai", ":"],
+    ["Kelas", isi(info.kelas.replace(/^Kelas\s*/i, "")), "Pengajar", isi(info.pengajar)]
+  ];
+  h += `<w:tbl><w:tblPr><w:tblW w:w="10474" w:type="dxa"/><w:jc w:val="center"/><w:tblBorders><w:top w:val="thinThickMediumGap" w:sz="24" w:space="0" w:color="auto"/><w:left w:val="single" w:sz="12" w:space="0" w:color="auto"/><w:bottom w:val="thickThinMediumGap" w:sz="24" w:space="0" w:color="auto"/><w:right w:val="single" w:sz="12" w:space="0" w:color="auto"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>${kolom.map(w => `<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>`;
+  for (const b of data) h += `<w:tr><w:trPr><w:jc w:val="center"/></w:trPr>${b.map((t, i) => sel(t, kolom[i])).join("")}</w:tr>`;
+  h += `</w:tbl>`;
+  const ket = keteranganAsesmen(info, tambahan);
+  if (ket) h += wPara(wTeks(ket, { b: true }), { jc: "center", sebelum: 120, setelah: 0, rtl: arah(ket) === "rtl" });
+  return h;
+}
+
+// footer: tulisan miring abu-abu + nomor halaman di kotak hitam (kayak file aslinya)
+function wFooterAsesmen(info) {
+  const nomor = (isi) => `<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="24"/><w:shd w:val="clear" w:color="auto" w:fill="000000"/></w:rPr>${isi}</w:r>`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:ftr ${NS_W}><w:p><w:pPr><w:pBdr><w:top w:val="single" w:sz="8" w:space="4" w:color="000000"/></w:pBdr><w:tabs><w:tab w:val="right" w:pos="10489"/></w:tabs><w:spacing w:before="0" w:after="0"/></w:pPr>${wRun(footerAsesmen(info), { i: true, sz: 18, warna: "595959" })}${wTab}${nomor(`<w:t xml:space="preserve">  </w:t>`)}${nomor(`<w:fldChar w:fldCharType="begin"/>`)}${nomor(`<w:instrText xml:space="preserve"> PAGE </w:instrText>`)}${nomor(`<w:fldChar w:fldCharType="separate"/>`)}${nomor(`<w:t>1</w:t>`)}${nomor(`<w:fldChar w:fldCharType="end"/>`)}${nomor(`<w:t xml:space="preserve">  </w:t>`)}</w:p></w:ftr>`;
+}
+
+function wLembarSoal(info, pg, esai, kopAsesmen) {
+  let h = kopAsesmen ? wPara("", { setelah: 60 }) : wJudulUjian(info, "") + wInfoUjian(info) + wIdentitas();
   if (pg.length) {
     h += wPara(wRun("A. Pilihan Ganda", { b: true }), { sebelum: 120, keepNext: true });
     h += wPara(wRun("Pilihlah jawaban yang paling tepat!", { i: true }), { setelah: 120, keepNext: true });
@@ -203,8 +243,8 @@ function wLembarSoal(info, pg, esai) {
   return h;
 }
 
-function wLembarKunci(info, pg, esai) {
-  let h = wJudulUjian(info, " — KUNCI JAWABAN") + wInfoUjian(info) + wPara("", { setelah: 120 });
+function wLembarKunci(info, pg, esai, kopAsesmen) {
+  let h = (kopAsesmen ? "" : wJudulUjian(info, " — KUNCI JAWABAN") + wInfoUjian(info)) + wPara("", { setelah: 120 });
   if (pg.length) {
     h += wPara(wRun("A. Pilihan Ganda", { b: true }), { sebelum: 120, setelah: 120, keepNext: true });
     const baris = [];
@@ -233,39 +273,35 @@ function base64keByte(b64) {
 }
 
 const NS_W = `xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"`;
+const NS_GAMBAR = `xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"`;
 
 // mode: "soal" | "kunci" | "dua"
-function buatDocx(info, pg, esai, mode, pakaiKopResmi) {
-  // kop resmi bisa muncul 2x (soal + kunci): nomor gambarnya harus beda, tanda paragraf Word dibuang
+// kopResmi: true = kop lembar asesmen (KOP_ASESMEN), false = kop sederhana (nama lembaga aja)
+function buatDocx(info, pg, esai, mode, kopResmi) {
+  const asesmen = kopResmi && typeof KOP_ASESMEN !== "undefined";
+  // kop bisa muncul 2x (soal + kunci): nomor gambarnya harus beda
   let nomorKop = 0;
-  const kop = () => {
-    if (!pakaiKopResmi) return wKopSederhana(info);
-    nomorKop++;
-    return KOP_RESMI.wordTabel
-      .replace(/ w14:(paraId|textId)="[^"]*"/g, "")
-      .replace(/ wp14:(anchorId|editId)="[^"]*"/g, "")
-      .replace(/<wp:docPr id="\d+"/, `<wp:docPr id="${nomorKop}"`);
-  };
+  const kop = (tambahan) => asesmen ? wKopAsesmen(info, tambahan, ++nomorKop) : wKopSederhana(info);
   let badan = "";
-  if (mode === "soal" || mode === "dua") badan += kop() + wLembarSoal(info, pg, esai);
+  if (mode === "soal" || mode === "dua") badan += kop("") + wLembarSoal(info, pg, esai, asesmen);
   if (mode === "kunci" || mode === "dua") {
-    const kunci = kop() + wLembarKunci(info, pg, esai);
+    const kunci = kop(" — KUNCI JAWABAN") + wLembarKunci(info, pg, esai, asesmen);
     // halaman baru sebelum lembar kunci
     badan += mode === "dua" ? `<w:p><w:r><w:br w:type="page"/></w:r></w:p>` + kunci : kunci;
   }
-  // kertas A4, margin 2 cm (atas 1,5 cm biar kop muat)
-  const sect = `<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="851" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/><w:cols w:space="720"/></w:sectPr>`;
-  const akar = pakaiKopResmi ? KOP_RESMI.wordRoot : `<w:document ${NS_W}>`;
-  const dokumen = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n${akar}<w:body>${badan}${sect}</w:body></w:document>`;
-
+  // kop asesmen: kertas F4 + footer (margin sama kayak file aslinya); kop sederhana: A4
+  const sect = asesmen
+    ? `<w:sectPr><w:footerReference w:type="default" r:id="rIdFooter"/><w:pgSz w:w="12242" w:h="18711" w:code="9"/><w:pgMar w:top="709" w:right="851" w:bottom="1134" w:left="851" w:header="709" w:footer="425" w:gutter="0"/><w:cols w:space="720"/></w:sectPr>`
+    : `<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="851" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/><w:cols w:space="720"/></w:sectPr>`;
+  const dokumen = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document ${NS_W} ${NS_GAMBAR}><w:body>${badan}${sect}</w:body></w:document>`;
   const gaya = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles ${NS_W}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:eastAsia="Times New Roman" w:cs="Traditional Arabic"/><w:sz w:val="24"/><w:szCs w:val="32"/><w:lang w:val="id-ID" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="60" w:line="264" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style><w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style></w:styles>`;
 
   const relasi = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>${pakaiKopResmi ? `<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.jpeg"/><Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="mailto:pkbm.ista@gmail.com" TargetMode="External"/>` : ""}</Relationships>`;
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>${asesmen ? `<Relationship Id="rIdKopAsesmen" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo-pkbm.png"/><Relationship Id="rIdFooter" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>` : ""}</Relationships>`;
 
   const jenis = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`;
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>${asesmen ? `<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>` : ""}</Types>`;
 
   const akarRelasi = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
@@ -277,6 +313,9 @@ function buatDocx(info, pg, esai, mode, pakaiKopResmi) {
     { nama: "word/styles.xml", isi: gaya },
     { nama: "word/_rels/document.xml.rels", isi: relasi }
   ];
-  if (pakaiKopResmi) daftar.push({ nama: "word/media/logo.jpeg", isi: base64keByte(KOP_RESMI.logo) });
+  if (asesmen) {
+    daftar.push({ nama: "word/media/logo-pkbm.png", isi: base64keByte(KOP_ASESMEN.logo) });
+    daftar.push({ nama: "word/footer1.xml", isi: wFooterAsesmen(info) });
+  }
   return buatZip(daftar);
 }

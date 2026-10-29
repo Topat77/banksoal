@@ -49,6 +49,7 @@ Firestore: `pengguna`, `pengaturan`, `kelas`, `santri`, `mapel/{id}/{modul,nilai
 - **Data modul / ujian dari database:** lewatin `amankanDok()` (`js/alat.js`) sebelum dipakai layar. Item rusak di daftar (null, angka) bisa aja ada, dan rules nggak bisa nolak.
 - **Simpan modul / ujian / UAS / usulan:** `simpanModul()` dkk. ngembaliin `null` kalau dokumennya kegedean (`ukuranDok()`, Firestore maks. 1 MiB). Kalau habis nyimpan langsung pindah layar, cek dulu hasilnya biar isian guru nggak hilang.
 - **Lembar nilai:** simpan pakai `simpanNilaiSebagian()` (cuma sel yang berubah), jangan kirim lembar utuh, biar isian dari perangkat lain nggak ketimpa. Nambah/buang item daftar pakai `tambahKeDaftar()` / `buangDariDaftar()` (jadi `arrayUnion` / `arrayRemove`).
+- **Kop cetak:** lembar soal (formatif, sumatif, UAS) pakai `KOP_ASESMEN` (`js/kop.js`, dari file `KOP_ASESMEN_*.docx` sekolah), kertas F4, footer + nomor halaman. Judulnya dari `judulAsesmen()` (`js/cetak.js`): formatif / lingkup materi / tengah semester / akhir semester (UAS). Rapor tetap pakai `KOP_RESMI`.
 - **CSP** ada di `<meta>` `index.html`. Pakai layanan / domain baru → tambahin di situ. Script tema inline di `<head>` diizinkan lewat hash: kalau isinya diubah, hash di CSP juga harus diganti.
 
 ## Nyoba di lokal

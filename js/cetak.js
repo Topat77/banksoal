@@ -114,12 +114,81 @@ function htmlKopResmi() {
     </tr></table>`;
 }
 
+// ====== KOP LEMBAR ASESMEN (kop.js → KOP_ASESMEN) ======
+// judul kop per jenis asesmen; tengah & akhir semester ditambah GANJIL/GENAP
+const JENIS_ASESMEN = {
+  formatif: "Asesmen Formatif",
+  lingkup: "Asesmen Sumatif Lingkup Materi",
+  tengah: "Asesmen Sumatif Tengah Semester",
+  akhir: "Asesmen Sumatif Akhir Semester"
+};
+// ujian sumatif buatan guru: jenisnya ditebak dari nama ujian (di layar cetak masih bisa diganti)
+function tebakJenisAsesmen(nama) {
+  if (/tengah\s*semester|\b(uts|sts|pts)\b/i.test(nama)) return "tengah";
+  if (/akhir\s*(semester|tahun)|\b(uas|sas|pas|pat)\b/i.test(nama)) return "akhir";
+  return "lingkup";
+}
+// "Asesmen Sumatif Akhir Semester Ganjil" (huruf besar-kecil biasa, buat footer)
+function judulAsesmen(jenis, sem) {
+  const j = JENIS_ASESMEN[jenis] || JENIS_ASESMEN.lingkup;
+  return jenis === "tengah" || jenis === "akhir" ? `${j} ${sem.semester || ""}`.trim() : j;
+}
+function pakaiKopAsesmen() {
+  return typeof KOP_ASESMEN !== "undefined" && KONFIG.kopResmi !== false;
+}
+function kejarAsesmen(jenjang) {
+  return KOP_ASESMEN.jenjang[jenjang] || { kejar: `KEJAR ${String(jenjang || "").toUpperCase()}`, footer: jenjang || "" };
+}
+// tulisan footer, sama kayak file kop aslinya
+function footerAsesmen(info) {
+  return `${info.judulKop} | ${kejarAsesmen(info.jenjang).footer} | ${KOP_ASESMEN.namaPendek} |`;
+}
+// baris di bawah kotak identitas: materi · tipe soal · kunci (judul kop dibiarin persis judul resmi)
+function keteranganAsesmen(info, tambahan) {
+  return [info.materi, info.paket ? `Tipe ${info.paket}` : "", tambahan.replace(/^\s*—\s*/, "")].filter(Boolean).join(" · ");
+}
+// tulisan bebas buat dimasukin ke CSS content: "..."
+function teksCss(t) {
+  return `"${String(t).replace(/[\\"]/g, "\\$&").replace(/[\n\r]/g, " ")}"`;
+}
+// ukuran kertas F4 + footer & nomor halaman waktu dicetak (cuma berlaku di layar cetak)
+function gayaCetakAsesmen(info) {
+  const k = KOP_ASESMEN.kertas;
+  return `<style>@media print { @page { size: ${k.lebarMm}mm ${k.tinggiMm}mm; margin: 12mm 15mm 18mm;
+    @bottom-left { content: ${teksCss(footerAsesmen(info))}; font: italic 8.5pt "Times New Roman", serif; color: #555; border-top: 0.75pt solid #000; }
+    @bottom-right { content: counter(page); font: 12pt "Times New Roman", serif; color: #fff; background: #000; width: 9mm; height: 7mm; text-align: center; vertical-align: middle; } } }</style>`;
+}
+
+function htmlKopAsesmen(info, tambahan) {
+  const isi = (t) => t ? ` ${aman(t)}` : "";
+  return `
+    <div class="kop-asesmen">
+      <div class="ka-atas">
+        <img class="ka-logo" src="data:image/png;base64,${KOP_ASESMEN.logo}" alt="Logo PKBM" width="74" height="73">
+        <div class="ka-tulisan">
+          <p class="ka-lembaga">${aman(KOP_ASESMEN.lembaga)}</p>
+          <p class="ka-judul">${aman(info.judulKop.toUpperCase())}</p>
+          <p class="ka-kejar">${aman(kejarAsesmen(info.jenjang).kejar)}</p>
+          <p class="ka-tahun">Tahun Pelajaran ${aman(info.tahun || "......./........")}</p>
+        </div>
+      </div>
+      <table class="ka-info">
+        <tr><td>Mata Pelajaran</td><td>:${isi(info.mapel)}</td><td>Nama Peserta</td><td>:</td></tr>
+        <tr><td>Hari/Tanggal</td><td>:</td><td>No. Ujian</td><td>:</td></tr>
+        <tr><td>Waktu</td><td>:${isi(info.waktu)}</td><td>Nilai</td><td>:</td></tr>
+        <tr><td>Kelas</td><td>:${isi(info.kelas.replace(/^Kelas\s*/i, ""))}</td><td>Pengajar</td><td>:${isi(info.pengajar)}</td></tr>
+      </table>
+      ${keteranganAsesmen(info, tambahan) ? `<p class="ka-materi">${spanArah(keteranganAsesmen(info, tambahan))}</p>` : ""}
+    </div>`;
+}
+
 function htmlKop(info, tambahan) {
+  if (pakaiKopAsesmen()) return htmlKopAsesmen(info, tambahan);
   const resmi = pakaiKopResmi();
   return `
     <div class="kop${resmi ? " ada-resmi" : ""}">
       ${resmi ? htmlKopResmi() : `<p class="kop-sekolah">${aman(info.sekolah || "NAMA LEMBAGA")}</p>`}
-      <p class="kop-ujian">${spanArah(info.namaUjian.toUpperCase())}${info.paket ? ` (PAKET ${info.paket})` : ""}${tambahan}</p>
+      <p class="kop-ujian">${spanArah(info.namaUjian.toUpperCase())}${info.paket ? ` (TIPE ${info.paket})` : ""}${tambahan}</p>
       <table class="kop-info" align="center">
         <tr><td>Mata pelajaran</td><td>: ${aman(info.mapel)}</td><td>Kelas</td><td>: ${aman(info.kelas.replace(/^Kelas\s*/i, ""))} (${aman(info.jenjang)})</td></tr>
         <tr><td>Semester</td><td>: ${aman(info.semester)}</td><td>Waktu</td><td>: ${aman(info.waktu || "-")}</td></tr>
@@ -165,7 +234,8 @@ function htmlTabelSoal(items, denganKunci) {
 }
 
 function htmlLembarSoal(info, pg, esai) {
-  let h = htmlKop(info, "") + `
+  let h = (pakaiKopAsesmen() ? gayaCetakAsesmen(info) : "") + htmlKop(info, "");
+  if (!pakaiKopAsesmen()) h += `
     <table class="identitas" width="100%">
       <tr><td>Nama:</td><td>Kelas:</td><td>No. Absen:</td></tr>
     </table>`;
@@ -189,6 +259,7 @@ function htmlLembarKunci(info, pg, esai, halamanBaru) {
     // div → buat browser, br → buat Word
     h += `<div class="halaman-baru"></div><br clear="all" class="putus-word" style="page-break-before:always">`;
   }
+  if (pakaiKopAsesmen() && !halamanBaru) h += gayaCetakAsesmen(info);
   h += htmlKop(info, " — KUNCI JAWABAN");
 
   if (pg.length) {
@@ -222,6 +293,8 @@ function layarCetak() {
   // ambil soal + teks bacaannya: dari modul (formatif) atau dari sumatif
   let namaUjian, items, benih, sem;
   let kelasCetak = mp.kelas;
+  // kop asesmen: jenis (judul kop), pengajar, materi; jenisTetap = guru nggak bisa ganti
+  let jenisAwal, jenisTetap = true, pengajar = "", materi = "", kunciJenis = null;
   if (posisi.cetakDari === "modul") {
     const m = modAktif();
     sem = m;
@@ -229,11 +302,15 @@ function layarCetak() {
     let soal = m.soal || [];
     benih = m.id;
     namaUjian = `Soal Formatif: ${m.judul}`;
+    jenisAwal = "formatif";
+    pengajar = m.namaPemilik || "";
+    materi = m.judul;
     if (posisi.cetakPertemuan) {
       const i = (m.pertemuan || []).findIndex(p => p.id === posisi.cetakPertemuan);
       if (i >= 0) {
         soal = soal.filter(s => s.pertemuanId === posisi.cetakPertemuan);
         namaUjian += ` (Pertemuan ${i + 1})`;
+        materi += ` (Pertemuan ${i + 1})`;
         benih += "-" + posisi.cetakPertemuan;
       }
     }
@@ -244,6 +321,16 @@ function layarCetak() {
     if (posisi.uasGrup && !sayaKurikulum()) throw new DataHilang();
     sem = sum;
     namaUjian = sum.nama;
+    if (posisi.uasGrup) {
+      // UAS bersama: satu lembar buat banyak kelas, jadi pengajar diisi tangan
+      jenisAwal = "akhir";
+    } else {
+      kunciJenis = `${KUNCI_CETAK}-jenis-${sum.id}`;
+      jenisAwal = bacaLokal(kunciJenis, null) || tebakJenisAsesmen(sum.nama);
+      jenisTetap = false;
+      pengajar = sum.namaPemilik || "";
+      materi = sum.nama;
+    }
     // UAS bersama: berlaku untuk semua kelas di grupnya
     if (posisi.uasGrup) kelasCetak = `${tingkatKelas(mp.kelas)} (${mapelGrup(posisi.uasGrup).map(x => x.kelas).join(", ")})`;
     benih = sum.id;
@@ -265,16 +352,21 @@ function layarCetak() {
     <div class="layar-cetak">
     <div class="panel-cetak jangan-cetak">
       ${pakaiKopResmi()
-        ? `<p class="info">Pakai kop resmi PKBM Imam Syafi'i.</p><input id="sekolah" type="hidden" value="${aman(lembagaAwal)}">`
+        ? `<p class="info">Pakai kop asesmen resmi PKBM Imam Syafi'i, kertas F4.</p><input id="sekolah" type="hidden" value="${aman(lembagaAwal)}">`
         : `<label>Nama lembaga di kop <input id="sekolah" value="${aman(lembagaAwal)}" placeholder="PKBM ..."></label>`}
       <label>Lama ujian <input id="waktu" value="${aman(waktuAwal)}" placeholder="60 menit"></label>
-      <label>Paket soal
+      ${pakaiKopAsesmen() && !jenisTetap ? `<label>Judul kop
+        <select id="jenisKop">
+          ${["lingkup", "tengah", "akhir"].map(j => `<option value="${j}" ${j === jenisAwal ? "selected" : ""}>${aman(judulAsesmen(j, sem))}</option>`).join("")}
+        </select>
+      </label>` : ""}
+      <label>Tipe soal
         <select id="paket">
-          <option value="">Tanpa paket (urutan asli)</option>
-          <option value="A">Paket A (urutan asli)</option>
-          <option value="B">Paket B (diacak)</option>
-          <option value="C">Paket C (diacak)</option>
-          <option value="D">Paket D (diacak)</option>
+          <option value="">Satu tipe (urutan asli)</option>
+          <option value="A">Tipe A (urutan asli)</option>
+          <option value="B">Tipe B (diacak)</option>
+          <option value="C">Tipe C (diacak)</option>
+          <option value="D">Tipe D (diacak)</option>
         </select>
       </label>
       <label class="centang" id="bagianAcakPilihan">
@@ -303,6 +395,7 @@ function layarCetak() {
   const inputWaktu = document.getElementById("waktu");
   const pilihPaket = document.getElementById("paket");
   const centangAcak = document.getElementById("acakPilihan");
+  const pilihJenis = document.getElementById("jenisKop");
 
   function pengaturan() {
     return {
@@ -321,7 +414,12 @@ function layarCetak() {
       mapel: mp.nama,
       kelas: kelasCetak,
       jenjang: mp.jenjang,
-      semester: namaSemester(sem)
+      semester: namaSemester(sem),
+      // kop asesmen
+      judulKop: judulAsesmen(pilihJenis ? pilihJenis.value : jenisAwal, sem),
+      tahun: sem.tahun || "",
+      pengajar,
+      materi
     };
   }
 
@@ -348,6 +446,7 @@ function layarCetak() {
     gambar();
   };
   pilihPaket.onchange = centangAcak.onchange = gambar;
+  if (pilihJenis) pilihJenis.onchange = () => { tulisLokal(kunciJenis, pilihJenis.value); gambar(); };
   document.querySelectorAll('[name="mode"]').forEach(r => r.onchange = gambar);
 
   document.getElementById("print").onclick = () => {
@@ -359,7 +458,7 @@ function layarCetak() {
     const { paket, mode } = pengaturan();
     const bagian = { soal: "Soal", kunci: "Kunci", dua: "Soal dan Kunci" }[mode];
     const { pg, esai } = siapkanLembar(items, paket, centangAcak.checked, benih);
-    const nama = namaFileAman(`${namaUjian}${paket ? " Paket " + paket : ""} - ${bagian}`);
+    const nama = namaFileAman(`${namaUjian}${paket ? " Tipe " + paket : ""} - ${bagian}`);
     const blob = buatDocx(infoSekarang(), pg, esai, mode, pakaiKopResmi());
     berikanFile(new File([blob], nama + ".docx", { type: blob.type }));
   };
