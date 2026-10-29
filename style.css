@@ -299,6 +299,7 @@ main {
   header { gap: 10px; padding-block: 12px; }
   header h1 { font-size: 19px; }
   header .tombol-tema { display: none; }
+  .hanya-lebar { display: none; }
   .tanda-sinyal, .tanda-coba { padding: 2px 8px; font-size: 12px; }
 }
 
@@ -807,7 +808,7 @@ label.saklar input:focus-visible { outline: 2px solid var(--hijau); outline-offs
 /* isian pertemuan di form modul */
 .isian-pertemuan { display: flex; flex-direction: column; gap: 6px; padding: 12px; background: var(--lembar); border: 1px solid var(--kaca-garis); border-radius: var(--sudut); }
 .isian-pertemuan-atas { display: flex; align-items: center; justify-content: space-between; }
-.isian-pertemuan-atas .tombol-teks { min-height: 32px; font-size: 15px; }
+.isian-pertemuan-atas .tombol-teks { min-height: 44px; font-size: 15px; }
 fieldset > .tombol-kedua { align-self: flex-start; }
 
 .pratinjau {
@@ -1203,6 +1204,8 @@ textarea:dir(rtl), input:dir(rtl) {
 .ka-atas { position: relative; min-height: 76px; padding: 0 0 4px; }
 .ka-logo { position: absolute; left: 4%; top: 6px; width: 74px; height: auto; }
 .ka-tulisan { text-align: center; padding: 0 56px; }
+/* pratinjau layar agak lebar: kiri-kanan sama lebar dan lewat logo, biar judul panjang nggak nabrak logo */
+@media screen and (min-width: 561px) { .ka-tulisan { padding: 0 calc(4% + 82px); } }
 #lembar .ka-tulisan p { margin: 0; line-height: 1.2; }
 .ka-lembaga { font: 16pt Abadi, "Segoe UI", Arial, sans-serif; }
 .ka-judul { font: bold 16pt Abadi, "Segoe UI", Arial, sans-serif; }

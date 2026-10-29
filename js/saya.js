@@ -47,7 +47,7 @@ function layarLainnya() {
         <label class="radio"><input type="radio" name="tema" value="terang" ${pilih === "terang" ? "checked" : ""}> Terang</label>
         <label class="radio"><input type="radio" name="tema" value="gelap" ${pilih === "gelap" ? "checked" : ""}> Gelap</label>
       </div>
-      <p class="info">Bisa juga lewat tombol bulan/matahari di pojok kanan atas.</p>
+      <p class="info hanya-lebar">Bisa juga lewat tombol bulan/matahari di pojok kanan atas.</p>
     </section>`;
 
   let teksPasang;
