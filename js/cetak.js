@@ -125,7 +125,8 @@ const JENIS_ASESMEN = {
 // ujian sumatif buatan guru: jenisnya ditebak dari nama ujian (di layar cetak masih bisa diganti)
 function tebakJenisAsesmen(nama) {
   if (/tengah\s*semester|\b(uts|sts|pts)\b/i.test(nama)) return "tengah";
-  if (/akhir\s*(semester|tahun)|\b(uas|sas|pas|pat)\b/i.test(nama)) return "akhir";
+  // singkatannya cuma dihitung kalau huruf besar, biar "Latihan pas materi" nggak ikut kena
+  if (/akhir\s*(semester|tahun)/i.test(nama) || /\b(UAS|SAS|PAS|PAT)\b/.test(nama)) return "akhir";
   return "lingkup";
 }
 // "Asesmen Sumatif Akhir Semester Ganjil" (huruf besar-kecil biasa, buat footer)
@@ -149,14 +150,14 @@ function keteranganAsesmen(info, tambahan) {
 }
 // tulisan bebas buat dimasukin ke CSS content: "..."
 function teksCss(t) {
-  return `"${String(t).replace(/[\\"]/g, "\\$&").replace(/[\n\r]/g, " ")}"`;
+  return `"${String(t).replace(/[\\"]/g, "\\$&").replace(/</g, "\\3C ").replace(/&/g, "\\26 ").replace(/[\n\r]/g, " ")}"`;
 }
 // ukuran kertas F4 + footer & nomor halaman waktu dicetak (cuma berlaku di layar cetak)
 function gayaCetakAsesmen(info) {
   const k = KOP_ASESMEN.kertas;
   return `<style>@media print { @page { size: ${k.lebarMm}mm ${k.tinggiMm}mm; margin: 12mm 15mm 18mm;
     @bottom-left { content: ${teksCss(footerAsesmen(info))}; font: italic 8.5pt "Times New Roman", serif; color: #555; border-top: 0.75pt solid #000; }
-    @bottom-right { content: counter(page); font: 12pt "Times New Roman", serif; color: #fff; background: #000; width: 9mm; height: 7mm; text-align: center; vertical-align: middle; } } }</style>`;
+    @bottom-right { content: counter(page); font: 12pt "Times New Roman", serif; color: #fff; background: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; width: 9mm; height: 7mm; text-align: center; vertical-align: middle; } } }</style>`;
 }
 
 function htmlKopAsesmen(info, tambahan) {
