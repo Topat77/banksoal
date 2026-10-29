@@ -133,7 +133,7 @@ function buatAturan(ambilDok, adminAwal) {
       if (lama && baru) {
         return profilValid(lama, baru) && (
           (auth.uid === b[1] && baru.peran === lama.peran && baru.email === lama.email &&
-           (baru.sapaan || null) === (lama.sapaan || null) &&
+           sama(nilaiKolom(baru, "sapaan"), nilaiKolom(lama, "sapaan")) &&
            sama(nilaiKolom(baru, "nip"), nilaiKolom(lama, "nip"))) || kurikulum(auth));
       }
       return kurikulum(auth);

@@ -151,6 +151,9 @@ tolak("usulan: catatan 2001 huruf", bolehTulis("grup/g-bi7/usulan/x", null, usul
 tolak("nilai: 61 kolom", bolehTulis("mapel/bi7a/nilai/l1", null, lembar({ kolom: banyak(61, {}) }), akun.hasan));
 tolak("profil: nama 101 huruf", bolehTulis("pengguna/hasan", db["pengguna/hasan"], { ...db["pengguna/hasan"], nama: "x".repeat(101) }, akun.hasan));
 tolak("profil: ubah NIP sendiri", bolehTulis("pengguna/hasan", db["pengguna/hasan"], { ...db["pengguna/hasan"], nip: "999" }, akun.hasan));
+tolak("profil: sapaan dari tanpa jadi \"\" ditolak", bolehTulis("pengguna/hasan", db["pengguna/hasan"], { ...db["pengguna/hasan"], sapaan: "" }, akun.hasan));
+boleh("profil: sapaan dari tanpa jadi null (sama-sama kosong) boleh", bolehTulis("pengguna/hasan", db["pengguna/hasan"], { ...db["pengguna/hasan"], sapaan: null }, akun.hasan));
+tolak("profil: sapaan dari \"\" jadi tanpa ditolak", bolehTulis("pengguna/hasan", { ...db["pengguna/hasan"], sapaan: "" }, { ...db["pengguna/hasan"] }, akun.hasan));
 
 // =====================================================
 grup("Nilai disimpan sebagian (cuma sel yang berubah)");
