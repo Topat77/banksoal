@@ -151,6 +151,9 @@ tolak("usulan: catatan 2001 huruf", bolehTulis("grup/g-bi7/usulan/x", null, usul
 tolak("nilai: 61 kolom", bolehTulis("mapel/bi7a/nilai/l1", null, lembar({ kolom: banyak(61, {}) }), akun.hasan));
 tolak("profil: nama 101 huruf", bolehTulis("pengguna/hasan", db["pengguna/hasan"], { ...db["pengguna/hasan"], nama: "x".repeat(101) }, akun.hasan));
 tolak("profil: ubah NIP sendiri", bolehTulis("pengguna/hasan", db["pengguna/hasan"], { ...db["pengguna/hasan"], nip: "999" }, akun.hasan));
+tolak("profil: sapaan dari tanpa jadi \"\" ditolak", bolehTulis("pengguna/hasan", db["pengguna/hasan"], { ...db["pengguna/hasan"], sapaan: "" }, akun.hasan));
+boleh("profil: sapaan dari tanpa jadi null (sama-sama kosong) boleh", bolehTulis("pengguna/hasan", db["pengguna/hasan"], { ...db["pengguna/hasan"], sapaan: null }, akun.hasan));
+tolak("profil: sapaan dari \"\" jadi tanpa ditolak", bolehTulis("pengguna/hasan", { ...db["pengguna/hasan"], sapaan: "" }, { ...db["pengguna/hasan"] }, akun.hasan));
 
 // =====================================================
 grup("Nilai disimpan sebagian (cuma sel yang berubah)");
@@ -167,7 +170,9 @@ grup("Nilai disimpan sebagian (cuma sel yang berubah)");
   tolak("bukan pengampu nggak boleh", bolehTulis("mapel/bi7a/nilai/l1", lama, b1, akun.aminah));
   tolak("TU nggak ngisi nilai", bolehTulis("mapel/bi7a/nilai/l1", lama, b1, akun.tu));
   tolak("ustadz nggak boleh hapus lembar", bolehTulis("mapel/bi7a/nilai/l1", lama, null, akun.hasan));
-  boleh("TU boleh hapus lembar", bolehTulis("mapel/bi7a/nilai/l1", lama, null, akun.tu));
+  tolak("TU nggak boleh hapus lembar selama mapelnya masih ada", bolehTulis("mapel/bi7a/nilai/l1", lama, null, akun.tu));
+  boleh("TU boleh bersihin lembar kalau mapelnya sudah dihapus", bolehTulis("mapel/sudahhapus/nilai/l1", lama, null, akun.tu));
+  tolak("ustadz nggak boleh bersihin lembar mapel yang sudah dihapus", bolehTulis("mapel/sudahhapus/nilai/l1", lama, null, akun.hasan));
 }
 
 // =====================================================
@@ -202,8 +207,13 @@ boleh("TU bikin modul atas nama Hasan", bolehTulis("mapel/bi7a/modul/m9", null, 
 tolak("TU ubah modul Hasan yang udah ada", bolehTulis("mapel/bi7a/modul/m9", modul(), modul({ judul: "x" }), akun.tu));
 tolak("TU bikin modul yang ngelanggar batas", bolehTulis("mapel/bi7a/modul/m9", null, modul({ soal: banyak(501, soalPG) }), akun.tu));
 boleh("TU bikin sumatif atas nama Hasan", bolehTulis("mapel/bi7a/sumatif/s9", null, sumatif(), akun.tu));
-boleh("TU bikin lembar nilai yang hilang", bolehTulis("mapel/bi7a/nilai/l9", null, lembar(), akun.tu));
+tolak("TU nggak bisa bikin lembar nilai", bolehTulis("mapel/bi7a/nilai/l9", null, lembar(), akun.tu));
 tolak("TU ngubah lembar nilai", bolehTulis("mapel/bi7a/nilai/l9", lembar(), lembar({ nilai: { s1: { k1: 1 } } }), akun.tu));
+tolak("TU nggak bisa jadiin dirinya pengampu mapel", bolehTulis("mapel/bi7a", db["mapel/bi7a"], { ...db["mapel/bi7a"], pengampu: ["hasan", "tu"] }, akun.tu));
+boleh("TU boleh ganti pengampu mapel ke guru", bolehTulis("mapel/bi7a", db["mapel/bi7a"], { ...db["mapel/bi7a"], pengampu: ["hasan", "aminah"] }, akun.tu));
+tolak("semester selain Ganjil/Genap ditolak", bolehTulis("mapel/bi7a/nilai/l1", null, lembar({ semester: "</style>" }), akun.hasan));
+tolak("tahun bukan format 2026/2027 ditolak", bolehTulis("mapel/bi7a/nilai/l1", null, lembar({ tahun: "2026" }), akun.hasan));
+boleh("semester Genap 2026/2027 lolos", bolehTulis("mapel/bi7a/nilai/l1", null, lembar({ semester: "Genap" }), akun.hasan));
 boleh("TU bikin usulan atas nama Aminah", bolehTulis("grup/g-bi7/usulan/u9", null, usulan(), akun.tu));
 tolak("guru tetap nggak bisa bikin modul atas nama orang lain", bolehTulis("mapel/bi7a/modul/m9", null, modul({ pemilik: "aminah" }), akun.aminah));
 tolak("guru luar grup tetap nggak bisa bikin usulan", bolehTulis("grup/g-bi7/usulan/u9", null, usulan({ pemilik: "yusuf" }), akun.yusuf));
