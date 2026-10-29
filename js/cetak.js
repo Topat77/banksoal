@@ -146,7 +146,11 @@ function footerAsesmen(info) {
 }
 // baris di bawah kotak identitas: materi · tipe soal · kunci (judul kop dibiarin persis judul resmi)
 function keteranganAsesmen(info, tambahan) {
-  return [info.materi, info.paket ? `Tipe ${info.paket}` : "", tambahan.replace(/^\s*—\s*/, "")].filter(Boolean).join(" · ");
+  // nama ujian yang cuma ngulang (atau bertentangan dengan) judul kop nggak usah ditulis lagi di bawah kotak identitas
+  const materi = (info.materi || "").trim();
+  const kembar = !!materi && ((info.judulKop || "").toLowerCase().includes(materi.toLowerCase())
+    || /(tengah|akhir)\s*semester|\b(uts|sts|pts|uas|sas|pas|pat)\b/i.test(materi));
+  return [kembar ? "" : info.materi, info.paket ? `Tipe ${info.paket}` : "", tambahan.replace(/^\s*—\s*/, "")].filter(Boolean).join(" · ");
 }
 // tulisan bebas buat dimasukin ke CSS content: "..."
 function teksCss(t) {
@@ -355,6 +359,7 @@ function layarCetak() {
       ${pakaiKopResmi()
         ? `<p class="info">Pakai kop asesmen resmi PKBM Imam Syafi'i, kertas F4.</p><input id="sekolah" type="hidden" value="${aman(lembagaAwal)}">`
         : `<label>Nama lembaga di kop <input id="sekolah" value="${aman(lembagaAwal)}" placeholder="PKBM ..."></label>`}
+      ${pakaiKopAsesmen() ? `<p class="info kecil">Footer dan nomor halaman cuma muncul di Chrome atau Edge terbaru, dan nomor halamannya butuh "Background graphics" dicentang di dialog cetak. Di browser lain, pakai Unduh Word.</p>` : ""}
       <label>Lama ujian <input id="waktu" value="${aman(waktuAwal)}" placeholder="60 menit"></label>
       ${pakaiKopAsesmen() && !jenisTetap ? `<label>Judul kop
         <select id="jenisKop">
