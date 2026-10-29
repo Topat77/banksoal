@@ -88,7 +88,7 @@ function tampilkan(tetapDiTempat = false) {
     if (err instanceof DataHilang && posisi.mapelId && mapelBisaDibuka(posisi.mapelId) && !isiMapelSiap(posisi.mapelId)) {
       // isi mapel belum kelar dimuat
       judul.textContent = "Memuat...";
-      isi.innerHTML = `<p class="kosong">Memuat data...</p>`;
+      isi.innerHTML = htmlKerangka();
     } else {
       if (!(err instanceof DataHilang)) console.error(err);
       // balik ke halaman mapel kalau masih bisa, kalau nggak ke beranda
@@ -260,6 +260,20 @@ let nomorLogo = 0;
 // logo lain yang numpang id-nya ikut nggak kelihatan
 const logo = () => { const id = `gLogo${++nomorLogo}`; return `<svg class="logo" aria-hidden="true" viewBox="0 0 512 512"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0B8C63"/><stop offset="1" stop-color="#13719F"/></linearGradient></defs><rect width="512" height="512" rx="115" fill="url(#${id})"/><g transform="translate(256 256) scale(1.0) translate(-256 -256)"><path d="M170 132 H284 C326 132 352 156 352 194 C352 216 341 233 322 242 C347 251 362 273 362 304 C362 346 331 376 286 376 H170 Z M228 180 V230 H276 C292 230 300 221 300 205 C300 189 292 180 276 180 Z M228 274 V328 H281 C299 328 308 318 308 301 C308 284 299 274 281 274 Z" fill="#fff" fill-rule="evenodd" transform="translate(256 258) scale(.84) translate(-266 -254)"/><path d="M372 150 C330 96 186 96 136 170 C86 246 120 398 254 410 C376 420 420 318 398 238" fill="none" stroke="#E0442E" stroke-width="16" stroke-linecap="round"/></g></svg>`; };
 
+// tampilan waktu data masih dimuat: layar pembuka (ikon + nama + garis jalan, sama kayak di
+// index.html) dan kerangka kartu abu-abu buat isi satu layar
+function htmlPembuka() {
+  return `<div class="pembuka" role="status" aria-label="Memuat">
+    <img src="ikon-192.png" alt="" width="84" height="84">
+    <b>${aman(KONFIG.namaAplikasi)}</b>
+    <small>${aman(KONFIG.namaLembaga || "")}</small>
+    <span class="pembuka-garis"></span>
+  </div>`;
+}
+function htmlKerangka() {
+  return `<div class="kerangka" role="status" aria-label="Memuat data"><span></span><span></span><span></span><span></span></div>`;
+}
+
 // ikon kecil di menu samping & kartu
 function ikonMenu(k) { return (IKON[k] || "").replace("<svg ", '<svg class="ikon-menu" '); }
 function ikonKotak(k, warna) { return `<span class="ikon-kotak ${warna}">${IKON[k] || ""}</span>`; }
@@ -307,7 +321,7 @@ function gambarStatus() {
   const coba = toko.backend && toko.backend.mode === "coba";
 
   if (toko.status === "memuat") {
-    isi.innerHTML = `<div class="layar-status"><p class="kosong">Memuat...</p></div>`;
+    isi.innerHTML = htmlPembuka();
     return;
   }
 
