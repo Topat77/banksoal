@@ -1214,34 +1214,21 @@ textarea:dir(rtl), input:dir(rtl) {
 .ka-info td { padding: 0 6px; font-size: 12pt; line-height: 1.25; vertical-align: top; overflow-wrap: anywhere; }
 /* titik dua nempel di depan isian; isian panjang yang turun baris rata sama isian di atasnya */
 .ka-info td:nth-child(even) { padding-left: 1.1em; text-indent: -0.6em; }
-.ka-info td:nth-child(1) { width: 21%; }
-.ka-info td:nth-child(2) { width: 29%; }
-.ka-info td:nth-child(3) { width: 19%; }
+/* lebar kolom persis file Word aslinya (2253 : 3079 : 2024 : 3118) */
+.ka-info td:nth-child(1) { width: 21.5%; white-space: nowrap; }
+.ka-info td:nth-child(2) { width: 29.4%; }
+.ka-info td:nth-child(3) { width: 19.3%; white-space: nowrap; }
+.ka-info td:nth-child(4) { width: 29.8%; }
 #lembar .ka-materi { margin: 8px 0 0; text-align: center; font-weight: bold; }
 @media (max-width: 560px) {
-  .ka-logo { width: 44px; left: 0; top: 2px; }
-  .ka-tulisan { padding: 0 0 0 44px; }
-  .ka-lembaga, .ka-judul { font-size: 12.5px; }
-  .ka-kejar, .ka-tahun { font-size: 11.5px; }
-  /* HP: satu baris satu isian (label | isian), biar lega & isian kosong tetap kebagian tempat.
-     Lembar yang dicetak tetap 4 kolom kayak file aslinya. */
-  /* urutannya kayak di kertas: isian kiri dulu (Mata Pelajaran..Kelas), garis tipis, lalu isian kanan */
-  #lembar table.ka-info { display: block; }
-  .ka-info tbody { display: grid; grid-template-columns: 7.6em minmax(0, 1fr); padding: 4px 6px; }
-  .ka-info tr { display: contents; }
-  .ka-info td { width: auto !important; font-size: 12px; padding: 1px 0; line-height: 1.35; }
-  .ka-info td:nth-child(even) { padding-left: 0.6em; text-indent: -0.5em; }
-  .ka-info tr:nth-child(1) td:nth-child(-n+2) { order: 1; }
-  .ka-info tr:nth-child(2) td:nth-child(-n+2) { order: 2; }
-  .ka-info tr:nth-child(3) td:nth-child(-n+2) { order: 3; }
-  .ka-info tr:nth-child(4) td:nth-child(-n+2) { order: 4; }
-  .ka-info tr:nth-child(1) td:nth-child(n+3) { order: 5; border-top: 1px solid #000; margin-top: 4px; padding-top: 4px; }
-  .ka-info tr:nth-child(2) td:nth-child(n+3) { order: 6; }
-  .ka-info tr:nth-child(3) td:nth-child(n+3) { order: 7; }
-  .ka-info tr:nth-child(4) td:nth-child(n+3) { order: 8; }
-  /* judul resmi panjang: hurufnya ikut lebar layar biar tetap satu baris */
-  .ka-lembaga { font-size: clamp(10px, 3.2vw, 12.5px); }
-  .ka-judul { font-size: clamp(9.5px, 2.95vw, 12.5px); letter-spacing: -0.01em; }
+  /* HP: bentuk kop tetap persis file aslinya (4 kolom), cuma diperkecil ikut lebar layar */
+  .ka-logo { width: 13%; left: 1%; top: 2px; }
+  .ka-atas { min-height: 0; }
+  .ka-tulisan { padding: 0 0 0 13%; }
+  .ka-lembaga { font-size: clamp(8px, 3.1vw, 12.5px); }
+  .ka-judul { font-size: clamp(8px, 2.95vw, 12.5px); letter-spacing: -0.01em; }
+  .ka-kejar, .ka-tahun { font-size: clamp(7.5px, 2.75vw, 11.5px); }
+  .ka-info td { font-size: clamp(7px, 2.6vw, 11px); padding: 0 2px; }
 }
 .kop-info { margin: 6px auto 0; text-align: left; font-size: 14px; }
 .kop-info td { padding: 1px 8px; }
