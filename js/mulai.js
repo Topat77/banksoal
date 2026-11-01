@@ -22,7 +22,7 @@ function fileKurang() {
     "js/sumatif.js": typeof layarSumatif === "function",
     "js/uas.js": typeof layarDaftarUAS === "function",
     "js/ai.js": typeof layarAISoal === "function",
-    "js/kop.js": typeof KOP_RESMI !== "undefined",
+    "js/kop.js": typeof KOP_RESMI !== "undefined" && typeof KOP_ASESMEN !== "undefined",
     "js/docx.js": typeof buatDocx === "function",
     "js/cetak.js": typeof layarCetak === "function",
     "js/kurikulum.js": typeof layarAkun === "function",

@@ -90,6 +90,8 @@ service cloud.firestore {
     }
     function semesterTetap() {
       return teks('semester', 20) && teks('tahun', 20) && tetap('semester') && tetap('tahun') && tetap('dibuat')
+        && (!('semester' in isi()) || isi().semester in ['Ganjil', 'Genap'])
+        && (!('tahun' in isi()) || (isi().tahun is string && isi().tahun.matches('^[0-9]{4}/[0-9]{4}$')))
         && angka('dibuat') && angka('diubah');
     }
     function modulValid() {
@@ -200,7 +202,10 @@ service cloud.firestore {
     // ---------- mapel ----------
     match /mapel/{idMapel} {
       allow read: if aktif();
-      allow write: if kurikulum();
+      // admin nggak boleh jadi pengampu (admin bukan guru)
+      allow write: if kurikulum()
+        && !(request.auth.uid in request.resource.data.get('pengampu', []));
+      allow delete: if kurikulum();
 
       // modul: pemiliknya + kurikulum selalu bisa lihat;
       // pengampu lain mapel ini, dan pengampu kelas lain di grupnya,
@@ -223,13 +228,14 @@ service cloud.firestore {
       }
 
       // lembar nilai satu semester: diisi pengampu mapel ini aja;
-      // admin cuma bisa lihat (buat pantauan dan rapor), dan bikin lembar yang hilang dari cadangan
+      // admin cuma bisa lihat (buat pantauan dan rapor), nggak bisa bikin atau ngubah
       match /nilai/{id} {
         allow read: if aktif() && (kurikulum() || pengampu(idMapel));
-        allow create: if aktif() && (pengampu(idMapel) || kurikulum()) && nilaiValid();
+        allow create: if aktif() && pengampu(idMapel) && nilaiValid();
         allow update: if aktif() && pengampu(idMapel) && nilaiValid();
-        // yang boleh menghapus cuma admin, buat ngebersihin waktu mapelnya dihapus
-        allow delete: if kurikulum();
+        // yang boleh menghapus cuma admin, dan cuma buat ngebersihin waktu mapelnya sudah dihapus
+        allow delete: if kurikulum()
+          && !exists(/databases/$(database)/documents/mapel/$(idMapel));
       }
 
       // ujian sumatif: pemiliknya + kurikulum; kalau dibagikan,

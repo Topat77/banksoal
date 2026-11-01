@@ -48,7 +48,9 @@ function buatAturan(ambilDok, adminAwal) {
   const yaTidak = (d, k) => !ada(d, k) || typeof d[k] === "boolean";
   const semesterTetap = (lama, b) =>
     teks(b, "semester", 20) && teks(b, "tahun", 20) && tetap(lama, b, "semester") && tetap(lama, b, "tahun") &&
-    tetap(lama, b, "dibuat") && angka(b, "dibuat") && angka(b, "diubah");
+    tetap(lama, b, "dibuat") && angka(b, "dibuat") && angka(b, "diubah") &&
+    (!ada(b, "semester") || ["Ganjil", "Genap"].includes(b.semester)) &&
+    (!ada(b, "tahun") || (typeof b.tahun === "string" && /^[0-9]{4}\/[0-9]{4}$/.test(b.tahun)));
   const modulValid = (lama, b) =>
     kolomDikenal(lama, b, ["semester", "tahun", "judul", "catatan", "link", "pemilik", "namaPemilik",
       "dibagikan", "pertemuan", "bacaan", "soal", "terkait", "lanjutanDari", "dibuat", "diubah"]) &&
@@ -133,21 +135,24 @@ function buatAturan(ambilDok, adminAwal) {
       if (lama && baru) {
         return profilValid(lama, baru) && (
           (auth.uid === b[1] && baru.peran === lama.peran && baru.email === lama.email &&
-           (baru.sapaan || null) === (lama.sapaan || null) &&
+           sama(nilaiKolom(baru, "sapaan"), nilaiKolom(lama, "sapaan")) &&
            sama(nilaiKolom(baru, "nip"), nilaiKolom(lama, "nip"))) || kurikulum(auth));
       }
       return kurikulum(auth);
     }
     if (b[0] === "pengaturan" && b.length === 2) return kurikulum(auth);
-    if (b[0] === "mapel" && b.length === 2) return kurikulum(auth);
+    // admin nggak boleh jadi pengampu (admin bukan guru)
+    if (b[0] === "mapel" && b.length === 2) {
+      if (!kurikulum(auth)) return false;
+      return baru === null || !(Array.isArray(baru.pengampu) && baru.pengampu.includes(auth.uid));
+    }
 
-    // lembar nilai: cuma pengampu mapelnya yang boleh ngisi (admin cuma lihat,
-    // dan bikin lembar yang hilang dari cadangan).
-    // Yang boleh menghapus cuma admin, buat ngebersihin waktu mapelnya dihapus.
+    // lembar nilai: cuma pengampu mapelnya yang boleh ngisi (admin cuma lihat).
+    // Yang boleh menghapus cuma admin, dan cuma buat ngebersihin waktu mapelnya sudah dihapus.
     if (b[0] === "mapel" && b[2] === "nilai" && b.length === 4) {
       if (!aktif(auth)) return false;
-      if (baru === null) return kurikulum(auth);
-      if (!lama) return (pengampu(auth, b[1]) || kurikulum(auth)) && nilaiValid(lama, baru);
+      if (baru === null) return kurikulum(auth) && !ambilDok(`mapel/${b[1]}`);
+      if (!lama) return pengampu(auth, b[1]) && nilaiValid(lama, baru);
       return pengampu(auth, b[1]) && nilaiValid(lama, baru);
     }
     // santri & kelas: diisi, diubah, dihapus admin; ustadz cuma lihat

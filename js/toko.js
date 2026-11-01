@@ -741,14 +741,15 @@ function simpanMapelData(mapel) {
 function hapusMapelData(idMapel) {
   // isi mapel belum selesai dimuat: daftar modul/ujian/nilai masih kosong sementara, jadi yang ada di database bakal ketinggalan
   if (!isiMapelSiap(idMapel)) return false;
-  // isi mapel dihapus dulu satu-satu (database nggak ngehapus isi otomatis).
+  // dokumen mapel dihapus dulu, baru isinya satu-satu (database nggak ngehapus isi otomatis;
+  // aturan baru boleh ngehapus lembar nilai kalau mapelnya sudah nggak ada).
   // Nggak ditunggu: tanpa sinyal, penghapusan antre dan dikirim nanti.
+  toko.backend.hapus(`mapel/${idMapel}`).catch(gagalSimpan);
   for (const m of modulMapel(idMapel)) toko.backend.hapus(`mapel/${idMapel}/modul/${m.id}`).catch(gagalSimpan);
   for (const s of sumatifMapel(idMapel)) toko.backend.hapus(`mapel/${idMapel}/sumatif/${s.id}`).catch(gagalSimpan);
   for (const n of (toko.isi[idMapel] ? toko.isi[idMapel].nilai : [])) toko.backend.hapus(`mapel/${idMapel}/nilai/${n.id}`).catch(gagalSimpan);
   toko.mapel = toko.mapel.filter(m => m.id !== idMapel);
   aturLanggananMapel();
-  toko.backend.hapus(`mapel/${idMapel}`).catch(gagalSimpan);
   berubah();
   return true;
 }

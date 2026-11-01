@@ -355,7 +355,8 @@ function formMapel() {
   const opsiJenjang = [...new Set([...JENJANG_PKBM, m.jenjang].filter(Boolean))]
     .map(j => `<label class="radio"><input type="radio" name="jenjang" value="${aman(j)}" ${m.jenjang === j ? "checked" : ""} required> ${aman(j)}</label>`).join("");
 
-  const calon = toko.pengguna.filter(p => PERAN_AKTIF.includes(p.peran))
+  // admin (kurikulum) bukan guru, jadi nggak bisa dipilih jadi pengampu
+  const calon = toko.pengguna.filter(p => p.peran === "ustadz")
     .sort((a, b) => (a.nama || "").localeCompare(b.nama || "", "id"));
   const pilihPengampu = calon.length ? calon.map(p => `
       <label class="centang">
