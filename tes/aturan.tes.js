@@ -58,6 +58,7 @@ const db = {
   "mapel/bi7a": { pengampu: ["hasan"], grup: "g-bi7" },
   "mapel/bi7b": { pengampu: ["aminah"], grup: "g-bi7" },
   "mapel/fik7": { pengampu: ["yusuf"], grup: "g-fik7" },
+  "mapel/tupeng": { pengampu: ["hasan", "tu"], grup: "g-bi7" }, // admin kebetulan ikut di daftar pengampu
   "grup/g-bi7":  { pengampu: ["hasan", "aminah"], koordinator: "hasan" },
   "grup/g-fik7": { pengampu: ["yusuf"], koordinator: "yusuf" },
   "kelas/k7a": { pengampu: ["hasan"] }
@@ -209,6 +210,9 @@ tolak("TU bikin modul yang ngelanggar batas", bolehTulis("mapel/bi7a/modul/m9", 
 boleh("TU bikin sumatif atas nama Hasan", bolehTulis("mapel/bi7a/sumatif/s9", null, sumatif(), akun.tu));
 tolak("TU nggak bisa bikin lembar nilai", bolehTulis("mapel/bi7a/nilai/l9", null, lembar(), akun.tu));
 tolak("TU ngubah lembar nilai", bolehTulis("mapel/bi7a/nilai/l9", lembar(), lembar({ nilai: { s1: { k1: 1 } } }), akun.tu));
+tolak("admin yang ada di pengampu tetap nggak boleh bikin lembar nilai", bolehTulis("mapel/tupeng/nilai/l9", null, lembar(), akun.tu));
+tolak("admin yang ada di pengampu tetap nggak boleh ngubah lembar nilai", bolehTulis("mapel/tupeng/nilai/l9", lembar(), lembar({ nilai: { s1: { k1: 1 } } }), akun.tu));
+boleh("guru pengampu lain di mapel yang sama tetap boleh isi nilai", bolehTulis("mapel/tupeng/nilai/l9", lembar(), lembar({ nilai: { s1: { k1: 1 } } }), akun.hasan));
 tolak("TU nggak bisa jadiin dirinya pengampu mapel", bolehTulis("mapel/bi7a", db["mapel/bi7a"], { ...db["mapel/bi7a"], pengampu: ["hasan", "tu"] }, akun.tu));
 boleh("TU boleh ganti pengampu mapel ke guru", bolehTulis("mapel/bi7a", db["mapel/bi7a"], { ...db["mapel/bi7a"], pengampu: ["hasan", "aminah"] }, akun.tu));
 tolak("semester selain Ganjil/Genap ditolak", bolehTulis("mapel/bi7a/nilai/l1", null, lembar({ semester: "</style>" }), akun.hasan));

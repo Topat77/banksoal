@@ -711,13 +711,14 @@ label.centang input, .pilih-soal input {
 }
 
 .pilih-jenis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.pilih-jenis.tiga { grid-template-columns: repeat(3, 1fr); }
+.pilih-jenis.tiga { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 label.radio {
   flex-direction: row; align-items: center; gap: 8px;
   min-height: 48px; padding: 10px 12px;
   border: 1px solid var(--garis-tebal); border-radius: 8px;
   background: var(--lembar);
   font-weight: 500; cursor: pointer;
+  min-width: 0; overflow-wrap: anywhere;
 }
 label.radio input { width: auto; padding: 0; accent-color: var(--hijau); }
 label.radio:has(input:checked) { border-color: var(--hijau); background: var(--hijau-muda); color: var(--hijau-tua); font-weight: 600; }
@@ -1118,6 +1119,7 @@ span.judul-kolom { display: inline-flex; align-items: center; cursor: default; t
   text-decoration: underline dotted; text-underline-offset: 3px;
 }
 .judul-kolom:hover { color: var(--hijau); }
+@media (max-width: 560px) { button.judul-kolom { min-height: 44px; } }
 
 /* lembar rapor (ikut gaya lembar cetak) */
 .identitas-rapor { margin: 4px 0 12px; font-size: 14px; }

@@ -48,6 +48,7 @@ beforeEach(async () => {
       "mapel/bi7a": { pengampu: ["hasan"], grup: "g-bi7" },
       "mapel/bi7b": { pengampu: ["aminah"], grup: "g-bi7" },
       "mapel/fik7": { pengampu: ["yusuf"], grup: "g-fik7" },
+      "mapel/tupeng": { pengampu: ["hasan", "tu"], grup: "g-bi7" },
       "grup/g-bi7": { pengampu: ["hasan", "aminah"], koordinator: "hasan" },
       "grup/g-fik7": { pengampu: ["yusuf"], koordinator: "yusuf" },
       "kelas/k7a": { pengampu: ["hasan"] },
@@ -185,12 +186,13 @@ test("nilai: disimpan sebagian dari dua perangkat, cuma pengampu", async () => {
   await assertSucceeds(hapus(tu(), j));
 });
 
-test("pulihkan cadangan: TU boleh BIKIN atas nama guru, nggak boleh ngubah", async () => {
+test("pulihkan cadangan: TU boleh BIKIN modul/sumatif/usulan atas nama guru (nilai nggak), nggak boleh ngubah", async () => {
   await assertSucceeds(tulis(tu(), "mapel/bi7a/modul/m9", modul()));
   await assertFails(tulis(tu(), "mapel/bi7a/modul/m1", modul({ judul: "x" })));
   await assertFails(tulis(tu(), "mapel/bi7a/modul/m9b", modul({ soal: banyak(501, soalPG) })));
   await assertSucceeds(tulis(tu(), "mapel/bi7a/sumatif/s9", sumatif()));
-  await assertSucceeds(tulis(tu(), "mapel/bi7a/nilai/l9", lembar()));
+  await assertFails(tulis(tu(), "mapel/bi7a/nilai/l9", lembar()));
+  await assertFails(tulis(tu(), "mapel/tupeng/nilai/l9", lembar()));
   await assertFails(tulis(tu(), "mapel/bi7a/nilai/l1", lembar({ nilai: { s1: { k1: 1 } } })));
   await assertSucceeds(tulis(tu(), "grup/g-bi7/usulan/u9", usulan()));
   await assertFails(tulis(aminah(), "mapel/bi7b/modul/m9", modul({ pemilik: "hasan" })));

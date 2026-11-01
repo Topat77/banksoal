@@ -152,8 +152,8 @@ function buatAturan(ambilDok, adminAwal) {
     if (b[0] === "mapel" && b[2] === "nilai" && b.length === 4) {
       if (!aktif(auth)) return false;
       if (baru === null) return kurikulum(auth) && !ambilDok(`mapel/${b[1]}`);
-      if (!lama) return pengampu(auth, b[1]) && nilaiValid(lama, baru);
-      return pengampu(auth, b[1]) && nilaiValid(lama, baru);
+      if (!lama) return pengampu(auth, b[1]) && !kurikulum(auth) && nilaiValid(lama, baru);
+      return pengampu(auth, b[1]) && !kurikulum(auth) && nilaiValid(lama, baru);
     }
     // santri & kelas: diisi, diubah, dihapus admin; ustadz cuma lihat
     if (b[0] === "santri" && b.length === 2) return kurikulum(auth);

@@ -98,7 +98,9 @@ function hitungNilai(lembar, idSantri, mapel) {
   hasil.harian = rataRata((lembar.kolom || []).filter(k => k.kelompok === "tugas" || k.kelompok === "uh").map(k => isi[k.id]));
   const h = (lembar.hadir || {})[idSantri];
   if (h) {
-    hasil.hadir = { hadir: h.hadir || 0, sakit: h.sakit || 0, izin: h.izin || 0 };
+    // isinya dari database bisa string/HTML (rules cuma ngecek bentuk petanya), jadi dipaksa jadi angka >= 0
+    const angkaHadir = (x) => Math.max(0, Math.round(Number(x) || 0));
+    hasil.hadir = { hadir: angkaHadir(h.hadir), sakit: angkaHadir(h.sakit), izin: angkaHadir(h.izin) };
     const total = hasil.hadir.hadir + hasil.hadir.sakit + hasil.hadir.izin;
     hasil.per.kehadiran = total > 0 ? hasil.hadir.hadir / total * 100 : null;
   } else {
