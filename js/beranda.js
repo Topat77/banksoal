@@ -266,7 +266,9 @@ function layarBeranda() {
       ${ILUSTRASI_SAMBUT}
     </section>`;
 
-  if (kur) h += htmlBerandaTU(sem);
+  // data belum kebaca: kerangka, bukan "belum ditugaskan" / angka 0 / panduan mulai
+  if (!dataDasarSiap()) h += htmlKerangka();
+  else if (kur) h += htmlBerandaTU(sem);
   else h += htmlBerandaGuru(sem, diampu);
 
   isi.innerHTML = `<div class="beranda">${h}</div>`;

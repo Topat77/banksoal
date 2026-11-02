@@ -14,6 +14,9 @@ function sorot(teks, kata) {
   return hasil + aman(teks.slice(dari));
 }
 
+// diisi layarCari: segarkanLayar manggil ini waktu data datang (hasil dihitung ulang, kotak ketik nggak diganggu)
+let cariUlang = null;
+
 function layarCari() {
   judul.textContent = "Cari soal";
   jejak.textContent = sayaKurikulum() ? "Di semua mapel" : "Di mapel yang kamu ampu";
@@ -49,11 +52,13 @@ function layarCari() {
         }
       }
     }
+    const belumSiap = mapelTerlihat().filter(mp => !isiMapelSiap(mp.id)).length;
+    const catatanMuat = belumSiap ? `<p class="info" role="status">${belumSiap} mapel masih dimuat, hasilnya bisa belum lengkap.</p>` : "";
     if (hasil.length === 0) {
-      tempat.innerHTML = `<p class="kosong">Nggak ada soal yang mengandung "${aman(kata)}".</p>`;
+      tempat.innerHTML = catatanMuat + (belumSiap ? "" : `<p class="kosong">Nggak ada soal yang mengandung "${aman(kata)}".</p>`);
       return;
     }
-    let h = `<p class="info">${hasil.length} soal ketemu${hasil.length > 100 ? ", ditampilkan 100 pertama" : ""}</p><div class="daftar">`;
+    let h = catatanMuat + `<p class="info">${hasil.length} soal ketemu${hasil.length > 100 ? ", ditampilkan 100 pertama" : ""}</p><div class="daftar">`;
     for (const x of hasil.slice(0, 100)) {
       h += `
         <button class="baris hasil" data-mapel="${aman(x.mp.id)}" data-mod="${aman(x.m.id)}">
@@ -74,6 +79,7 @@ function layarCari() {
     });
   }
   input.oninput = cari;
+  cariUlang = () => { if (input.isConnected) cari(); };
   cari();
   // balik ke hasil cari: jangan munculin keyboard HP yang nutupin hasilnya
   if (!input.value) input.focus();

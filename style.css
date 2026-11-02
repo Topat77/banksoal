@@ -231,12 +231,14 @@ main {
 /* tanda kecil di header: offline / mode coba */
 .tanda-header { display: flex; gap: 6px; flex-shrink: 0; }
 .tanda-header:empty { display: none; }
-.tanda-sinyal, .tanda-coba {
+.tanda-sinyal, .tanda-coba, .tanda-gagal {
   padding: 3px 10px; border-radius: 999px;
   font-size: 13px; font-weight: 600; white-space: nowrap;
 }
 .tanda-sinyal { background: var(--kuning-muda); color: var(--kuning); border: 1px solid var(--kuning-garis); }
 .tanda-coba { background: var(--hijau-muda); color: var(--hijau-tua); }
+/* data gagal dimuat: bisa dipencet buat muat ulang */
+.tanda-gagal { background: var(--merah-muda); color: var(--merah); border: 1px solid var(--merah); font-family: inherit; cursor: pointer; }
 
 .lencana {
   display: inline-flex; align-items: center; justify-content: center;
@@ -291,7 +293,7 @@ main {
   header h1 { font-size: 19px; }
   header .tombol-tema { display: none; }
   .hanya-lebar { display: none; }
-  .tanda-sinyal, .tanda-coba { padding: 2px 8px; font-size: 12px; }
+  .tanda-sinyal, .tanda-coba, .tanda-gagal { padding: 2px 8px; font-size: 12px; }
 }
 
 /* ---- belum masuk / menunggu: tanpa menu samping & menu bawah ---- */
@@ -311,6 +313,7 @@ body:not([data-status="aktif"]) header { display: none; }
 .pembuka img { width: 84px; height: 84px; margin-bottom: 14px; border-radius: 22px; box-shadow: var(--bayang); }
 .pembuka b { font-family: var(--huruf-judul); font-size: 22px; font-weight: 800; color: var(--tinta); }
 .pembuka small { font-size: 14px; color: var(--tinta-redup); }
+.pembuka-lama { margin-top: 18px; font-size: 15px; color: var(--tinta-redup); }
 .pembuka-garis {
   position: relative; width: 120px; height: 3px; margin-top: 22px;
   border-radius: 3px; background: var(--garis); overflow: hidden;

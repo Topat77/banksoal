@@ -59,6 +59,37 @@ const daftarLayar = {
 const LAYAR_DIAM = ["formSemester", "formModul", "formBacaan", "formSoal", "formSumatif",
                     "pilihSoal", "cetak", "cari", "lainnya", "formMapel", "formGuru", "aiGenerator", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal"];
 
+// layar yang lagi nampilin kerangka "memuat" (datanya belum kebaca): tetap digambar ulang
+// waktu data datang, walau layarnya ada di LAYAR_DIAM (belum ada isian yang bisa hilang)
+let layarMenunggu = false;
+function tampilMemuat(teksJudul) {
+  judul.textContent = teksJudul || "Memuat...";
+  isi.innerHTML = htmlKerangka();
+  layarMenunggu = true;
+}
+
+// ---- isian form yang belum disimpan ----
+// Form yang diketik lalu ditinggal lewat tombol ‹, menu, atau back HP: tanya dulu.
+// Pindah layar dari kode (misal habis Simpan) nggak ditanya.
+const LAYAR_FORM = ["formSemester", "formModul", "formBacaan", "formSoal", "formSumatif", "formSoalUjian",
+                    "formSalin", "formMapel", "formGuru", "bobot"];
+let formKotor = false;
+let layarTerakhir = null;
+function tandaiKotor() { if (LAYAR_FORM.includes(posisi.layar)) formKotor = true; }
+isi.addEventListener("input", tandaiKotor);
+isi.addEventListener("change", tandaiKotor);
+async function bolehTinggalkan() {
+  if (!formKotor) return true;
+  const ok = await tanyaYakin("Isian di layar ini belum disimpan. Tinggalkan dan buang isiannya?",
+    { bahaya: true, ya: "Buang isian", tidak: "Lanjut ngisi" });
+  if (ok) formKotor = false;
+  return ok;
+}
+// tutup tab / muat ulang: browser yang nanya
+window.addEventListener("beforeunload", (e) => {
+  if (formKotor) { e.preventDefault(); e.returnValue = ""; }
+});
+
 // data hilang (misal dihapus dari perangkat lain) → dilempar biar balik ke layar aman
 class DataHilang extends Error {}
 function butuh(x) {
@@ -71,6 +102,10 @@ function tampilkan(tetapDiTempat = false) {
   document.body.dataset.status = toko.status;
   tombolKembali.hidden = true;
   jejak.textContent = "";
+  layarMenunggu = false;
+  // pindah ke layar lain: isian layar sebelumnya udah ditinggal (atau udah disimpan)
+  if (posisi.layar !== layarTerakhir || toko.status !== "aktif") formKotor = false;
+  layarTerakhir = posisi.layar;
 
   if (toko.status !== "aktif") {
     samping.innerHTML = "";
@@ -116,7 +151,8 @@ function tampilkan(tetapDiTempat = false) {
   });
 
   // judul tab ikut layar yang dibuka
-  document.title = judul.textContent ? `${judul.textContent} · ${KONFIG.namaAplikasi}` : KONFIG.namaAplikasi;
+  const teksJudul = judul.textContent.trim();
+  document.title = teksJudul && teksJudul !== KONFIG.namaAplikasi ? `${teksJudul} · ${KONFIG.namaAplikasi}` : KONFIG.namaAplikasi;
   judul.title = judul.textContent;
   jejak.title = jejak.textContent;
   judul.dir = "auto";
@@ -149,9 +185,11 @@ function segarkanLayar(penuh) {
   }
   if (toko.status !== "aktif") return;
 
-  if (LAYAR_DIAM.includes(posisi.layar)) {
+  if (LAYAR_DIAM.includes(posisi.layar) && !layarMenunggu) {
     if (!samping.contains(document.activeElement)) gambarSamping();
     gambarNavBawah();
+    // cari: hasilnya dihitung ulang (kotak ketiknya nggak diganggu), biar mapel yang baru kebaca ikut
+    if (posisi.layar === "cari" && typeof cariUlang === "function") cariUlang();
     return;
   }
   if (posisi.layar === "modul") {
@@ -200,7 +238,7 @@ function kembali() {
   if (ke === "mapel" && posisi.layar === "nilai") return pergi(ke, { tab: "nilai" });
   pergi(ke);
 }
-tombolKembali.onclick = kembali;
+tombolKembali.onclick = async () => { if (await bolehTinggalkan()) kembali(); };
 
 // ---- tombol back HP / browser ----
 // Selama bukan di beranda, ada satu langkah riwayat "cadangan". Back HP makan langkah itu,
@@ -229,7 +267,13 @@ window.addEventListener("popstate", () => {
     (dialog.querySelector('[data-dialog="tidak"]') || dialog.querySelector('[data-dialog="ya"]')).click();
     return aturRiwayat();
   }
-  if (toko.status === "aktif" && posisi.layar !== "beranda") return kembali();
+  if (toko.status === "aktif" && posisi.layar !== "beranda") {
+    if (!formKotor) return kembali();
+    // isian belum disimpan: tetap di sini dulu, tanya (back lagi di dialog = Lanjut ngisi)
+    aturRiwayat();
+    bolehTinggalkan().then(ok => { if (ok) kembali(); });
+    return;
+  }
   aturRiwayat();
 });
 
@@ -330,6 +374,13 @@ function gambarStatus() {
 
   if (toko.status === "memuat") {
     isi.innerHTML = htmlPembuka();
+    // kelamaan (sinyal jelek, server lambat): kasih jalan keluar, jangan muter terus
+    setTimeout(() => {
+      const p = isi.querySelector(".pembuka");
+      if (toko.status !== "memuat" || !p || p.querySelector(".pembuka-lama")) return;
+      p.insertAdjacentHTML("beforeend", `<p class="pembuka-lama">Kok lama ya. Cek sinyal dulu, lalu <button type="button" class="tombol-teks" id="muatUlangPembuka">muat ulang</button>.</p>`);
+      document.getElementById("muatUlangPembuka").onclick = () => location.reload();
+    }, 15000);
     return;
   }
 
@@ -438,7 +489,16 @@ function gambarTanda() {
   const t = [];
   if (!navigator.onLine) t.push(`<span class="tanda-sinyal" title="Perubahan disimpan di perangkat, dikirim otomatis waktu ada sinyal">Offline</span>`);
   if (toko.backend && toko.backend.mode === "coba") t.push(`<span class="tanda-coba">Mode coba</span>`);
+  if (toko.status === "aktif" && toko.gagalMuat.length) {
+    t.push(`<button type="button" class="tanda-gagal" id="muatUlangData"
+      title="Gagal memuat: ${aman(toko.gagalMuat.join(", "))}. Bisa karena jatah harian database habis atau sinyal putus.">Data gagal dimuat · Muat ulang</button>`);
+  }
   tandaHeader.innerHTML = t.join("");
+  const ulang = document.getElementById("muatUlangData");
+  if (ulang) ulang.onclick = async () => {
+    if (!(await tanyaYakin(`Sebagian data gagal dimuat (${toko.gagalMuat.join(", ")}). Bisa karena jatah harian database habis (pulih sekitar jam 14.00–15.00 WIB) atau sinyal putus.\n\nMuat ulang aplikasinya sekarang?`, { ya: "Muat ulang" }))) return;
+    if (await bolehTinggalkan()) location.reload();
+  };
 }
 window.addEventListener("online", gambarTanda);
 window.addEventListener("offline", gambarTanda);
@@ -506,7 +566,7 @@ function gambarSamping() {
     h += `<button class="menu-item ${grup === "ai" ? "aktif" : ""}" data-ke="aiGenerator">${ikonMenu("ai")}<span>AI Generator</span></button>`;
     h += `<p class="menu-judul">Mapel kamu</p>`;
   }
-  if (daftar.length === 0) h += `<p class="menu-kosong">${kur ? "Belum ada mapel" : "Belum ditugaskan ke mapel"}</p>`;
+  if (daftar.length === 0) h += `<p class="menu-kosong">${!toko.mapelSiap ? "Memuat..." : kur ? "Belum ada mapel" : "Belum ditugaskan ke mapel"}</p>`;
 
   let jenjangTadi = null, jenisTadi = null;
   for (const m of daftar) {
@@ -553,12 +613,14 @@ function gambarSamping() {
   samping.innerHTML = h;
 
   const fc = samping.querySelector("#cariSamping");
-  if (fc) fc.onsubmit = (e) => {
+  if (fc) fc.onsubmit = async (e) => {
     e.preventDefault();
-    pergi("cari", { kata: e.target.kata.value });
+    const kata = e.target.kata.value;
+    if (await bolehTinggalkan()) pergi("cari", { kata });
   };
   samping.querySelectorAll(".menu-item").forEach(b => {
-    b.onclick = () => {
+    b.onclick = async () => {
+      if (!(await bolehTinggalkan())) return;
       const d = b.dataset;
       if (d.ke === "kelolaMapel") return pergi("kelolaMapel", { dariMapel: false });
       if (d.ke === "santri") return pergi("santri", { dariNilai: false });
@@ -585,8 +647,12 @@ function gambarNavBawah() {
     return `<button data-ke="${ke}" class="${aktif ? "aktif" : ""}" ${aktif ? 'aria-current="page"' : ""}>${IKON[ikonDari[kunci]]}${lencana}<span>${teks}</span></button>`;
   }).join("");
   navBawah.querySelectorAll("button").forEach(b => {
-    b.onclick = () => b.dataset.ke === "kelolaMapel" ? pergi("kelolaMapel", { dariMapel: false })
-      : b.dataset.ke === "santri" ? pergi("santri", { dariNilai: false }) : pergi(b.dataset.ke);
+    b.onclick = async () => {
+      if (!(await bolehTinggalkan())) return;
+      if (b.dataset.ke === "kelolaMapel") pergi("kelolaMapel", { dariMapel: false });
+      else if (b.dataset.ke === "santri") pergi("santri", { dariNilai: false });
+      else pergi(b.dataset.ke);
+    };
   });
 }
 

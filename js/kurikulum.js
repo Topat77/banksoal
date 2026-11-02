@@ -14,6 +14,7 @@ function layarAkun() {
   wajibKurikulum();
   judul.textContent = "Guru";
   jejak.textContent = "Akun guru & staf TU yang boleh memakai aplikasi";
+  if (!toko.penggunaSiap) return tampilMemuat("Guru");
 
   const semua = [...toko.pengguna].sort((a, b) => (a.nama || "").localeCompare(b.nama || "", "id"));
   const menunggu = semua.filter(p => p.peran === "menunggu").sort((a, b) => (b.dibuat || 0) - (a.dibuat || 0));
@@ -294,6 +295,7 @@ function layarKelolaMapel() {
   wajibKurikulum();
   judul.textContent = "Mapel & pengampu";
   jejak.textContent = toko.lembaga.nama || KONFIG.namaLembaga || "";
+  if (!dataDasarSiap()) return tampilMemuat("Mapel & pengampu");
 
   const jenjang = jenjangAktif();
   const daftar = toko.mapel.filter(m => m.jenjang === jenjang)
