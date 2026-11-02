@@ -6,9 +6,10 @@
 //     Selama apiKey masih kosong, aplikasi jalan di MODE COBA:
 //     data contoh, tersimpan di perangkat ini aja.
 //
-//  2. adminAwal: email Google admin (TU) yang pertama.
-//     Akun ini langsung jadi admin pas pertama masuk.
-//     Email yang sama juga harus ditulis di firestore.rules.
+//  2. adminAwalHash: SHA-256 (hex) dari email Google admin (TU) yang pertama,
+//     huruf kecil semua. Akun ini langsung jadi admin pas pertama masuk.
+//     Emailnya sengaja nggak ditulis biar nggak kebaca publik di GitHub.
+//     Hash yang sama juga harus ditulis di firestore.rules (cara bikin: lihat CLAUDE.md).
 //
 //  3. ai: pengaturan buat fitur "Buat soal pakai AI".
 //     model      : nama model Gemini. Kalau nanti diganti Google,
@@ -19,6 +20,10 @@
 //     appCheckKey: "site key" reCAPTCHA v3 buat App Check (pengaman
 //                  biar kuota AI nggak dipakai orang lain). Boleh kosong
 //                  waktu nyoba, tapi sebaiknya diisi sebelum dipakai rame-rame.
+//     server     : alamat backend AI (functions/, fungsi tanyaAI) setelah di-deploy.
+//                  Kalau diisi, AI lewat backend: dicek login, akun aktif, & jatah
+//                  harian, dan kunci Gemini nggak pernah sampai ke HP. Kalau kosong,
+//                  AI langsung lewat Firebase AI Logic (kayak dulu). Lihat CLAUDE.md.
 // =====================================================
 
 const KONFIG = {
@@ -34,13 +39,14 @@ const KONFIG = {
     appId: "1:519937223717:web:52650988d9fa21242ae3cc"
   },
 
-  adminAwal: [
-    "topatvanjava@gmail.com"
+  adminAwalHash: [
+    "579d5573444b0566a5ed8ca438da2c66b3ccbb69bab7666d10ef6b94d0077c21"
   ],
 
   ai: {
     model: "gemini-3.8-flash",
     modelCadangan: "gemini-3.5-flash-lite",
-    appCheckKey: "6LfLRP4tAAAAAE-ZJ7xPTPcemz4mGBiACH3QVNMw"
+    appCheckKey: "6LfLRP4tAAAAAE-ZJ7xPTPcemz4mGBiACH3QVNMw",
+    server: ""   // isi setelah deploy: "https://asia-southeast2-banksoal-pkbm.cloudfunctions.net/tanyaAI"
   }
 };

@@ -157,9 +157,9 @@ function layarAkun() {
 
 // akun yang boleh dihapus: bukan akun yang lagi login, dan bukan admin awal
 // (admin awal kalau login lagi otomatis jadi admin, jadi percuma dihapus)
+// (hash email belum sempat dihitung → anggap admin awal dulu, tombolnya muncul sebentar lagi)
 function akunBisaDihapus(p) {
-  const adminAwal = (KONFIG.adminAwal || []).map(e => e.toLowerCase());
-  return p.id !== uidSaya() && !adminAwal.includes((p.email || "").toLowerCase());
+  return p.id !== uidSaya() && emailAdminAwal(p.email) === false;
 }
 
 // =====================================================

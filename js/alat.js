@@ -132,6 +132,24 @@ function amankanDok(d) {
   return h;
 }
 
+// ====== ADMIN AWAL ======
+// konfig.js & firestore.rules cuma nyimpen SHA-256 dari email admin awal (bukan emailnya).
+// Hash email dihitung sekali lalu diingat, biar bisa dicek langsung waktu nggambar layar.
+const hashEmailTersimpan = new Map();
+async function hashEmail(email) {
+  const e = String(email || "").toLowerCase();
+  if (!hashEmailTersimpan.has(e)) {
+    const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(e));
+    hashEmailTersimpan.set(e, [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join(""));
+  }
+  return hashEmailTersimpan.get(e);
+}
+// true / false, atau null kalau hash-nya belum sempat dihitung
+function emailAdminAwal(email) {
+  const h = hashEmailTersimpan.get(String(email || "").toLowerCase());
+  return h === undefined ? null : (KONFIG.adminAwalHash || []).includes(h);
+}
+
 // ====== BENTUK SOAL ======
 // Firestore Rules nggak bisa ngecek isi tiap soal di dalam daftar (nggak ada perulangan),
 // jadi soal dirapikan di sini sebelum disimpan. Yang dirapikan cuma soal yang lagi

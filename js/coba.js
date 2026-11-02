@@ -361,7 +361,7 @@ function buatBackendCoba() {
   const akunTersimpan = bacaLokal(KUNCI_COBA_AKUN, null);
   if (akunTersimpan) auth = AKUN_CONTOH.find(a => a.uid === akunTersimpan) || null;
 
-  const aturan = buatAturan(jalur => db[jalur] || null, ["kurikulum@contoh.id"]);
+  const aturan = buatAturan(jalur => db[jalur] || null, (email) => email === "kurikulum@contoh.id");
   const pendengarAuth = [];
   let pendengar = [];
 

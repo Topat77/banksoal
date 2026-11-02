@@ -81,8 +81,8 @@ function akunBerubah(akun) {
 }
 
 // akun yang baru pertama kali masuk: daftar dengan status "menunggu"
-function buatProfil(akun) {
-  const adminAwal = (KONFIG.adminAwal || []).map(e => e.toLowerCase()).includes((akun.email || "").toLowerCase());
+async function buatProfil(akun) {
+  const adminAwal = (KONFIG.adminAwalHash || []).includes(await hashEmail(akun.email).catch(() => ""));
   toko.backend.tulis(`pengguna/${akun.uid}`, {
     nama: (akun.nama || akun.email || "").slice(0, 100),
     email: akun.email,
@@ -188,6 +188,9 @@ function pasangData(peran) {
     langgananData.push(b.pantauKoleksi("pengguna", [], daftar => {
       toko.pengguna = daftar;
       berubah();
+      // hash email dihitung dulu, biar tombol hapus akun admin awal bisa disembunyiin (akunBisaDihapus)
+      const belum = daftar.filter(p => emailAdminAwal(p.email) === null);
+      if (belum.length) Promise.all(belum.map(p => hashEmail(p.email))).then(() => berubah()).catch(() => {});
     }, laporGagal("pengguna")));
   }
 }

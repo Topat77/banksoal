@@ -14,7 +14,7 @@ Gak ada build step / npm. Semua file JS dimuat pakai `<script>` biasa dengan uru
 
 | File | Isi |
 |---|---|
-| `js/konfig.js` | config Firebase, `adminAwal`, model AI (utama + cadangan), key App Check |
+| `js/konfig.js` | config Firebase, `adminAwalHash`, model AI (utama + cadangan), key App Check, alamat backend AI (`ai.server`) |
 | `js/mulai.js` | cek semua file JS ada, pilih backend (Firebase kalau `apiKey` diisi, kalau nggak mode coba), daftar service worker |
 | `js/firebase.js` | backend online (ES module, SDK dari gstatic). Bentuknya sama persis dengan `js/coba.js` |
 | `js/coba.js` | backend mode coba: data contoh di perangkat, bisa ganti-ganti akun |
@@ -29,6 +29,7 @@ Gak ada build step / npm. Semua file JS dimuat pakai `<script>` biasa dengan uru
 | `sw.js` | service worker: file aplikasi ambil dari internet dulu, SDK Firebase & font pakai simpanan |
 | `firestore.rules` | aturan akses database |
 | `tes/` | tes Node, nggak dimuat aplikasi |
+| `functions/` | backend (Cloud Functions): `tanyaAI`, perantara ke Gemini. Bukan bagian aplikasi web |
 
 Peran akun:
 - `kurikulum`: admin/TU
@@ -37,7 +38,7 @@ Peran akun:
 - `ditolak`: ditolak admin, nggak bisa buka isi aplikasi
 - `nonaktif`: dinonaktifkan admin, datanya tetap ada tapi nggak bisa masuk sampai diaktifkan lagi
 
-Firestore: `pengguna`, `pengaturan`, `kelas`, `santri`, `mapel/{id}/{modul,nilai,sumatif}`, `grup/{id}/{uas,usulan}`.
+Firestore: `pengguna`, `pengaturan`, `kelas`, `santri`, `mapel/{id}/{modul,nilai,sumatif}`, `grup/{id}/{uas,usulan}`, `batasAI` (jatah AI harian, cuma backend).
 
 ## Yang gampang kelupaan
 - **Nambah file JS baru:** daftarin di `index.html` (urutannya penting), di `fileKurang()` (`js/mulai.js`), dan di `INTI` (`sw.js`).
@@ -56,6 +57,29 @@ Firestore: `pengguna`, `pengaturan`, `kelas`, `santri`, `mapel/{id}/{modul,nilai
 Buka pakai Live Server (localhost). App Check di localhost pakai debug token yang muncul di Console, lalu didaftarin di Firebase Console → App Check.
 Kalau `apiKey` di `konfig.js` dikosongin, aplikasi jalan di mode coba tanpa Firebase.
 Auto-refresh Live Server **nggak jalan**, karena script yang disisipin Live Server keblokir CSP. Aplikasinya tetap jalan normal, cuma habis nyimpan file harus refresh manual (Ctrl+R). Pesan "Refused to execute inline script" dari Live Server di Console boleh diabaikan.
+
+## Keamanan
+- **Admin awal:** `konfig.js` (`adminAwalHash`) & `firestore.rules` (`hashAdminAwal()`) cuma nyimpen SHA-256 email-nya, huruf kecil semua. Bikin hash: `node -e "console.log(require('crypto').createHash('sha256').update('email@gmail.com').digest('hex'))"`.
+- **Nama pembuat:** `namaPemilik` / `namaPengubah` wajib sama dengan `nama` di profil (rules `namaAsli()`). Simpan pakai `namaSaya()`.
+- **Keluar** ngehapus cache offline Firestore di perangkat (kecuali masih ada perubahan yang belum terkirim).
+- **Aplikasi nolak jalan di dalam iframe** situs lain (`dalamBingkaiLain()` di `mulai.js`).
+- **Pengaturan console** (bukan kode, dicek sesekali):
+  - App Check → **Enforce** buat Cloud Firestore & Firebase AI Logic.
+  - Google Cloud Console → APIs & Services → Credentials → API key browser → **Website restrictions**: `https://topat77.github.io/*`, `http://localhost:5500/*`, `http://127.0.0.1:5500/*`.
+  - Authentication → Settings → **Authorized domains**: cuma `topat77.github.io`, `localhost`, `banksoal-pkbm.firebaseapp.com`.
+
+## Backend AI (`functions/`)
+`tanyaAI` (region Jakarta) dipanggil aplikasi kalau `ai.server` di `konfig.js` diisi. Tiap permintaan dicek: App Check → login → akun aktif (guru/TU) → jatah harian (`BATAS.perHari` di `functions/inti.js`). Kunci Gemini di Secret Manager. Coba ulang & pindah model cadangan tetap di `js/firebase.js`.
+- Tes: `cd functions && npm install && npm run tes` (tanpa internet / kunci).
+- Butuh paket **Blaze** (Cloud Functions nggak ada di paket gratis). Kuota gratisnya besar; pasang **Budget alert** biar ketahuan kalau ada biaya.
+- Deploy pertama kali:
+  1. Firebase Console → Upgrade ke **Blaze**. Google Cloud Console → Billing → Budgets & alerts → bikin anggaran kecil (misal Rp10.000) + email peringatan.
+  2. Bikin kunci Gemini di https://aistudio.google.com/apikey (pilih project `banksoal-pkbm`).
+  3. `npm i -g firebase-tools`, `firebase login`, lalu di folder repo: `firebase functions:secrets:set GEMINI_API_KEY` (tempel kuncinya).
+  4. `cd functions && npm install && cd .. && firebase deploy --only functions`. Kalau ditanya cleanup policy Artifact Registry, jawab **Yes** (1 hari) biar penyimpanan image nggak numpuk.
+  5. Isi `ai.server` di `js/konfig.js` dengan `https://asia-southeast2-banksoal-pkbm.cloudfunctions.net/tanyaAI`, naikin `VERSI`, PR, merge. Coba buat soal pakai AI.
+  6. Kalau udah jalan: Google Cloud Console → APIs & Services → **Firebase AI Logic API** (`firebasevertexai.googleapis.com`) → **Disable**. Ini yang beneran nutup jalur AI lama, biar nggak bisa dipakai orang luar lagi.
+- Ganti model AI: ubah di `konfig.js` **dan** parameter `MODEL_AI` fungsi (default di `functions/index.js`), lalu deploy ulang.
 
 ## Tes
 Folder `tes/` nggak dimuat aplikasi, jadi nggak perlu didaftarin di `index.html`/`sw.js`. Tiap ngubah rules / `aturan.js`, jalanin dua-duanya dan tambahin kasusnya.

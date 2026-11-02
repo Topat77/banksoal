@@ -57,7 +57,23 @@ async function jalankan() {
   }
 }
 
-jalankan();
+// Jangan mau jalan di dalam bingkai (iframe) situs lain: tombol-tombolnya bisa "dipinjam" diam-diam
+// buat ngakalin orang (clickjacking). CSP lewat <meta> & GitHub Pages nggak bisa nolak ini.
+// Dibuka biasa di tab browser / sebagai aplikasi → nggak ngaruh apa-apa.
+function dalamBingkaiLain() {
+  try {
+    return window.top !== window.self;
+  } catch {
+    return true;   // nggak boleh ngintip halaman induknya = pasti situs lain
+  }
+}
+
+if (dalamBingkaiLain()) {
+  document.getElementById("isi").innerHTML =
+    `<div class="kosong">Bank Soal cuma bisa dibuka langsung di tab browser.</div>`;
+} else {
+  jalankan();
+}
 
 // pasang "pelayan" penyimpan file, biar aplikasinya kebuka tanpa sinyal
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
