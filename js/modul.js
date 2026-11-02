@@ -640,10 +640,11 @@ function formSalin() {
         !(await tanyaYakin(`Di ${namaSemester(tujuan)} sudah ada modul dengan judul sama:\n\n${kembar.map(m => "• " + m.judul).join("\n")}\n\nTetap salin?`, { ya: "Tetap salin" }))) return;
 
     const jam = Date.now();
-    milik.filter(m => dipilih.includes(m.id)).forEach((m, i) => {
-      simpanModul(mp.id, { ...salinModulBaru(m, tujuan), dibuat: jam + i });
-    });
-    kabar(`${dipilih.length} modul berhasil disalin ke ${namaSemester(tujuan)}.`);
+    // simpanModul ngasih null (dan ngasih tau sendiri) kalau modulnya kegedean
+    const disalin = milik.filter(m => dipilih.includes(m.id))
+      .filter((m, i) => simpanModul(mp.id, { ...salinModulBaru(m, tujuan), dibuat: jam + i }));
+    if (!disalin.length) return;
+    kabar(`${disalin.length} modul berhasil disalin ke ${namaSemester(tujuan)}.`);
     pergi("mapel", { semester: kunciSemester(tujuan), tab: "modul" });
   };
 }

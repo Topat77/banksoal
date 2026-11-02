@@ -108,7 +108,7 @@ function formSumatif() {
     if (lama) {
       const t = ujianTerbaru(mp.id, lama.id);
       if (!t) { kabar("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return kembaliKeDaftar(); }
-      simpanUjian(mp.id, { ...t, ...isian });
+      if (!simpanUjian(mp.id, { ...t, ...isian })) return;   // kegedean: tetap di form
       pergi("sumatif");
     } else {
       const baru = simpanSumatif(mp.id, { id: buatId(), semester: sem.semester, tahun: sem.tahun, ...isian, dibagikan: false, butir: [] });
