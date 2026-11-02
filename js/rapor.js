@@ -34,8 +34,15 @@ function semesterRapor() {
 }
 
 // ====== DAFTAR RAPOR SATU KELAS ======
+// rapor butuh siswa & nilai SEMUA mapel; selama belum kebaca, rapornya bakal berisi "-" (dan
+// pilihan semester bisa ketuker), jadi tunggu dulu
+function raporSiap() {
+  return dataDasarSiap() && toko.mapel.every(m => isiMapelSiap(m.id));
+}
+
 function layarRapor() {
   wajibKurikulum();
+  if (!raporSiap()) return tampilMemuat("Rapor");
   if (posisi.kelasRapor) {
     const j = posisi.kelasRapor.split("|")[0];
     if (daftarJenjang().includes(j) && j !== jenjangAktif()) pilihJenjang(j);
@@ -148,6 +155,10 @@ function htmlLembarRapor(santri, sem) {
 
 function layarRaporCetak() {
   wajibKurikulum();
+  if (!raporSiap()) {
+    tombolKembali.hidden = false;
+    return tampilMemuat("Rapor");
+  }
   const [jenjang, kelas] = (posisi.kelasRapor || "").split("|");
   const sem = dariKunciSemester(posisi.semRapor || kunciSemester(semesterSekarang()));
   const semua = santriKelas(jenjang, kelas);

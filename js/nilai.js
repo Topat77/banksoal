@@ -148,6 +148,10 @@ function noAbsen(santri, urutan) {
 
 function layarSantri() {
   const boleh = sayaKurikulum();    // admin: isi, ubah, hapus. Ustadz: lihat aja
+  if (!dataDasarSiap()) {
+    tombolKembali.hidden = !posisi.dariNilai;
+    return tampilMemuat("Daftar siswa");
+  }
   // admin: kalau dibuka ke kelas tertentu (dari lembar nilai / beranda), ikut pindah jenjangnya
   if (boleh && posisi.kelasSantri) {
     const j = posisi.kelasSantri.split("|")[0];
@@ -373,6 +377,11 @@ function layarNilai() {
   const mp = mapelAktif();
   const bisaIsi = sayaPengampu(mp);          // yang ngisi nilai cuma pengampunya
   if (!bisaIsi && !sayaKurikulum()) throw new DataHilang();
+  // nilai & daftar siswa belum kebaca: jangan nampilin lembar kosong / "siswa belum diisi"
+  if (!isiMapelSiap(mp.id) || !toko.santriSiap) {
+    tombolKembali.hidden = false;
+    return tampilMemuat(`Nilai ${mp.nama}`);
+  }
   const jenis = jenisMapel(mp);
   const bobot = bobotUntuk(mp.jenjang, jenis);
   const sem = semAktif();
@@ -628,6 +637,7 @@ function layarBobot() {
     const data = { diubah: Date.now(), diubahOleh: uidSaya() };
     for (const j of jenjang) data[j] = { umum: { ...isian[j].umum }, diniah: { ...isian[j].diniah } };
     simpanBobot(data);
+    formKotor = false;   // udah disimpan, tetap di layar ini
     pesan.textContent = "Tersimpan";
   };
   document.getElementById("bawaanBobot").onclick = () => {

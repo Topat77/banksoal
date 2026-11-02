@@ -15,16 +15,28 @@ const toko = {
   lembaga: {},        // { nama, waktu }
   bobot: {},          // bobot nilai per jenis mapel: { umum: {...}, diniah: {...} } (diatur admin)
   mapel: [],          // semua mapel
+  mapelSiap: false,
   isi: {},            // id mapel → { modulSaya, modulBagi, modulSemua, sumatif, sumatifBagi, nilai, siap, tetangga }
   grup: [],           // grup mapel (mapel + jenjang + tingkat): pengampu semua kelasnya & koordinator UAS
   grupSiap: false,
   uas: {},            // id grup → [UAS bersama per semester]
   usulan: {},         // id grup → [usulan soal UAS dari pengampu]
   santri: [],         // santri (admin: semua; ustadz: cuma kelas yang dia ajar)
+  santriSiap: false,
   kelas: [],          // daftar pengampu tiap kelas (buat aturan siapa boleh lihat santri)
   kelasSiap: false,
-  pengguna: []        // semua akun (cuma buat admin)
+  kelasGagal: false,  // aturan database lama belum kenal "kelas"
+  pengguna: [],       // semua akun (cuma buat admin)
+  penggunaSiap: false,
+  gagalMuat: []       // nama data yang gagal dipantau (kuota habis, izin, ...): ditampilkan di header
 };
+
+// data dasar (mapel, grup, kelas, siswa, dan akun buat admin) udah kebaca semua.
+// Belum siap ≠ kosong: layar nampilin kerangka "memuat", bukan "belum ada ...".
+function dataDasarSiap() {
+  return toko.mapelSiap && toko.grupSiap && toko.kelasSiap && toko.santriSiap &&
+    (!sayaKurikulum() || toko.penggunaSiap);
+}
 
 let langgananProfil = null;
 let langgananData = [];
@@ -167,7 +179,8 @@ function pasangData(peran) {
   }, (err) => {
     // aturan database versi lama belum kenal "kelas": aplikasi jalan kayak dulu
     // (ustadz baca santri lewat cara lama) sampai aturan baru dipasang
-    laporGagal("kelas")(err);
+    // (sengaja nggak lewat laporGagal: ini bukan gangguan, nggak perlu tanda merah di header)
+    console.warn("Gagal memantau kelas:", err && (err.code || err.message));
     toko.kelasGagal = true;
     toko.kelasSiap = true;
     aturLanggananSantri();
@@ -179,6 +192,7 @@ function pasangData(peran) {
   if (peran === "kurikulum") {
     langgananData.push(b.pantauKoleksi("santri", [], daftar => {
       toko.santri = daftar.sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
+      toko.santriSiap = true;
       sinkronGrup();
       berubah();
     }, laporGagal("santri")));
@@ -187,6 +201,7 @@ function pasangData(peran) {
   if (peran === "kurikulum") {
     langgananData.push(b.pantauKoleksi("pengguna", [], daftar => {
       toko.pengguna = daftar;
+      toko.penggunaSiap = true;
       berubah();
       // hash email dihitung dulu, biar tombol hapus akun admin awal bisa disembunyiin (akunBisaDihapus)
       const belum = daftar.filter(p => emailAdminAwal(p.email) === null);
@@ -308,10 +323,17 @@ function aturLanggananSantri() {
     }, laporGagal("santri"));
   }
   if (ganti) gabungSantri();
+  cekSantriSiap();
 }
 function gabungSantri() {
   toko.santri = Object.values(santriPerKelas).flat().sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
+  cekSantriSiap();
   berubah();
+}
+// ustadz: siswa siap kalau mapel & kelas udah kebaca dan tiap kelas yang dipantau udah ngirim daftarnya
+function cekSantriSiap() {
+  const siap = toko.mapelSiap && toko.kelasSiap && Object.keys(langgananSantri).every(id => id in santriPerKelas);
+  if (siap && !toko.santriSiap) { toko.santriSiap = true; berubah(); }
 }
 
 // UAS bersama & usulan soalnya: per grup yang diampu (admin: semua grup)
@@ -346,8 +368,14 @@ function aturLanggananGrup() {
   }
 }
 
+// langganan yang gagal nggak nyoba lagi sendiri, jadi dicatat & ditampilkan di header (ada tombol muat ulang)
 function laporGagal(apa) {
-  return (err) => console.warn(`Gagal memantau ${apa}:`, err && (err.code || err.message));
+  return (err) => {
+    console.warn(`Gagal memantau ${apa}:`, err && (err.code || err.message));
+    if (!toko.gagalMuat.includes(apa)) toko.gagalMuat.push(apa);
+    if (typeof gambarTanda === "function") gambarTanda();
+    berubah();
+  };
 }
 
 function hentikanData() {
@@ -371,7 +399,10 @@ function hentikanData() {
   toko.uas = {};
   toko.usulan = {};
   toko.santri = [];
+  toko.santriSiap = false;
   toko.pengguna = [];
+  toko.penggunaSiap = false;
+  toko.gagalMuat = [];
   toko.lembaga = {};
   toko.bobot = {};
   peranTerpasang = null;
