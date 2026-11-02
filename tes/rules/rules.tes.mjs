@@ -287,3 +287,30 @@ test("hemat kuota: ustadz bisa query mapel / grup / kelas miliknya, akun menungg
   await assertFails(daftar(baru, "grup", ["pengampu", "array-contains", "baru"]));
   await assertFails(daftar(baru, "kelas", ["pengampu", "array-contains", "baru"]));
 });
+
+test("hemat kuota: query per semester diterima rules (modul, sumatif, UAS, usulan)", async () => {
+  const sem = [["semester", "==", "Ganjil"], ["tahun", "==", "2026/2027"]];
+  // pemilik: punya sendiri; satu grup: yang dibagikan; TU: semuanya
+  const milik = await assertSucceeds(daftar(hasan(), "mapel/bi7a/modul", ["pemilik", "==", "hasan"], ...sem));
+  assert.deepEqual(milik.docs.map(d => d.id).sort(), ["m1", "rahasia"]);
+  await assertSucceeds(daftar(hasan(), "mapel/bi7a/sumatif", ["pemilik", "==", "hasan"], ...sem));
+  const bagi = await assertSucceeds(daftar(aminah(), "mapel/bi7a/modul", ["dibagikan", "==", true], ...sem));
+  assert.deepEqual(bagi.docs.map(d => d.id), ["m1"]);
+  await assertSucceeds(daftar(aminah(), "mapel/bi7a/sumatif", ["dibagikan", "==", true], ...sem));
+  const semua = await assertSucceeds(daftar(tu(), "mapel/bi7a/modul", ...sem));
+  assert.equal(semua.size, 2);
+  // semester lain: kosong, tapi tetap boleh
+  const lain = await assertSucceeds(daftar(hasan(), "mapel/bi7a/modul", ["pemilik", "==", "hasan"], ["semester", "==", "Genap"], ["tahun", "==", "2025/2026"]));
+  assert.equal(lain.size, 0);
+  // tanpa saringan pemilik / dibagikan: ditolak (ada modul tertutup punya orang lain)
+  await assertFails(daftar(aminah(), "mapel/bi7a/modul", ...sem));
+  // guru di luar grup: ditolak walau minta yang dibagikan
+  await assertFails(daftar(yusuf(), "mapel/bi7a/modul", ["dibagikan", "==", true], ...sem));
+  // UAS & usulan per semester: anggota grup & TU boleh, bukan anggota nggak
+  const uas = await assertSucceeds(daftar(aminah(), "grup/g-bi7/uas", ...sem));
+  assert.deepEqual(uas.docs.map(d => d.id), ["u1"]);
+  await assertSucceeds(daftar(aminah(), "grup/g-bi7/usulan", ...sem));
+  await assertSucceeds(daftar(tu(), "grup/g-bi7/uas", ...sem));
+  await assertFails(daftar(yusuf(), "grup/g-bi7/uas", ...sem));
+  await assertFails(daftar(yusuf(), "grup/g-bi7/usulan", ...sem));
+});

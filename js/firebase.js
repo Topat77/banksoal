@@ -17,7 +17,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache,
-  doc, collection, query, where, onSnapshot, setDoc, deleteDoc, deleteField, arrayUnion, arrayRemove,
+  doc, collection, query, where, onSnapshot, getDocsFromServer, setDoc, deleteDoc, deleteField, arrayUnion, arrayRemove,
   runTransaction, waitForPendingWrites, terminate, clearIndexedDbPersistence
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
@@ -149,6 +149,13 @@ export async function buatBackendFirebase(konfig) {
       return onSnapshot(q,
         (snap) => cb(snap.docs.map(dariDok), { dariCache: snap.metadata.fromCache }),
         gagal);
+    },
+
+    // ambil sekali (nggak dipantau), langsung dari server: buat cadangan yang harus lengkap
+    // (semester yang belum dimuat juga ikut). Tanpa sinyal gagal, bukan ngasih data setengah.
+    async ambilKoleksi(jalur, syarat) {
+      const q = query(collection(db, jalur), ...(syarat || []).map(([kolom, op, nilai]) => where(kolom, op, nilai)));
+      return (await getDocsFromServer(q)).docs.map(dariDok);
     },
 
     // catatan: tanpa sinyal, janji (promise) ini baru selesai waktu online lagi,

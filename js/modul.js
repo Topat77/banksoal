@@ -634,6 +634,11 @@ function formSalin() {
     if (kunciSemester(tujuan) === kunciSemester(sem) &&
         !(await tanyaYakin("Tujuannya sama dengan semester asal, jadi bakal ada modul kembar di semester ini. Lanjut?", { ya: "Lanjut" }))) return;
 
+    // semester tujuan mungkin belum dimuat: tunggu dulu, biar cek judul kembar nggak kelewat
+    const tombolSalin = e.target.querySelector('button[type="submit"]');
+    tombolSalin.disabled = true;
+    await tungguSemester(mp.id, tujuan);
+    tombolSalin.disabled = false;
     const sudahAda = modulMapel(mp.id).filter(m => milikSaya(m) && samaSemester(m, tujuan)).map(m => m.judul.toLowerCase());
     const kembar = milik.filter(m => dipilih.includes(m.id) && sudahAda.includes(m.judul.toLowerCase()));
     if (kembar.length && kunciSemester(tujuan) !== kunciSemester(sem) &&

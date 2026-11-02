@@ -23,6 +23,7 @@ function layarCari() {
 
   isi.innerHTML = `
     <input type="search" id="kataCari" value="${aman(posisi.kata || "")}" placeholder="Ketik kata yang ada di soal" aria-label="Kata yang dicari">
+    <p class="info kecil">Dicari di ${[...semesterDimuat.values()].sort(bandingSemester).map(namaSemester).map(aman).join(", ")}. Semester lain ikut dicari setelah dibuka di halaman mapel.</p>
     <div id="hasilCari" class="kolom"></div>`;
 
   const input = document.getElementById("kataCari");

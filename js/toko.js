@@ -191,6 +191,8 @@ function gabungMapelGuru() {
 
 function pasangData(peran) {
   peranTerpasang = peran;
+  const sekarang = semesterSekarang();
+  semesterDimuat.set(kunciSemester(sekarang), sekarang);
   const b = toko.backend;
   langgananData.push(b.pantauDok("pengaturan/lembaga", d => {
     toko.lembaga = d || {};
@@ -273,16 +275,59 @@ function aturLanggananMapel() {
   }
   for (const id of Object.keys(langgananMapel)) {
     if (perlu.get(id) !== langgananMapel[id].tanda) {
-      langgananMapel[id].henti.forEach(berhenti => berhenti());
+      hentiLangganan(langgananMapel[id]);
       delete langgananMapel[id];
       delete toko.isi[id];
     }
   }
   for (const [id, tanda] of perlu) {
     if (langgananMapel[id]) continue;
-    toko.isi[id] = { modulSaya: [], modulBagi: [], modulSemua: null, sumatif: [], sumatifBagi: [], nilai: [], siap: false, tetangga: tanda === "tetangga" };
-    langgananMapel[id] = { tanda, henti: tanda === "tetangga" ? pantauIsiTetangga(id) : pantauIsiMapel(id) };
+    const tetangga = tanda === "tetangga";
+    toko.isi[id] = { modulSaya: [], modulBagi: [], modulSemua: null, sumatif: [], sumatifBagi: [], nilai: [],
+      siap: false, nilaiSiap: tetangga, tetangga, per: {} };
+    langgananMapel[id] = { tanda, henti: tetangga ? [] : [pantauNilai(id)], per: {} };
+    for (const k of semesterDimuat.keys()) pasangSemesterMapel(id, k);
   }
+}
+// langganan satu mapel / grup: yang umum (henti) + yang per semester (per)
+function hentiLangganan(L) {
+  L.henti.forEach(berhenti => berhenti());
+  Object.values(L.per).flat().forEach(berhenti => berhenti());
+}
+
+// ====== SEMESTER YANG DIMUAT ======
+// Hemat kuota baca: modul, sumatif, UAS & usulan cuma dimuat buat semester yang dipakai
+// (awalnya semester sekarang). Semester lain dimuat waktu dibuka (pastikanSemester, dipanggil
+// tampilkan() & layar yang milih semester), lalu tetap dipantau sampai keluar.
+// Lembar nilai tetap dimuat semua semester: kecil, dan dipakai daftar semester & rapor.
+const semesterDimuat = new Map();   // kunciSemester → { semester, tahun }
+function saringSemester(sem) {
+  return [["semester", "==", sem.semester], ["tahun", "==", sem.tahun]];
+}
+function pastikanSemester(sem) {
+  if (!sem || !sem.semester || !sem.tahun) return;
+  const k = kunciSemester(sem);
+  if (semesterDimuat.has(k)) return;
+  semesterDimuat.set(k, { semester: sem.semester, tahun: sem.tahun });
+  for (const id of Object.keys(langgananMapel)) pasangSemesterMapel(id, k);
+  for (const id of Object.keys(langgananGrup)) pasangSemesterGrup(id, k);
+  for (const id of Object.keys(toko.isi)) gabungIsi(id);
+  berubah();
+}
+// isi satu semester di satu mapel udah kebaca
+function isiSemesterSiap(idMapel, sem) {
+  const w = toko.isi[idMapel];
+  const p = w && w.per[kunciSemester(sem)];
+  return !!p && p.siap;
+}
+// tunggu satu semester kebaca (misal buat ngecek modul kembar sebelum nyalin). Offline / lama: lanjut aja.
+function tungguSemester(idMapel, sem, batas = 10000) {
+  pastikanSemester(sem);
+  const mulai = Date.now();
+  return new Promise(selesai => {
+    const cek = () => (isiSemesterSiap(idMapel, sem) || Date.now() - mulai > batas) ? selesai() : setTimeout(cek, 150);
+    cek();
+  });
 }
 
 // modul / ujian dari database: item rusak diamankan dulu (amankanDok di datasoal.js),
@@ -290,55 +335,64 @@ function aturLanggananMapel() {
 function urutIsi(d) {
   return d.map(amankanDok).sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0));
 }
-// isi satu mapel dianggap siap setelah semua langganannya ngirim data pertama kali.
-// Hasilnya pembungkus: sekali(f) manggil f seperti biasa, sambil ngitung langganan yang udah ngirim.
-function penandaSiap(id, perlu) {
-  let jumlah = 0;
-  return (f) => {
-    let sudah = false;
-    return (...x) => {
-      f(...x);
-      if (!sudah) { sudah = true; if (++jumlah >= perlu && toko.isi[id]) toko.isi[id].siap = true; }
-    };
-  };
+// lembar nilai: dibaca pengampu & kurikulum (lihat aturan). Semua semester.
+function pantauNilai(id) {
+  return toko.backend.pantauKoleksi(`mapel/${id}/nilai`, [], d => {
+    const w = toko.isi[id];
+    if (!w) return;
+    w.nilai = d;
+    w.nilaiSiap = true;
+    gabungIsi(id);
+    berubah();
+  }, laporGagal("nilai"));
 }
 
-function pantauIsiMapel(id) {
-  const b = toko.backend;
+// modul & sumatif satu semester di satu mapel.
+//   admin   : semua modul & sumatif
+//   ustadz  : punya sendiri + yang dibagikan
+//   tetangga: (kelas lain di grup yang sama, nggak diampu) cuma yang dibagikan
+function pasangSemesterMapel(id, k) {
+  const L = langgananMapel[id], w = toko.isi[id];
+  if (!L || !w || L.per[k]) return;
   const uid = uidSaya();
-  const wadah = () => toko.isi[id];
-  const jalur = `mapel/${id}`;
-  const urut = urutIsi;
-  const sekali = penandaSiap(id, sayaKurikulum() ? 3 : 5);
-
-  // lembar nilai: dibaca pengampu & kurikulum (lihat aturan)
-  const nilai = b.pantauKoleksi(`${jalur}/nilai`, [], sekali(d => { if (wadah()) { wadah().nilai = d; berubah(); } }), laporGagal("nilai"));
-
-  if (sayaKurikulum()) {
-    return [nilai,
-      b.pantauKoleksi(`${jalur}/modul`, [], sekali(d => { if (wadah()) { wadah().modulSemua = urut(d); berubah(); } }), laporGagal("modul")),
-      b.pantauKoleksi(`${jalur}/sumatif`, [], sekali(d => { if (wadah()) { wadah().sumatif = urut(d); berubah(); } }), laporGagal("sumatif"))
-    ];
-  }
-  return [nilai,
-    b.pantauKoleksi(`${jalur}/modul`, [["pemilik", "==", uid]], sekali(d => { if (wadah()) { wadah().modulSaya = urut(d); berubah(); } }), laporGagal("modul saya")),
-    b.pantauKoleksi(`${jalur}/modul`, [["dibagikan", "==", true]], sekali(d => { if (wadah()) { wadah().modulBagi = urut(d); berubah(); } }), laporGagal("modul dibagikan")),
-    b.pantauKoleksi(`${jalur}/sumatif`, [["pemilik", "==", uid]], sekali(d => { if (wadah()) { wadah().sumatif = urut(d); berubah(); } }), laporGagal("sumatif")),
-    b.pantauKoleksi(`${jalur}/sumatif`, [["dibagikan", "==", true]], sekali(d => { if (wadah()) { wadah().sumatifBagi = urut(d).filter(s => s.pemilik !== uid); berubah(); } }), laporGagal("sumatif dibagikan"))
-  ];
+  const saring = saringSemester(semesterDimuat.get(k));
+  const pemilik = [["pemilik", "==", uid]], dibagikan = [["dibagikan", "==", true]];
+  // [koleksi, syarat, kolom di wadah, nama buat pesan gagal]
+  const jenis = L.tanda === "tetangga"
+    ? [["modul", dibagikan, "modulBagi", "modul kelas lain"], ["sumatif", dibagikan, "sumatifBagi", "sumatif kelas lain"]]
+    : sayaKurikulum()
+      ? [["modul", [], "modulSemua", "modul"], ["sumatif", [], "sumatif", "sumatif"]]
+      : [["modul", pemilik, "modulSaya", "modul saya"], ["modul", dibagikan, "modulBagi", "modul dibagikan"],
+         ["sumatif", pemilik, "sumatif", "sumatif"], ["sumatif", dibagikan, "sumatifBagi", "sumatif dibagikan"]];
+  const p = w.per[k] = { modulSaya: [], modulBagi: [], modulSemua: [], sumatif: [], sumatifBagi: [], siap: false };
+  let sisa = jenis.length;
+  L.per[k] = jenis.map(([koleksi, syarat, kolom, nama]) => {
+    let pertama = true;
+    return toko.backend.pantauKoleksi(`mapel/${id}/${koleksi}`, [...syarat, ...saring], d => {
+      if (toko.isi[id] !== w) return;   // langganan lama
+      let isi = urutIsi(d);
+      // sumatif dibagikan punya sendiri udah ada di "sumatif"
+      if (kolom === "sumatifBagi" && L.tanda !== "tetangga") isi = isi.filter(s => s.pemilik !== uid);
+      p[kolom] = isi;
+      if (pertama) { pertama = false; if (--sisa === 0) p.siap = true; }
+      gabungIsi(id);
+      berubah();
+    }, laporGagal(nama));
+  });
 }
 
-// kelas lain di grup yang sama: cuma yang dibagikan
-function pantauIsiTetangga(id) {
-  const b = toko.backend;
-  const wadah = () => toko.isi[id];
-  const jalur = `mapel/${id}`;
-  const urut = urutIsi;
-  const sekali = penandaSiap(id, 2);
-  return [
-    b.pantauKoleksi(`${jalur}/modul`, [["dibagikan", "==", true]], sekali(d => { if (wadah()) { wadah().modulBagi = urut(d); berubah(); } }), laporGagal("modul kelas lain")),
-    b.pantauKoleksi(`${jalur}/sumatif`, [["dibagikan", "==", true]], sekali(d => { if (wadah()) { wadah().sumatifBagi = urut(d); berubah(); } }), laporGagal("sumatif kelas lain"))
-  ];
+// daftar di wadah = gabungan semua semester yang dimuat. Siap kalau nilai & tiap semester udah kebaca.
+function gabungIsi(id) {
+  const w = toko.isi[id];
+  if (!w) return;
+  const per = [...semesterDimuat.keys()].map(k => w.per[k]).filter(Boolean);
+  const satukan = (kolom) => per.flatMap(p => p[kolom]).sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0));
+  w.modulSaya = satukan("modulSaya");
+  w.modulBagi = satukan("modulBagi");
+  w.sumatif = satukan("sumatif");
+  w.sumatifBagi = satukan("sumatifBagi");
+  if (sayaKurikulum() && !w.tetangga) w.modulSemua = satukan("modulSemua");
+  w.siap = w.nilaiSiap && per.length === semesterDimuat.size && per.every(p => p.siap);
 }
 
 // santri buat ustadz: satu langganan per kelas yang dia ajar.
@@ -397,24 +451,37 @@ function aturLanggananGrup() {
   }
   for (const id of Object.keys(langgananGrup)) {
     if (!perlu.has(id)) {
-      langgananGrup[id].henti.forEach(berhenti => berhenti());
+      hentiLangganan(langgananGrup[id]);
       delete langgananGrup[id];
       delete toko.uas[id];
       delete toko.usulan[id];
     }
   }
-  const b = toko.backend;
   for (const id of perlu) {
     if (langgananGrup[id]) continue;
     toko.uas[id] = [];
     toko.usulan[id] = [];
-    langgananGrup[id] = { siap: { uas: false, usulan: false }, henti: [
-      b.pantauKoleksi(`grup/${id}/uas`, [], d => { if (toko.uas[id]) { toko.uas[id] = d.map(amankanDok); langgananGrup[id].siap.uas = true; berubah(); } }, laporGagal("UAS")),
-      b.pantauKoleksi(`grup/${id}/usulan`, [], d => {
-        if (toko.usulan[id]) { toko.usulan[id] = urutIsi(d); langgananGrup[id].siap.usulan = true; berubah(); }
-      }, laporGagal("usulan UAS"))
-    ] };
+    langgananGrup[id] = { henti: [], per: {}, isi: {} };
+    for (const k of semesterDimuat.keys()) pasangSemesterGrup(id, k);
   }
+}
+// UAS & usulan satu semester di satu grup
+function pasangSemesterGrup(id, k) {
+  const L = langgananGrup[id];
+  if (!L || L.per[k]) return;
+  const saring = saringSemester(semesterDimuat.get(k));
+  const p = L.isi[k] = { uas: null, usulan: null };   // null = belum kebaca
+  const gabung = () => {
+    if (langgananGrup[id] !== L) return;   // langganan lama
+    const per = [...semesterDimuat.keys()].map(x => L.isi[x]).filter(Boolean);
+    toko.uas[id] = per.flatMap(x => x.uas || []);
+    toko.usulan[id] = per.flatMap(x => x.usulan || []).sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0));
+    berubah();
+  };
+  L.per[k] = [
+    toko.backend.pantauKoleksi(`grup/${id}/uas`, saring, d => { p.uas = d.map(amankanDok); gabung(); }, laporGagal("UAS")),
+    toko.backend.pantauKoleksi(`grup/${id}/usulan`, saring, d => { p.usulan = urutIsi(d); gabung(); }, laporGagal("usulan UAS"))
+  ];
 }
 
 // langganan yang gagal nggak nyoba lagi sendiri, jadi dicatat & ditampilkan di header (ada tombol muat ulang)
@@ -436,10 +503,11 @@ function hentikanData() {
   mapelAmpu = null;
   grupSegrupTerpasang = null;
   generasiSegrup++;
-  for (const id of Object.keys(langgananMapel)) langgananMapel[id].henti.forEach(berhenti => berhenti());
+  for (const id of Object.keys(langgananMapel)) hentiLangganan(langgananMapel[id]);
   langgananMapel = {};
-  for (const id of Object.keys(langgananGrup)) langgananGrup[id].henti.forEach(berhenti => berhenti());
+  for (const id of Object.keys(langgananGrup)) hentiLangganan(langgananGrup[id]);
   langgananGrup = {};
+  semesterDimuat.clear();
   for (const id of Object.keys(langgananSantri)) langgananSantri[id]();
   langgananSantri = {};
   for (const id of Object.keys(santriPerKelas)) delete santriPerKelas[id];
@@ -524,7 +592,7 @@ function isiMapelSiap(idMapel) {
 // UAS & usulan grup sudah selesai dimuat dari database (belum = daftar masih kosong sementara)
 function isiGrupSiap(idGrup) {
   const l = langgananGrup[idGrup];
-  return !!l && l.siap.uas && l.siap.usulan;
+  return !!l && [...semesterDimuat.keys()].every(k => l.isi[k] && l.isi[k].uas !== null && l.isi[k].usulan !== null);
 }
 function samaSemester(x, sem) {
   return x.semester === sem.semester && x.tahun === sem.tahun;

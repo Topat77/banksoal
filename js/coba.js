@@ -455,6 +455,10 @@ function buatBackendCoba() {
     pantauKoleksi(jalur, syarat, cb, gagal) {
       return pasang({ jenis: "koleksi", jalur, syarat: syarat || [], cb, gagal });
     },
+    // ambil sekali (nggak dipantau), sama kayak getDocsFromServer
+    ambilKoleksi(jalur, syarat) {
+      return new Promise((jadi, gagal) => kabari({ jenis: "koleksi", jalur, syarat: syarat || [], cb: jadi, gagal }));
+    },
 
     async tulis(jalur, isiBaru) {
       const lama = db[jalur] || null;

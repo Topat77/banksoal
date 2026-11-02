@@ -16,8 +16,29 @@ function hariSejakCadangan() {
   return t ? Math.floor((Date.now() - t) / 86400000) : null;
 }
 
-function dataCadangan() {
+// Aplikasi cuma mantau modul / sumatif / UAS / usulan semester yang dibuka (hemat kuota),
+// jadi buat cadangan & pulihkan, isi SEMUA semester diambil sekali langsung dari server.
+// (Satu kali ambil = baca semua dokumen itu sekali; cuma waktu unduh / pulihkan.)
+async function isiLengkap() {
+  const ambil = (jalur) => toko.backend.ambilKoleksi(jalur, []);
+  const hasil = { mapel: {}, grup: {} };
+  await Promise.all([
+    ...toko.mapel.map(async m => {
+      const [modul, sumatif] = await Promise.all([ambil(`mapel/${m.id}/modul`), ambil(`mapel/${m.id}/sumatif`)]);
+      hasil.mapel[m.id] = { modul: urutIsi(modul), sumatif: urutIsi(sumatif) };
+    }),
+    ...toko.grup.map(async g => {
+      const [uas, usulan] = await Promise.all([ambil(`grup/${g.id}/uas`), ambil(`grup/${g.id}/usulan`)]);
+      hasil.grup[g.id] = { uas: uas.map(amankanDok), usulan: urutIsi(usulan) };
+    })
+  ]);
+  return hasil;
+}
+
+function dataCadangan(lengkap) {
   const isi = (id) => toko.isi[id] || {};
+  const dariMapel = (id) => lengkap.mapel[id] || { modul: [], sumatif: [] };
+  const dariGrup = (id) => lengkap.grup[id] || { uas: [], usulan: [] };
   return {
     aplikasi: KONFIG.namaAplikasi,
     versiCadangan: 3,   // 3: pengguna ikut NIP & sapaan
@@ -29,12 +50,12 @@ function dataCadangan() {
     santri: salin(toko.santri),
     mapel: toko.mapel.map(m => ({
       ...salin(m),
-      modul: salin(modulMapel(m.id)),
-      sumatif: salin(sumatifMapel(m.id)),
-      nilai: salin(isi(m.id).nilai || [])
+      modul: salin(dariMapel(m.id).modul),
+      sumatif: salin(dariMapel(m.id).sumatif),
+      nilai: salin(isi(m.id).nilai || [])   // lembar nilai udah dimuat semua semester
     })),
     // grup mapel + UAS bersama & usulan soalnya
-    grup: toko.grup.map(g => ({ ...salin(g), uas: salin(toko.uas[g.id] || []), usulan: salin(toko.usulan[g.id] || []) }))
+    grup: toko.grup.map(g => ({ ...salin(g), uas: salin(dariGrup(g.id).uas), usulan: salin(dariGrup(g.id).usulan) }))
   };
 }
 
@@ -45,11 +66,24 @@ async function unduhCadangan(tombol, pesan) {
     if (pesan) pesan.textContent = teks; else kabar(teks);
     return false;
   }
-  const data = dataCadangan();
-  const tanggal = new Date().toLocaleDateString("sv-SE");   // 2026-10-24
-  const berkas = new File([JSON.stringify(data, null, 1)], `cadangan-banksoal-${tanggal}.json`, { type: "application/json" });
+  const lapor = (teks) => { if (pesan) pesan.textContent = teks; else kabar(teks); };
+  if (!navigator.onLine && toko.backend.mode !== "coba") {
+    lapor("Unduh cadangan butuh internet: isi semua semester diambil langsung dari server.");
+    return false;
+  }
   if (tombol) tombol.disabled = true;
   try {
+    if (pesan) pesan.textContent = "Mengambil semua data dari server...";
+    let lengkap;
+    try { lengkap = await isiLengkap(); } catch (err) {
+      console.warn("Gagal ambil data cadangan:", err);
+      lapor("Gagal ngambil data dari server (sinyal putus atau jatah harian habis). Coba lagi nanti.");
+      return false;
+    }
+    if (pesan) pesan.textContent = "";
+    const data = dataCadangan(lengkap);
+    const tanggal = new Date().toLocaleDateString("sv-SE");   // 2026-10-24
+    const berkas = new File([JSON.stringify(data, null, 1)], `cadangan-banksoal-${tanggal}.json`, { type: "application/json" });
     const jadi = await berikanFile(berkas);
     if (!jadi) return false;
     simpanLembaga({ ...toko.lembaga, cadanganTerakhir: Date.now(), cadanganOleh: namaSaya() });
@@ -94,8 +128,13 @@ const JENIS_PULIHKAN = {
   modul: "modul", sumatif: "ujian sumatif", uas: "UAS bersama", usulan: "usulan soal UAS"
 };
 
-// isi file cadangan → { jenis: [[jalur, isi dokumen], ...] }, cuma yang sekarang nggak kelihatan di aplikasi
-function rencanaPulihkan(c) {
+// isi file cadangan → { jenis: [[jalur, isi dokumen], ...] }, cuma yang sekarang nggak ada.
+// lengkap: hasil isiLengkap() (semua semester dari server); tanpa itu dibandingin sama yang dimuat aplikasi.
+function rencanaPulihkan(c, lengkap) {
+  const modulSekarang = (id) => lengkap ? (lengkap.mapel[id] || {}).modul : modulMapel(id);
+  const sumatifSekarang = (id) => lengkap ? (lengkap.mapel[id] || {}).sumatif : sumatifMapel(id);
+  const uasSekarang = (id) => lengkap ? (lengkap.grup[id] || {}).uas : toko.uas[id];
+  const usulanSekarang = (id) => lengkap ? (lengkap.grup[id] || {}).usulan : toko.usulan[id];
   const r = Object.fromEntries(Object.keys(JENIS_PULIHKAN).map(k => [k, []]));
   // id dipakai jadi jalur dokumen, jadi wajib teks biasa (tanpa "/")
   const sah = (x) => adalahObjek(x) && typeof x.id === "string" && x.id !== "" && !x.id.includes("/");
@@ -111,15 +150,15 @@ function rencanaPulihkan(c) {
     const { modul, sumatif, nilai, ...dok } = m;
     const mapelAda = ada(toko.mapel, m.id);
     if (!mapelAda) r.mapel.push([`mapel/${m.id}`, tanpaId(dok)]);
-    for (const x of daftar(modul)) if (!ada(mapelAda && modulMapel(m.id), x.id)) r.modul.push([`mapel/${m.id}/modul/${x.id}`, tanpaId(x)]);
-    for (const x of daftar(sumatif)) if (!ada(mapelAda && sumatifMapel(m.id), x.id)) r.sumatif.push([`mapel/${m.id}/sumatif/${x.id}`, tanpaId(x)]);
+    for (const x of daftar(modul)) if (!ada(mapelAda && modulSekarang(m.id), x.id)) r.modul.push([`mapel/${m.id}/modul/${x.id}`, tanpaId(x)]);
+    for (const x of daftar(sumatif)) if (!ada(mapelAda && sumatifSekarang(m.id), x.id)) r.sumatif.push([`mapel/${m.id}/sumatif/${x.id}`, tanpaId(x)]);
   }
   for (const g of daftar(c.grup)) {
     const { uas, usulan, ...dok } = g;
     const grupAda = ada(toko.grup, g.id);
     if (!grupAda) r.grup.push([`grup/${g.id}`, tanpaId(dok)]);
-    for (const x of daftar(uas)) if (!ada(grupAda && toko.uas[g.id], x.id)) r.uas.push([`grup/${g.id}/uas/${x.id}`, tanpaId(x)]);
-    for (const x of daftar(usulan)) if (!ada(grupAda && toko.usulan[g.id], x.id)) r.usulan.push([`grup/${g.id}/usulan/${x.id}`, tanpaId(x)]);
+    for (const x of daftar(uas)) if (!ada(grupAda && uasSekarang(g.id), x.id)) r.uas.push([`grup/${g.id}/uas/${x.id}`, tanpaId(x)]);
+    for (const x of daftar(usulan)) if (!ada(grupAda && usulanSekarang(g.id), x.id)) r.usulan.push([`grup/${g.id}/usulan/${x.id}`, tanpaId(x)]);
   }
   return r;
 }
@@ -157,7 +196,15 @@ function pasangPulihkanCadangan() {
     if (!isiCadanganSiap()) return kabar("Data masih dimuat, tunggu sebentar lalu coba lagi.");
     if (!navigator.onLine && toko.backend.mode !== "coba") return kabar("Pulihkan butuh internet. Sambungkan dulu, lalu coba lagi.");
 
-    const r = rencanaPulihkan(c);
+    let lengkap;
+    pesan.textContent = "Mengecek data yang masih ada di server...";
+    try { lengkap = await isiLengkap(); } catch (err) {
+      console.warn("Gagal ambil data buat pulihkan:", err);
+      pesan.textContent = "";
+      return kabar("Gagal ngecek data di server (sinyal putus atau jatah harian habis). Coba lagi nanti.");
+    }
+    pesan.textContent = "";
+    const r = rencanaPulihkan(c, lengkap);
     const ringkas = Object.entries(JENIS_PULIHKAN).filter(([k]) => r[k].length).map(([k, nama]) => `• ${r[k].length} ${nama}`);
     const tanggal = c.dibuat ? new Date(c.dibuat).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "tanpa tanggal";
     if (!ringkas.length) return kabar(`Semua isi cadangan ${tanggal} masih ada di aplikasi. Nggak ada yang perlu dipulihkan.`);

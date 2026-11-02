@@ -488,12 +488,15 @@ function layarPantauan() {
   const semuaSem = new Map();
   const tambah = (x) => semuaSem.set(kunciSemester(x), x);
   tambah(semesterSekarang());
+  semesterDimuat.forEach(tambah);
   for (const mp of toko.mapel) {
+    ((toko.isi[mp.id] || {}).nilai || []).forEach(tambah);   // semester lama: dari lembar nilai
     modulMapel(mp.id).forEach(tambah);
     sumatifMapel(mp.id).forEach(tambah);
   }
   const kunci = posisi.semPantau && semuaSem.has(posisi.semPantau) ? posisi.semPantau : kunciSemester(semesterSekarang());
   const sem = dariKunciSemester(kunci);
+  pastikanSemester(sem);
   const jenjang = jenjangAktif();
   const mapelJenjang = toko.mapel.filter(m => m.jenjang === jenjang)
     .sort((a, b) => bandingKelas(a, b) || a.nama.localeCompare(b.nama, "id"));

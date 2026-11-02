@@ -207,6 +207,9 @@ function layarDaftarUAS() {
   const kunciSem = posisi.semUAS && semAda.some(x => kunciSemester(x) === posisi.semUAS) ? posisi.semUAS : kunciSemester(semAda[0]);
   posisi.semUAS = kunciSem;
   const sem = dariKunciSemester(kunciSem);
+  pastikanSemester(sem);
+  // status UAS tiap grup belum kebaca: jangan tampil "Belum disusun"
+  if (!toko.grup.every(g => isiGrupSiap(g.id))) return tampilMemuat("UAS bersama");
 
   judul.textContent = "UAS bersama";
   jejak.textContent = `${jenjang} · ${namaSemester(sem)}`;

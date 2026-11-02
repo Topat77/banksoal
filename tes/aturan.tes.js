@@ -268,6 +268,12 @@ grup("Pulihkan cadangan: yang dipulihkan cuma yang hilang");
   harap("daftar nilai nggak nyasar ke dokumen mapel", "nilai" in r.mapel[0][1], false);
   harap("UAS & usulan: yang hilang aja", jalur("uas") + "|" + jalur("usulan"), "grup/g-bi7/uas/uas2|grup/g-bi7/usulan/us1");
   harap("id nggak ikut ditulis ke isi dokumen", "id" in r.modul[0][1], false);
+  // aplikasi cuma mantau semester yang dibuka: pulihkan dibandingin sama isi LENGKAP dari server
+  const lengkap = { mapel: { bi7a: { modul: [{ id: "m1" }, { id: "m2" }], sumatif: [{ id: "s1" }] } }, grup: { "g-bi7": { uas: [{ id: "uas1" }, { id: "uas2" }], usulan: [] } } };
+  const r2 = rencanaPulihkan({ versiCadangan: 3, mapel: [{ id: "bi7a", modul: [{ id: "m1" }, { id: "m2" }], sumatif: [{ id: "s1" }] }],
+    grup: [{ id: "g-bi7", uas: [{ id: "uas2" }], usulan: [{ id: "us1" }] }] }, lengkap);
+  harap("pakai isi lengkap: modul semester lain yang masih ada nggak dianggap hilang", r2.modul.length + r2.sumatif.length, 0);
+  harap("pakai isi lengkap: UAS yang masih ada dilewati, usulan yang hilang dipulihkan", r2.uas.length + "|" + r2.usulan.map(x => x[0]).join(), "0|grup/g-bi7/usulan/us1");
 }
 
 // =====================================================
