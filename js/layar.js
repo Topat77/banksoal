@@ -118,13 +118,16 @@ function tampilkan(tetapDiTempat = false) {
     return;
   }
 
+  // semester yang lagi dibuka (dan semester UAS-nya) ikut dimuat kalau belum
+  pastikanSemester(semAktif());
+  if (posisi.uasGrup && posisi.uasSem) pastikanSemester(dariKunciSemester(posisi.uasSem));
+
   try {
     window[daftarLayar[posisi.layar] || "layarBeranda"]();
   } catch (err) {
     if (err instanceof DataHilang && posisi.mapelId && mapelBisaDibuka(posisi.mapelId) && !isiMapelSiap(posisi.mapelId)) {
-      // isi mapel belum kelar dimuat
-      judul.textContent = "Memuat...";
-      isi.innerHTML = htmlKerangka();
+      // isi mapel belum kelar dimuat (atau semesternya baru mulai dimuat)
+      tampilMemuat();
     } else {
       if (!(err instanceof DataHilang)) console.error(err);
       // balik ke halaman mapel kalau masih bisa, kalau nggak ke beranda
@@ -299,6 +302,10 @@ function daftarSemesterMapel(idMapel) {
   const peta = new Map();
   const tambah = (x) => peta.set(kunciSemester(x), { semester: x.semester, tahun: x.tahun });
   tambah(semesterSekarang());
+  // modul & sumatif cuma kebaca buat semester yang udah dimuat; semester lama diketahui dari lembar nilai
+  // (dimuat semua semester) dan dari semester yang pernah dibuka. Sisanya lewat "+ Semester lain".
+  ((toko.isi[idMapel] || {}).nilai || []).forEach(tambah);
+  semesterDimuat.forEach(tambah);
   modulMapel(idMapel).forEach(tambah);
   sumatifMapel(idMapel).forEach(tambah);
   if (posisi.semester && posisi.mapelId === idMapel) tambah(dariKunciSemester(posisi.semester));
