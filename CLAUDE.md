@@ -25,7 +25,10 @@ Gak ada build step / npm. Semua file JS dimuat pakai `<script>` biasa dengan uru
 | `js/menupilih.js` | tampilan menu pilihan pengganti `<select>` bawaan (otomatis buat semua select di layar) |
 | `js/beranda.js`, `modul.js`, `sumatif.js`, `uas.js`, `ai.js`, `cetak.js`, `docx.js`, `kop.js`, `kurikulum.js`, `nilai.js`, `rapor.js` | layar-layar fitur |
 | `js/cadangan.js` | unduh cadangan data (.json) + pengingatnya |
-| `js/alat.js`, `js/dialog.js` | alat bantu (`aman`, `klik`, `rapikanSoal`, ...) & dialog pengganti `confirm/alert/prompt` |
+| `js/alat.js`, `js/dialog.js` | alat bantu umum (`aman`, `klik`, semester, tema, simpan lokal, ...) & dialog pengganti `confirm/alert/prompt` |
+| `js/datasoal.js` | bentuk data: `rapikanSoal`, `amankanDok`, `ukuranDok`, `pasangDiJalur`, `tambahKeDaftar` / `buangDariDaftar` |
+| `js/soal.js` | kartu & isian soal (`kartuSoal`, `htmlIsianSoal`, ...), dipakai modul, sumatif, UAS, AI |
+| `js/grup.js` | grup mapel (`idGrup`, `mapelSegrup`, `sinkronGrup`, ...); datanya tetap di `toko` |
 | `sw.js` | service worker: file aplikasi ambil dari internet dulu, SDK Firebase & font pakai simpanan |
 | `firestore.rules` | aturan akses database |
 | `tes/` | tes Node, nggak dimuat aplikasi |
@@ -45,8 +48,8 @@ Firestore: `pengguna`, `pengaturan`, `kelas`, `santri`, `mapel/{id}/{modul,nilai
 - **Ngubah `firestore.rules`:** `js/aturan.js` juga harus diubah dengan logika yang sama persis, biar mode coba tetap sama kayak versi online. Push ke GitHub **nggak** memperbarui rules di server. Rules-nya harus di-**Publish manual** di Firebase Console → Firestore → Rules. Ingetin user soal ini di deskripsi PR.
 - **Backend:** kalau nambah fungsi di `firebase.js`, tambahin juga yang setara di `coba.js`.
 - **Layar baru:** daftarin di `daftarLayar` (`js/layar.js`); kalau isinya form, masukin juga ke `LAYAR_DIAM`.
-- **Soal baru / diedit / disalin:** lewatin `rapikanSoal()` (`js/alat.js`) sebelum disimpan. Rules nggak bisa ngecek isi tiap soal di dalam daftar, jadi bentuknya dijaga di situ.
-- **Data modul / ujian dari database:** lewatin `amankanDok()` (`js/alat.js`) sebelum dipakai layar. Item rusak di daftar (null, angka) bisa aja ada, dan rules nggak bisa nolak.
+- **Soal baru / diedit / disalin:** lewatin `rapikanSoal()` (`js/datasoal.js`) sebelum disimpan. Rules nggak bisa ngecek isi tiap soal di dalam daftar, jadi bentuknya dijaga di situ.
+- **Data modul / ujian dari database:** lewatin `amankanDok()` (`js/datasoal.js`) sebelum dipakai layar. Item rusak di daftar (null, angka) bisa aja ada, dan rules nggak bisa nolak.
 - **Simpan modul / ujian / UAS / usulan:** `simpanModul()` dkk. ngembaliin `null` kalau dokumennya kegedean (`ukuranDok()`, Firestore maks. 1 MiB). Kalau habis nyimpan langsung pindah layar, cek dulu hasilnya biar isian guru nggak hilang.
 - **Lembar nilai:** simpan pakai `simpanNilaiSebagian()` (cuma sel yang berubah), jangan kirim lembar utuh, biar isian dari perangkat lain nggak ketimpa. Nambah/buang item daftar pakai `tambahKeDaftar()` / `buangDariDaftar()` (jadi `arrayUnion` / `arrayRemove`).
 - **Kop cetak:** lembar soal (formatif, sumatif, UAS) pakai `KOP_ASESMEN` (`js/kop.js`, dari file `KOP_ASESMEN_*.docx` sekolah), kertas F4, footer + nomor halaman. Judulnya dari `judulAsesmen()` (`js/cetak.js`): formatif / lingkup materi / tengah semester / akhir semester (UAS). Rapor tetap pakai `KOP_RESMI`.

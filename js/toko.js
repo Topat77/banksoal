@@ -221,17 +221,31 @@ function aturLanggananMapel() {
   }
 }
 
+// modul / ujian dari database: item rusak diamankan dulu (amankanDok di datasoal.js),
+// lalu diurut dari yang paling lama dibuat
+function urutIsi(d) {
+  return d.map(amankanDok).sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0));
+}
+// isi satu mapel dianggap siap setelah semua langganannya ngirim data pertama kali.
+// Hasilnya pembungkus: sekali(f) manggil f seperti biasa, sambil ngitung langganan yang udah ngirim.
+function penandaSiap(id, perlu) {
+  let jumlah = 0;
+  return (f) => {
+    let sudah = false;
+    return (...x) => {
+      f(...x);
+      if (!sudah) { sudah = true; if (++jumlah >= perlu && toko.isi[id]) toko.isi[id].siap = true; }
+    };
+  };
+}
+
 function pantauIsiMapel(id) {
   const b = toko.backend;
   const uid = uidSaya();
   const wadah = () => toko.isi[id];
   const jalur = `mapel/${id}`;
-  // item rusak di dalam modul / ujian diamankan dulu (lihat amankanDok di alat.js)
-  const urut = (d) => d.map(amankanDok).sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0));
-  let jumlahSiap = 0;
-  const perluSiap = sayaKurikulum() ? 3 : 5;
-  const tandaiSiap = () => { if (++jumlahSiap >= perluSiap && wadah()) wadah().siap = true; };
-  const sekali = (f) => { let sudah = false; return (...x) => { f(...x); if (!sudah) { sudah = true; tandaiSiap(); } }; };
+  const urut = urutIsi;
+  const sekali = penandaSiap(id, sayaKurikulum() ? 3 : 5);
 
   // lembar nilai: dibaca pengampu & kurikulum (lihat aturan)
   const nilai = b.pantauKoleksi(`${jalur}/nilai`, [], sekali(d => { if (wadah()) { wadah().nilai = d; berubah(); } }), laporGagal("nilai"));
@@ -255,10 +269,8 @@ function pantauIsiTetangga(id) {
   const b = toko.backend;
   const wadah = () => toko.isi[id];
   const jalur = `mapel/${id}`;
-  // item rusak di dalam modul / ujian diamankan dulu (lihat amankanDok di alat.js)
-  const urut = (d) => d.map(amankanDok).sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0));
-  let jumlahSiap = 0;
-  const sekali = (f) => { let sudah = false; return (...x) => { f(...x); if (!sudah) { sudah = true; if (++jumlahSiap >= 2 && wadah()) wadah().siap = true; } }; };
+  const urut = urutIsi;
+  const sekali = penandaSiap(id, 2);
   return [
     b.pantauKoleksi(`${jalur}/modul`, [["dibagikan", "==", true]], sekali(d => { if (wadah()) { wadah().modulBagi = urut(d); berubah(); } }), laporGagal("modul kelas lain")),
     b.pantauKoleksi(`${jalur}/sumatif`, [["dibagikan", "==", true]], sekali(d => { if (wadah()) { wadah().sumatifBagi = urut(d); berubah(); } }), laporGagal("sumatif kelas lain"))
@@ -328,7 +340,7 @@ function aturLanggananGrup() {
     langgananGrup[id] = { siap: { uas: false, usulan: false }, henti: [
       b.pantauKoleksi(`grup/${id}/uas`, [], d => { if (toko.uas[id]) { toko.uas[id] = d.map(amankanDok); langgananGrup[id].siap.uas = true; berubah(); } }, laporGagal("UAS")),
       b.pantauKoleksi(`grup/${id}/usulan`, [], d => {
-        if (toko.usulan[id]) { toko.usulan[id] = d.map(amankanDok).sort((a, c) => (a.dibuat || 0) - (c.dibuat || 0)); langgananGrup[id].siap.usulan = true; berubah(); }
+        if (toko.usulan[id]) { toko.usulan[id] = urutIsi(d); langgananGrup[id].siap.usulan = true; berubah(); }
       }, laporGagal("usulan UAS"))
     ] };
   }
