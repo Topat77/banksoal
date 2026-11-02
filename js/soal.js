@@ -96,6 +96,13 @@ function pasangIsianSoal(form) {
   }
   form.querySelectorAll('[name="jenis"]').forEach(r => r.onchange = aturJenis);
   aturJenis();
+  // Enter di isian jawaban pindah ke jawaban berikutnya (bukan langsung nyimpan soal)
+  const pilihan = [...form.querySelectorAll('input[name^="pilihan"]')];
+  pilihan.forEach((inp, i) => inp.onkeydown = (e) => {
+    if (e.key !== "Enter" || e.isComposing) return;
+    e.preventDefault();
+    if (pilihan[i + 1]) pilihan[i + 1].focus();
+  });
 }
 
 // hasilnya { soal } atau { galat: "pesan" }

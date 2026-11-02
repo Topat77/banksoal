@@ -13,7 +13,7 @@ function layarLainnya() {
       <form id="formProfil">
         <label>Nama yang tampil <input name="nama" value="${aman(s.nama || "")}" required maxlength="100" placeholder="Ustadzah Aminah"></label>
         <p class="info">Muncul di modul dan ujian yang kamu buat, dan di daftar pengampu.</p>
-        <p class="info"><b>Sapaan:</b> ${sapaanPengguna(s) ? SAPAAN[sapaanPengguna(s)] : "belum diatur"} · diatur TU di halaman Akun, karena ngaruh ke kelas putra/putri yang boleh diajar.</p>
+        <p class="info"><b>Sapaan:</b> ${sapaanPengguna(s) ? SAPAAN[sapaanPengguna(s)] : "belum diatur"} · diatur TU di halaman Guru, karena ngaruh ke kelas putra/putri yang boleh diajar.</p>
         <div class="baris-tombol">
           <button type="submit" class="tombol-utama">Simpan</button>
           <span class="tersimpan" id="tersimpanProfil" role="status"></span>

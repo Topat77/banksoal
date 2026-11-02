@@ -100,7 +100,8 @@ function tampilDialog(o, selesai) {
   if (tidak) tidak.onclick = jawabTidak;
   latar.onclick = (e) => { if (e.target === latar) jawabTidak(); };
 
-  (isian || ya).focus();
+  // dialog hapus: fokus awal ke Batal, biar Enter nggak langsung menghapus
+  (isian || (o.bahaya && tidak) || ya).focus();
   if (isian) isian.select();
 }
 

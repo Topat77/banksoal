@@ -628,7 +628,7 @@ function namaSaya() {
   return (toko.saya && toko.saya.nama) || (toko.auth && toko.auth.nama) || "";
 }
 
-// ustadz (laki-laki) atau ustadzah (perempuan). Diatur admin di halaman Akun
+// ustadz (laki-laki) atau ustadzah (perempuan). Diatur admin di halaman Guru
 // atau sendiri di halaman Saya; kalau belum diatur, ditebak dari nama.
 const SAPAAN = { ustadz: "Ustadz", ustadzah: "Ustadzah" };
 function sapaanPengguna(p) {

@@ -77,6 +77,7 @@ function tampilkan(tetapDiTempat = false) {
     navBawah.innerHTML = "";
     gambarStatus();
     gambarTanda();
+    document.title = KONFIG.namaAplikasi;
     window.scrollTo(0, 0);
     aturRiwayat();
     return;
@@ -108,7 +109,14 @@ function tampilkan(tetapDiTempat = false) {
   gambarNavBawah();
   gambarTanda();
   segarkanTandaTema();
+  // menu yang lagi dibuka ditandai buat pembaca layar
+  document.querySelectorAll(".menu-item").forEach(b => {
+    if (b.classList.contains("aktif")) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
 
+  // judul tab ikut layar yang dibuka
+  document.title = judul.textContent ? `${judul.textContent} · ${KONFIG.namaAplikasi}` : KONFIG.namaAplikasi;
   judul.title = judul.textContent;
   jejak.title = jejak.textContent;
   judul.dir = "auto";
@@ -483,10 +491,10 @@ function gambarSamping() {
     const n = jumlahMenunggu();
     h += `
       <button class="menu-item ${grup === "pantauan" ? "aktif" : ""}" data-ke="pantauan">${ikonMenu("pantauan")}<span>Pantauan</span></button>
-      <button class="menu-item ${grup === "akun" ? "aktif" : ""}" data-ke="akun">${ikonMenu("akun")}<span>Guru</span>${n ? `<span class="lencana" aria-label="${n} menunggu">${n}</span>` : ""}</button>
+      <button class="menu-item ${grup === "akun" ? "aktif" : ""}" data-ke="akun">${ikonMenu("akun")}<span>Guru</span>${n ? `<span class="lencana">${n}<span class="sr"> menunggu</span></span>` : ""}</button>
       <button class="menu-item ${grup === "kelola" ? "aktif" : ""}" data-ke="kelolaMapel">${ikonMenu("mapel")}<span>Mapel &amp; pengampu</span></button>
       <button class="menu-item ${grup === "bobot" ? "aktif" : ""}" data-ke="bobot">${ikonMenu("bobot")}<span>Bobot nilai</span></button>
-      <button class="menu-item ${grup === "uas" ? "aktif" : ""}" data-ke="daftarUAS">${ikonMenu("uas")}<span>UAS bersama</span>${jumlahUASDiajukan() ? `<span class="lencana" aria-label="${jumlahUASDiajukan()} diajukan">${jumlahUASDiajukan()}</span>` : ""}</button>
+      <button class="menu-item ${grup === "uas" ? "aktif" : ""}" data-ke="daftarUAS">${ikonMenu("uas")}<span>UAS bersama</span>${jumlahUASDiajukan() ? `<span class="lencana">${jumlahUASDiajukan()}<span class="sr"> diajukan</span></span>` : ""}</button>
       <button class="menu-item ${grup === "rapor" ? "aktif" : ""}" data-ke="rapor">${ikonMenu("rapor")}<span>Rapor siswa</span></button>`;
   }
   h += `<button class="menu-item ${grup === "santri" ? "aktif" : ""}" data-ke="santri">${ikonMenu("santri")}<span>Daftar siswa</span></button>`;
@@ -573,7 +581,7 @@ function gambarNavBawah() {
   const n = sayaKurikulum() ? jumlahMenunggu() : 0;
   navBawah.innerHTML = item.map(([ke, kunci, teks]) => {
     const aktif = grup === kunci || (kunci === "beranda" && grup === "mapel");
-    const lencana = kunci === "akun" && n ? `<span class="lencana" aria-label="${n} menunggu">${n}</span>` : "";
+    const lencana = kunci === "akun" && n ? `<span class="lencana">${n}<span class="sr"> menunggu</span></span>` : "";
     return `<button data-ke="${ke}" class="${aktif ? "aktif" : ""}" ${aktif ? 'aria-current="page"' : ""}>${IKON[ikonDari[kunci]]}${lencana}<span>${teks}</span></button>`;
   }).join("");
   navBawah.querySelectorAll("button").forEach(b => {

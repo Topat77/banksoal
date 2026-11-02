@@ -73,7 +73,7 @@ function htmlBagianCadangan() {
       <p class="info"><b>${terakhir}</b>${hari !== null && hari >= BATAS_HARI_CADANGAN ? ` Sudah ${hari} hari, sebaiknya unduh lagi.` : ""}</p>
       <div class="baris-tombol">
         <button class="tombol-kedua" id="unduhCadangan">Unduh cadangan (.json)</button>
-        <label class="tombol-teks pilih-file" for="fileCadangan">Pulihkan dari cadangan…</label>
+        <button type="button" class="tombol-teks pilih-file" id="pilihCadangan">Pulihkan dari cadangan…</button>
         <input type="file" id="fileCadangan" accept="application/json,.json" hidden>
         <span class="info" id="pesanCadangan" role="status"></span>
       </div>
@@ -143,6 +143,8 @@ function pasangPulihkanCadangan() {
   const input = document.getElementById("fileCadangan");
   if (!input) return;
   const pesan = document.getElementById("pesanCadangan");
+  const tombolPilih = document.getElementById("pilihCadangan");
+  if (tombolPilih) tombolPilih.onclick = () => input.click();
   input.onchange = async () => {
     const f = input.files[0];
     input.value = "";
@@ -162,6 +164,7 @@ function pasangPulihkanCadangan() {
     if (!(await tanyaYakin(`Cadangan ${tanggal}.\n\nYang hilang dan bakal dipulihkan:\n${ringkas.join("\n")}\n\nData yang masih ada nggak ditimpa. Lembar nilai nggak ikut dipulihkan. Lanjut?`, { ya: "Pulihkan" }))) return;
 
     input.disabled = true;
+    if (tombolPilih) tombolPilih.disabled = true;
     pesan.textContent = "Memulihkan...";
     try {
       const h = await pulihkanCadangan(r);
@@ -171,6 +174,7 @@ function pasangPulihkanCadangan() {
       }
     } finally {
       input.disabled = false;
+      if (tombolPilih) tombolPilih.disabled = false;
     }
   };
 }

@@ -4,7 +4,7 @@
    Ada mode terang & gelap (ikut HP, atau dipilih sendiri).
    Ciri khas tetap: kunci jawaban dilingkari merah, kayak dikoreksi guru.
    ===================================================== */
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Literata:opsz,wght@7..72,400;7..72,600&family=Noto+Naskh+Arabic:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Literata:opsz,wght@7..72,400;7..72,600&family=Noto+Naskh+Arabic:wght@400;700&display=swap");
 
 /* ====== WARNA & UKURAN (ganti di sini, semua ikut berubah) ====== */
 :root {
@@ -1049,9 +1049,10 @@ span.judul-kolom { display: inline-flex; align-items: center; cursor: default; t
 .aksi-nilai { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .status-simpan { font-size: 15px; color: var(--tinta-redup); }
 
-/* tabel nilai: kolom nama nempel di kiri waktu digeser ke samping */
+/* tabel nilai: kolom nama nempel di kiri waktu digeser ke samping.
+   max-height: wadahnya yang digulir ke bawah, jadi judul kolom (sticky top) ikut nempel */
 .wadah-lembar-nilai {
-  overflow-x: auto; max-width: 100%;
+  overflow: auto; max-width: 100%; max-height: 70vh;
   background: var(--lembar); border: 1px solid var(--kaca-garis); border-radius: var(--sudut);
   box-shadow: var(--bayang);
 }
@@ -1229,8 +1230,9 @@ textarea:dir(rtl), input:dir(rtl) {
   main { max-width: none !important; margin: 0; padding: 0; }
   .layar-cetak { display: block; }
   #lembar { border: none; border-radius: 0; box-shadow: none; padding: 0; font-size: 12pt; overflow: visible; }
-  .tabel-soal tr { break-inside: avoid; }
+  .tabel-soal tr, .tabel-rapor tr, .ttd-rapor { break-inside: avoid; }
   .halaman-baru { break-before: page; }
+  :root { color-scheme: light !important; }
   #lembar .halaman-baru { margin: 0; border: 0; }
 }
 
@@ -1440,6 +1442,7 @@ label.pilih-koordinator select { flex: 1; min-width: 0; padding: 8px 10px; font-
   cursor: pointer;
 }
 .menu-pilih-opsi:hover, .menu-pilih-opsi:focus-visible { background: var(--hijau-muda); outline: none; }
+.menu-pilih-opsi:focus-visible { outline: 2px solid var(--hijau); outline-offset: -2px; }
 .menu-pilih-opsi[aria-selected="true"] { color: var(--hijau-tua); font-weight: 600; }
 .menu-pilih-opsi:disabled { opacity: .5; cursor: default; }
 .menu-pilih-centang { width: 22px; height: 22px; flex: none; margin-top: 1px; }
@@ -1542,6 +1545,10 @@ label.pilih-peran .menu-pilih { min-width: 160px; }
 .panel-kepala { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .panel-kepala h2 { margin: 0; font-size: 17px; font-weight: 700; }
 .panel-kepala .tombol-teks { min-height: 32px; font-size: 14px; }
+/* di HP tombol kecil tetap gampang dipencet jempol (min. 44px) */
+@media (max-width: 599px) {
+  .chip, .soal-aksi button, .panel-kepala .tombol-teks { min-height: 44px; }
+}
 
 /* ---- akses cepat ---- */
 .akses-cepat { display: flex; flex-direction: column; gap: 8px; }

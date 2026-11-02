@@ -455,7 +455,9 @@ function layarNilai() {
     tundaNilai.ubah.set(jalur.join("/"), [jalur, nilai]);
     tundaNilai.waktu = setTimeout(kirimNilaiTertunda, 700);
     status.textContent = "Menyimpan...";
-    setTimeout(() => { if (!tundaNilai && status.isConnected) status.textContent = "Tersimpan"; }, 800);
+    setTimeout(() => {
+      if (!tundaNilai && status.isConnected) status.textContent = navigator.onLine ? "Tersimpan" : "Tersimpan di HP, dikirim waktu ada sinyal";
+    }, 800);
   };
   const segarkanAkhir = (tr) => {
     tr.querySelector("[data-akhir]").textContent = angkaRapi(hitungNilai(lembar, tr.dataset.santri, mp).akhir);
@@ -469,7 +471,12 @@ function layarNilai() {
       let v = Number(inp.value);
       const salah = !kosong && (Number.isNaN(v) || v < 0 || (inp.dataset.nilai && v > 100));
       inp.classList.toggle("salah", salah);
-      if (salah) return;
+      if (salah) inp.setAttribute("aria-invalid", "true");
+      else inp.removeAttribute("aria-invalid");
+      if (salah) {
+        status.textContent = inp.dataset.nilai ? "Nilai harus 0–100, yang merah belum disimpan" : "Isi angka 0 atau lebih, yang merah belum disimpan";
+        return;
+      }
       const jalur = inp.dataset.nilai ? ["nilai", sid, inp.dataset.nilai] : ["hadir", sid, inp.dataset.hadir];
       const isian = kosong ? undefined : (inp.dataset.nilai ? v : Math.round(v));
       pasangDiJalur(lembar, jalur, isian);
