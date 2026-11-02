@@ -1,2 +1,4 @@
 # catatan kerja dev-pipeline (eksplorasi, review), nggak ikut repo
 .pipeline/
+# plugin dev-pipeline (alat bantu lokal, bukan bagian aplikasi)
+claude-dev-pipeline/
