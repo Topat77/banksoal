@@ -75,5 +75,6 @@ function layarCari() {
   }
   input.oninput = cari;
   cari();
-  input.focus();
+  // balik ke hasil cari: jangan munculin keyboard HP yang nutupin hasilnya
+  if (!input.value) input.focus();
 }

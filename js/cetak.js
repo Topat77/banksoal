@@ -389,7 +389,7 @@ function layarCetak() {
       </fieldset>
       <div class="baris-tombol">
         <button class="tombol-utama" id="print">Cetak / PDF</button>
-        <button class="tombol-kedua" id="word">Download Word</button>
+        <button class="tombol-kedua" id="word">Unduh Word</button>
       </div>
       <p class="info">Mau jadi PDF? Di jendela cetak, pilih tujuan "Simpan sebagai PDF". File Word bisa diedit lagi, misalnya buat ganti kop.</p>
     </div>

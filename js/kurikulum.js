@@ -353,7 +353,7 @@ function formMapel() {
       <label class="centang">
         <input type="checkbox" name="pengampu" value="${aman(p.id)}" data-sapaan-pengampu="${aman(sapaanPengguna(p) || "")}" ${(m.pengampu || []).includes(p.id) ? "checked" : ""}>
         <span class="isi-centang"><b>${aman(p.nama)}</b><small>${sapaanPengguna(p) ? `${SAPAAN[sapaanPengguna(p)]} · ` : ""}${aman(p.email)}</small></span>
-      </label>`).join("") : `<p class="info">Belum ada akun aktif. Setujui akun ustadz dulu di halaman Akun.</p>`;
+      </label>`).join("") : `<p class="info">Belum ada akun aktif. Setujui akun ustadz dulu di halaman Guru.</p>`;
 
   isi.innerHTML = `
     <form id="form">
@@ -523,7 +523,7 @@ function layarPantauan() {
     h += `<button class="${k === kelompok ? "aktif" : ""}" data-kelompok="${k}" aria-pressed="${k === kelompok}">${label} <small>${hitung[k].size}</small></button>`;
   }
   h += `</div>`;
-  if (kelompok === "belum") h += `<p class="info">Atur sapaannya di halaman Akun biar masuk ke kelompok Ustadz atau Ustadzah.</p>`;
+  if (kelompok === "belum") h += `<p class="info">Atur sapaannya di halaman Guru biar masuk ke kelompok Ustadz atau Ustadzah.</p>`;
   h += `<div class="pilih-semester" role="group" aria-label="Semester">`;
   for (const x of [...semuaSem.values()].sort(bandingSemester)) {
     const k = kunciSemester(x);

@@ -288,7 +288,7 @@ function layarAISoal() {
         <textarea id="ringkasanAI" rows="4" dir="auto" placeholder="Tempel atau ketik ringkasan materinya di sini. Makin jelas, makin bagus soalnya.">${aman(d.ringkasan)}</textarea>
         <div class="isian-pdf">
           <span class="label-isian">c. File PDF modul (opsional)</span>
-          <label class="tombol-kedua pilih-file" for="pdfAI">Pilih file PDF</label>
+          <button type="button" class="tombol-kedua pilih-file" id="pilihPdfAI">Pilih file PDF</button>
           <input type="file" id="pdfAI" accept="application/pdf" hidden>
           <span class="info" id="namaPdf">${d.pdf ? `${aman(d.pdf.nama)} <button class="tombol-teks merah" id="lepasPdf" type="button">Lepas</button>` : `Maks. ${AI_MAKS_PDF_MB} MB. Link Google Drive nggak bisa dibaca AI, jadi download dulu PDF-nya lalu pilih di sini.`}</span>
         </div>
@@ -336,6 +336,8 @@ function layarAISoal() {
     klik("lepasPdf", () => { d.pdf = null; tampilkan(true); });
   };
   pasangLepasPdf();
+  // tombol biasa (bisa difokus keyboard) yang ngebuka pemilih file
+  document.getElementById("pilihPdfAI").onclick = () => document.getElementById("pdfAI").click();
   document.getElementById("pdfAI").onchange = async (e) => {
     const f = e.target.files[0];
     if (!f) return;
