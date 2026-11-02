@@ -31,7 +31,6 @@
   --cahaya-1: #A6EBCB; --cahaya-2: #B3DDF6; --cahaya-3: #E6F6C0;
   --grid: rgba(14,120,100,.055);
   --pendar: none;
-  --logo-kertas: #FFFFFF;
   color-scheme: light;
 
   --huruf-ui: "Plus Jakarta Sans", "Noto Naskh Arabic", "Traditional Arabic", system-ui, sans-serif;
@@ -77,7 +76,6 @@
   --cahaya-1: #0D5C40; --cahaya-2: #0B3F5E; --cahaya-3: #1E3A12;
   --grid: rgba(60,235,176,.05);
   --pendar: none;
-  --logo-kertas: #0B1A1C;
   --samping: #0A2A20; --samping-2: #08231B;
   --ikon-hijau: rgba(60,235,176,.14); --ikon-hijau-tinta: #6EE7B7;
   --ikon-biru: rgba(96,165,250,.16);  --ikon-biru-tinta: #93C5FD;
@@ -110,7 +108,6 @@
   --cahaya-1: #0D5C40; --cahaya-2: #0B3F5E; --cahaya-3: #1E3A12;
   --grid: rgba(60,235,176,.05);
   --pendar: none;
-  --logo-kertas: #0B1A1C;
   --samping: #0A2A20; --samping-2: #08231B;
   --ikon-hijau: rgba(60,235,176,.14); --ikon-hijau-tinta: #6EE7B7;
   --ikon-biru: rgba(96,165,250,.16);  --ikon-biru-tinta: #93C5FD;
@@ -137,14 +134,9 @@ body {
 button { font: inherit; color: inherit; }
 
 /* huruf "teknologi" cuma buat judul & angka; isi tetap huruf biasa biar enak dibaca */
-header h1, .subjudul, .merek strong, .nomor, .baris-nomor, .angka-angka b,
+header h1, .subjudul, .merek strong, .nomor, .baris-nomor,
 .bagian h2, .panduan h2, .kartu-status h2, .pertemuan-kepala h3, .judul-masuk { font-family: var(--huruf-judul); letter-spacing: -.015em; }
 .gradasi { color: var(--hijau); }
-
-/* logo ikut warna tema */
-.logo .logo-kertas { fill: var(--logo-kertas); stroke: var(--hijau); }
-.logo .logo-garis { stroke: var(--hijau); }
-.logo .logo-lingkar { stroke: var(--merah); }
 
 /* tombol ganti tema */
 .tombol-tema {
@@ -173,7 +165,7 @@ header h1, .subjudul, .merek strong, .nomor, .baris-nomor, .angka-angka b,
    ===================================================== */
 .samping { display: none; }
 
-.utama { min-width: 0; }
+.utama { min-width: 0; --lebar-isi: 760px; }
 
 header {
   position: sticky; top: 0; z-index: 10;
@@ -208,7 +200,6 @@ header h1 {
 #tombolKembali:hover { border-color: var(--garis-tebal); }
 
 /* lebar kolom isi: 760px, layar tertentu lebih lebar (diatur di bawah) */
-.utama { --lebar-isi: 760px; }
 main {
   max-width: var(--lebar-isi);
   padding: 20px 16px 112px;   /* bawah dilebihin biar nggak ketutup menu bawah */
@@ -452,7 +443,6 @@ body:not([data-status="aktif"]) header { display: none; }
    ===================================================== */
 .info { margin: 0; font-size: 16px; color: var(--tinta-redup); overflow-wrap: anywhere; }
 .info-utama { margin: 0; font-weight: 600; }
-.sapa { margin: 0; font-size: 18px; font-weight: 600; }
 .peringatan { margin: 0; font-size: 15px; color: var(--merah); }
 
 .subjudul {
@@ -498,9 +488,9 @@ body:not([data-status="aktif"]) header { display: none; }
 .tombol-utama:disabled, .tombol-kedua:disabled, .tombol-teks:disabled { opacity: .6; cursor: wait; }
 
 /* di HP tombol utama selebar layar, di layar lebar seukuran isinya */
-main > .tombol-utama, main > .tombol-kedua, .modul-isi > .tombol-kedua, form > .tombol-utama, .beranda-utama > .tombol-utama { width: 100%; }
+main > .tombol-utama, main > .tombol-kedua, .modul-isi > .tombol-kedua, form > .tombol-utama { width: 100%; }
 @media (min-width: 700px) {
-  main > .tombol-utama, main > .tombol-kedua, .modul-isi > .tombol-kedua, form > .tombol-utama, .beranda-utama > .tombol-utama { width: auto; align-self: flex-start; }
+  main > .tombol-utama, main > .tombol-kedua, .modul-isi > .tombol-kedua, form > .tombol-utama { width: auto; align-self: flex-start; }
 }
 
 .tombol-teks {
@@ -579,17 +569,7 @@ main > .tombol-utama, main > .tombol-kedua, .modul-isi > .tombol-kedua, form > .
    BERANDA
    ===================================================== */
 .beranda { display: flex; flex-direction: column; gap: 20px; }
-.beranda-utama, .beranda-samping { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .beranda .subjudul { margin-top: 4px; }
-/* di HP: pengingat & lanjutkan tampil duluan, daftar mapel di bawahnya */
-.beranda-samping { order: -1; }
-
-/* laptop lebar: 2 kolom, mapel di kiri, lanjutkan & pengingat di kanan */
-@media (min-width: 1200px) {
-  .utama:has(.beranda.ada-samping) { --lebar-isi: 1120px; }
-  .beranda.ada-samping { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
-  .beranda-samping { order: 0; position: sticky; top: 110px; }
-}
 
 /* panduan mulai: cuma muncul kalau belum ada mapel sama sekali */
 .panduan {
@@ -623,22 +603,7 @@ main > .tombol-utama, main > .tombol-kedua, .modul-isi > .tombol-kedua, form > .
 /* ringkasan angka buat kurikulum */
 .ringkasan { display: flex; flex-direction: column; gap: 12px; }
 .ringkasan .subjudul { margin: 0; }
-.angka-angka { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-@media (min-width: 560px) { .angka-angka { grid-template-columns: repeat(4, 1fr); } }
-.angka-angka.tiga { grid-template-columns: repeat(3, 1fr); }
-.angka-angka > div {
-  display: flex; flex-direction: column; padding: 12px 14px;
-  background: var(--lembar); border: 1px solid var(--kaca-garis); border-radius: var(--sudut);
-  box-shadow: var(--bayang);
-}
-.angka-angka b { font-size: 28px; font-weight: 700; line-height: 1.15; }
-.angka-angka span { font-size: 15px; font-weight: 600; color: var(--tinta-redup); }
 .panduan > p { margin: 0; color: var(--tinta-redup); font-size: 16px; }
-
-.lanjutkan { display: flex; flex-direction: column; gap: 10px; }
-.lanjutkan .subjudul { margin: 0; }
-.lanjutkan .baris { min-height: 56px; padding: 10px 14px; }
-.lanjutkan .baris-isi strong { font-size: 17px; }
 
 /* =====================================================
    HALAMAN MAPEL: pilihan semester + tab
@@ -1298,7 +1263,6 @@ textarea:dir(rtl), input:dir(rtl) {
 .label-isian { font-size: 16px; font-weight: 600; flex-basis: 100%; }
 .pilih-file { cursor: pointer; min-height: 44px; }
 .isian-pdf .info { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
-.info.kecil { font-size: 12.5px; }
 .draf-ai { gap: 8px; }
 .draf-ai.dibuang { opacity: .55; }
 .draf-ai.ada-salah { border-color: var(--merah); }
@@ -1361,7 +1325,6 @@ textarea:dir(rtl), input:dir(rtl) {
 .pilih-kelompok button:focus-visible { outline: 2px solid var(--hijau); outline-offset: 2px; }
 
 /* profil: pilih ustadz / ustadzah */
-.label-sapaan { margin: 6px 0 -4px; font-weight: 600; }
 
 /* centang & radio digambar sendiri biar sama di semua HP/browser */
 :where(:not(.saklar)) > input[type="checkbox"], :where(:not(.saklar)) > input[type="radio"] {
@@ -1509,7 +1472,6 @@ label.pilih-peran .menu-pilih { min-width: 160px; }
   .samping .samping-bawah { border-top-color: rgba(255,255,255,.14); }
   .samping .cari-samping input { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.16); color: var(--samping-teks); }
   .samping .cari-samping input::placeholder { color: var(--samping-redup); }
-  .samping .logo .logo-kertas { fill: #FFFFFF; }
 }
 .menu-item .ikon-menu { width: 20px; height: 20px; flex: none; align-self: center; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -1521,7 +1483,6 @@ label.pilih-peran .menu-pilih { min-width: 160px; }
   #tombolKembali { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.18); color: #FFFFFF; }
   header .tombol-tema { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.18); color: #FFFFFF; }
   .tanda-coba { background: rgba(255,255,255,.14); color: #FFFFFF; }
-  .judul-logo .logo .logo-kertas { fill: #FFFFFF; }
 }
 
 /* ---- kartu sambutan ---- */

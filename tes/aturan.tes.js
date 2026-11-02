@@ -29,8 +29,9 @@ function ambilFungsi(src, nama) {
 // konstanta, misal "const jadiTeks = (x) => ...;" (boleh beberapa baris, sampai ";" di akhir baris)
 const ambilKonstanta = (src, nama) => src.match(new RegExp(`^const ${nama} = [\\s\\S]*?;$`, "m"))[0];
 
-const alat = baca("js/alat.js");
-const modulJs = baca("js/modul.js");
+// alat bantu umum (alat.js) + alat bantu bentuk data (datasoal.js)
+const alat = baca("js/alat.js") + "\n" + baca("js/datasoal.js");
+const soalJs = baca("js/soal.js");
 const cadanganJs = baca("js/cadangan.js");
 const ctx = { TextEncoder, console };
 vm.createContext(ctx);
@@ -39,7 +40,7 @@ vm.runInContext([
   ...["BATAS_SOAL", "BATAS_DOK", "tambahKeDaftar", "buangDariDaftar", "adalahObjek", "jadiTeks", "daftarObjek", "HURUF_ARAB"].map(n => ambilKonstanta(alat, n)),
   ...["salin", "samaIsi", "pasangDiJalur", "rapikanSoal", "galatPanjangSoal", "ukuranNilai", "ukuranDok",
       "amankanSoal", "amankanSalinan", "amankanDok", "aman", "arah", "potong"].map(n => ambilFungsi(alat, n)),
-  ambilFungsi(modulJs, "kartuSoal"),
+  ambilFungsi(soalJs, "kartuSoal"),
   ambilKonstanta(cadanganJs, "JENIS_PULIHKAN"), ambilFungsi(cadanganJs, "rencanaPulihkan"),
   baca("js/aturan.js"),
   "this.ekspor = { buatAturan, pasangDiJalur, rapikanSoal, galatPanjangSoal, salin, tambahKeDaftar, buangDariDaftar, samaIsi, ukuranDok, BATAS_DOK, amankanDok, kartuSoal, rencanaPulihkan };"
