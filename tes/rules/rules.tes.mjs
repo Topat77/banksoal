@@ -231,3 +231,40 @@ test("pulihkan cadangan: TU boleh BIKIN modul/sumatif/usulan atas nama guru (nil
   await assertFails(tulis(aminah(), "mapel/bi7b/modul/m9", modul({ pemilik: "hasan" })));
   await assertFails(tulis(yusuf(), "grup/g-bi7/usulan/u9", usulan({ pemilik: "yusuf" })));
 });
+
+test("data admin (pengaturan, kelas, siswa, grup, mapel): ustadz nggak bisa nulis, walau pengampu / koordinator", async () => {
+  const db = hasan();   // pengampu bi7a & kelas k7a, koordinator g-bi7
+  await assertFails(tulis(db, "pengaturan/lembaga", { nama: "PKBM" }));
+  await assertFails(tulis(db, "pengaturan/bobot", { umum: { tugas: 100 } }));
+  await assertFails(tulis(db, "kelas/k7a", { pengampu: ["hasan"], nama: "7A" }));
+  await assertFails(tulis(db, "kelas/k9", { pengampu: ["hasan"] }));
+  await assertFails(hapus(db, "kelas/k7a"));
+  await assertFails(tulis(db, "santri/sa1", { nama: "Ganti", kelasId: "k7a" }));
+  await assertFails(tulis(db, "santri/sa9", { nama: "Baru", kelasId: "k7a" }));
+  await assertFails(hapus(db, "santri/sa1"));
+  await assertFails(tulis(db, "grup/g-bi7", { pengampu: ["hasan", "aminah"], koordinator: "aminah" }));
+  await assertFails(hapus(db, "grup/g-bi7"));
+  await assertFails(tulis(db, "mapel/bi7a", { pengampu: ["hasan", "yusuf"], grup: "g-bi7" }));
+  await assertFails(tulis(db, "mapel/x9", { pengampu: ["hasan"], grup: "g9" }));
+  await assertFails(hapus(db, "mapel/bi7a"));
+});
+
+test("data admin: akun menunggu juga nggak bisa nulis", async () => {
+  const db = sebagai("baru", "baru@x");
+  await assertFails(tulis(db, "pengaturan/lembaga", { nama: "PKBM" }));
+  await assertFails(tulis(db, "kelas/k9", { pengampu: ["baru"] }));
+  await assertFails(tulis(db, "santri/sa9", { nama: "Baru", kelasId: "k7a" }));
+  await assertFails(tulis(db, "grup/g9", { pengampu: ["baru"], koordinator: "baru" }));
+  await assertFails(tulis(db, "mapel/x9", { pengampu: ["baru"], grup: "g9" }));
+});
+
+test("data admin: TU boleh nulis, tapi nggak boleh jadi pengampu", async () => {
+  const db = tu();
+  await assertSucceeds(tulis(db, "pengaturan/lembaga", { nama: "PKBM" }));
+  await assertSucceeds(tulis(db, "kelas/k7a", { pengampu: ["hasan"], nama: "7A" }));
+  await assertSucceeds(tulis(db, "santri/sa9", { nama: "Baru", kelasId: "k7a" }));
+  await assertSucceeds(tulis(db, "grup/g-bi7", { pengampu: ["hasan", "aminah"], koordinator: "aminah" }));
+  await assertSucceeds(tulis(db, "mapel/x9", { pengampu: ["hasan"], grup: "g-bi7" }));
+  await assertFails(tulis(db, "mapel/x8", { pengampu: ["tu"], grup: "g-bi7" }));
+  await assertSucceeds(hapus(db, "santri/sa1"));
+});

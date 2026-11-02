@@ -75,7 +75,7 @@ Auto-refresh Live Server **nggak jalan**, karena script yang disisipin Live Serv
 
 ## Tes
 Folder `tes/` nggak dimuat aplikasi, jadi nggak perlu didaftarin di `index.html`/`sw.js`. Tiap ngubah rules / `aturan.js`, jalanin dua-duanya dan tambahin kasusnya.
-- `node tes/aturan.tes.js`: cepat, tanpa pasang apa-apa. Ngetes `js/aturan.js` (salinan rules), alat bantu data, dan render soal rusak.
+- `node tes/aturan.tes.js`: cepat, tanpa pasang apa-apa. Ngetes `js/aturan.js` (salinan rules), alat bantu data, render soal rusak, baca jawaban AI, hitung nilai, paket acak cetak, batas ukuran dokumen, dan daftar file JS (`index.html` / `fileKurang()` / `INTI`) + hash CSP yang harus tetap sinkron.
 - `cd tes/rules && npm install && npm run tes`: ngetes **`firestore.rules` yang asli** di Firebase Emulator. Butuh Java 21 (`winget install EclipseAdoptium.Temurin.21.JDK`) dan `npm i -g firebase-tools`. Project-nya `demo-banksoal`, jadi nggak perlu login dan nggak nyentuh data beneran. Kalau `java` belum kebaca, buka terminal baru (atau set `JAVA_HOME`).
 
 ## Kuota Firestore (paket gratis: 50.000 baca / hari)

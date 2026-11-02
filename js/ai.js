@@ -187,12 +187,22 @@ function bacaJawabanAI(teks, bahan) {
       bacaanId: null
     };
     if (pg) {
-      pilihan = pilihan.filter(Boolean).slice(0, 5);
+      // pilihan kosong dibuang, tapi kunci angka / huruf dari AI masih nunjuk urutan ASLI,
+      // jadi dipetakan dulu ke urutan setelah dibuang (nunjuk pilihan kosong = nggak jelas)
+      const terisi = pilihan.map((x, i) => ({ x, i })).filter(o => o.x).slice(0, 5);
+      pilihan = terisi.map(o => o.x);
       pilihan.forEach((x, i) => d.pilihan[i] = x);
-      let k = s.kunci;
-      if (typeof k === "string") k = /^[A-Ea-e]$/.test(k.trim()) ? "ABCDE".indexOf(k.trim().toUpperCase()) : (pilihan.indexOf(k.trim()) >= 0 ? pilihan.indexOf(k.trim()) : Number(k));
-      d.kunci = Number.isInteger(k) && k >= 0 && k < pilihan.length ? k : 0;
-      d.ragu = !(Number.isInteger(k) && k >= 0 && k < pilihan.length);   // kunci nggak jelas → tandai
+      let k = s.kunci, urutanAsli = true;
+      if (typeof k === "string") {
+        const t = k.trim();
+        if (/^[A-Ea-e]$/.test(t)) k = "ABCDE".indexOf(t.toUpperCase());
+        else if (pilihan.includes(t)) { k = pilihan.indexOf(t); urutanAsli = false; }
+        else k = Number(t);
+      }
+      if (urutanAsli && Number.isInteger(k)) k = terisi.findIndex(o => o.i === k);
+      const jelas = Number.isInteger(k) && k >= 0 && k < pilihan.length;
+      d.kunci = jelas ? k : 0;
+      d.ragu = !jelas;   // kunci nggak jelas → tandai
     } else {
       d.pedoman = String(s.pedoman || s.kunci || s.jawaban || "").trim();
     }
