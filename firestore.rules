@@ -228,11 +228,12 @@ service cloud.firestore {
       }
 
       // lembar nilai satu semester: diisi pengampu mapel ini aja;
-      // admin cuma bisa lihat (buat pantauan dan rapor), nggak bisa bikin atau ngubah
+      // admin cuma bisa lihat (buat pantauan dan rapor), nggak bisa bikin atau ngubah,
+      // walau uid-nya kebetulan ada di daftar pengampu
       match /nilai/{id} {
         allow read: if aktif() && (kurikulum() || pengampu(idMapel));
-        allow create: if aktif() && pengampu(idMapel) && nilaiValid();
-        allow update: if aktif() && pengampu(idMapel) && nilaiValid();
+        allow create: if aktif() && pengampu(idMapel) && !kurikulum() && nilaiValid();
+        allow update: if aktif() && pengampu(idMapel) && !kurikulum() && nilaiValid();
         // yang boleh menghapus cuma admin, dan cuma buat ngebersihin waktu mapelnya sudah dihapus
         allow delete: if kurikulum()
           && !exists(/databases/$(database)/documents/mapel/$(idMapel));
