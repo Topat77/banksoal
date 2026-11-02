@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { initializeTestEnvironment, assertSucceeds, assertFails } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, deleteDoc, arrayUnion, arrayRemove, deleteField } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteDoc, arrayUnion, arrayRemove, deleteField, collection, query, where, getDocs } from "firebase/firestore";
 
 // Email admin awal yang asli sengaja nggak ditulis di repo: firestore.rules cuma nyimpen hash-nya.
 // Buat tes, hash di rules diganti sementara dengan hash email contoh ini.
@@ -267,4 +267,23 @@ test("data admin: TU boleh nulis, tapi nggak boleh jadi pengampu", async () => {
   await assertSucceeds(tulis(db, "mapel/x9", { pengampu: ["hasan"], grup: "g-bi7" }));
   await assertFails(tulis(db, "mapel/x8", { pengampu: ["tu"], grup: "g-bi7" }));
   await assertSucceeds(hapus(db, "santri/sa1"));
+});
+
+// ustadz cuma langganan yang terkait dirinya (hemat kuota baca): query ini harus diterima rules
+const daftar = (db, jalur, ...syarat) => getDocs(query(collection(db, jalur), ...syarat.map(([k, op, v]) => where(k, op, v))));
+
+test("hemat kuota: ustadz bisa query mapel / grup / kelas miliknya, akun menunggu nggak", async () => {
+  const db = hasan();
+  const ampu = await assertSucceeds(daftar(db, "mapel", ["pengampu", "array-contains", "hasan"]));
+  assert.deepEqual(ampu.docs.map(d => d.id).sort(), ["bi7a", "tupeng"]);
+  const segrup = await assertSucceeds(daftar(db, "mapel", ["grup", "in", ["g-bi7"]]));
+  assert.deepEqual(segrup.docs.map(d => d.id).sort(), ["bi7a", "bi7b", "tupeng"]);
+  const grup = await assertSucceeds(daftar(db, "grup", ["pengampu", "array-contains", "hasan"]));
+  assert.deepEqual(grup.docs.map(d => d.id), ["g-bi7"]);
+  const kelas = await assertSucceeds(daftar(db, "kelas", ["pengampu", "array-contains", "hasan"]));
+  assert.deepEqual(kelas.docs.map(d => d.id), ["k7a"]);
+  const baru = sebagai("baru", "baru@x");
+  await assertFails(daftar(baru, "mapel", ["pengampu", "array-contains", "baru"]));
+  await assertFails(daftar(baru, "grup", ["pengampu", "array-contains", "baru"]));
+  await assertFails(daftar(baru, "kelas", ["pengampu", "array-contains", "baru"]));
 });

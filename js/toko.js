@@ -138,6 +138,57 @@ function aturStatus() {
 }
 
 // ====== PANTAU DATA ======
+// daftar mapel yang kelihatan di perangkat ini udah lengkap
+function mapelMasuk(daftar) {
+  toko.mapel = daftar.sort((a, c) => (a.nama + a.kelas).localeCompare(c.nama + c.kelas, "id"));
+  toko.mapelSiap = true;
+  aturLanggananMapel();
+  aturLanggananGrup();
+  aturLanggananSantri();
+  sinkronGrup();
+  berubah();
+}
+
+// ustadz: mapel yang diampu, lalu (dari grupnya) mapel kelas lain di grup yang sama.
+// Firestore "in" maks. 30 nilai, jadi grupnya dipotong per 30.
+let mapelAmpu = null;            // null = belum kebaca
+let mapelSegrupGuru = {};        // potongan ke-i → daftar mapel (null = belum kebaca)
+let langgananSegrup = [];
+let grupSegrupTerpasang = null;
+let generasiSegrup = 0;          // naik tiap langganan segrup diganti: kabar dari langganan lama diabaikan
+function pasangMapelGuru() {
+  langgananData.push(toko.backend.pantauKoleksi("mapel", [["pengampu", "array-contains", uidSaya()]], daftar => {
+    mapelAmpu = daftar;
+    aturLanggananSegrup();
+    gabungMapelGuru();
+  }, laporGagal("mapel")));
+}
+function aturLanggananSegrup() {
+  const gids = [...new Set(mapelAmpu.map(m => m.grup || idGrup(m)))].sort();
+  const kunci = gids.join("|");
+  if (kunci === grupSegrupTerpasang) return;
+  grupSegrupTerpasang = kunci;
+  langgananSegrup.forEach(berhenti => berhenti());
+  langgananSegrup = [];
+  mapelSegrupGuru = {};
+  const gen = ++generasiSegrup;
+  for (let i = 0; i < gids.length; i += 30) {
+    mapelSegrupGuru[i] = null;
+    langgananSegrup.push(toko.backend.pantauKoleksi("mapel", [["grup", "in", gids.slice(i, i + 30)]], daftar => {
+      if (gen !== generasiSegrup) return;
+      mapelSegrupGuru[i] = daftar;
+      gabungMapelGuru();
+    }, laporGagal("mapel segrup")));
+  }
+}
+function gabungMapelGuru() {
+  if (!mapelAmpu || Object.values(mapelSegrupGuru).some(x => x === null)) return;   // tunggu lengkap
+  const peta = new Map();
+  for (const m of Object.values(mapelSegrupGuru).flat()) peta.set(m.id, m);
+  for (const m of mapelAmpu) peta.set(m.id, m);   // yang diampu paling baru
+  mapelMasuk([...peta.values()]);
+}
+
 function pasangData(peran) {
   peranTerpasang = peran;
   const b = toko.backend;
@@ -151,17 +202,15 @@ function pasangData(peran) {
     berubah();
   }, laporGagal("bobot")));
 
-  langgananData.push(b.pantauKoleksi("mapel", [], daftar => {
-    toko.mapel = daftar.sort((a, c) => (a.nama + a.kelas).localeCompare(c.nama + c.kelas, "id"));
-    toko.mapelSiap = true;
-    aturLanggananMapel();
-    aturLanggananGrup();
-    aturLanggananSantri();
-    sinkronGrup();
-    berubah();
-  }, laporGagal("mapel")));
+  // Hemat kuota baca: admin butuh SEMUA mapel, grup, kelas. Ustadz cuma yang terkait dirinya:
+  // mapel yang dia ampu + mapel lain satu grupnya, grup yang dia ikuti, kelas yang dia ajar.
+  const guru = peran !== "kurikulum";
+  const saringSaya = guru ? [["pengampu", "array-contains", uidSaya()]] : [];
 
-  langgananData.push(b.pantauKoleksi("grup", [], daftar => {
+  if (guru) pasangMapelGuru();
+  else langgananData.push(b.pantauKoleksi("mapel", [], mapelMasuk, laporGagal("mapel")));
+
+  langgananData.push(b.pantauKoleksi("grup", saringSaya, daftar => {
     toko.grup = daftar;
     toko.grupSiap = true;
     aturLanggananMapel();
@@ -170,7 +219,7 @@ function pasangData(peran) {
     berubah();
   }, laporGagal("grup")));
 
-  langgananData.push(b.pantauKoleksi("kelas", [], daftar => {
+  langgananData.push(b.pantauKoleksi("kelas", saringSaya, daftar => {
     toko.kelas = daftar;
     toko.kelasSiap = true;
     aturLanggananSantri();
@@ -381,6 +430,12 @@ function laporGagal(apa) {
 function hentikanData() {
   langgananData.forEach(berhenti => berhenti());
   langgananData = [];
+  langgananSegrup.forEach(berhenti => berhenti());
+  langgananSegrup = [];
+  mapelSegrupGuru = {};
+  mapelAmpu = null;
+  grupSegrupTerpasang = null;
+  generasiSegrup++;
   for (const id of Object.keys(langgananMapel)) langgananMapel[id].henti.forEach(berhenti => berhenti());
   langgananMapel = {};
   for (const id of Object.keys(langgananGrup)) langgananGrup[id].henti.forEach(berhenti => berhenti());
