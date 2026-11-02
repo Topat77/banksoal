@@ -29,16 +29,14 @@ export async function buatBackendFirebase(konfig) {
 
   // App Check: pengaman biar layanan Firebase (terutama AI) cuma bisa dipakai dari aplikasi ini.
   // Dipasang kalau site key reCAPTCHA-nya sudah diisi di konfig.js.
-  let appCheck = null, sdkAppCheck = null;   // dipakai juga buat manggil backend AI (functions/)
   if (setelanAI.appCheckKey) {
     try {
       // di laptop (Live Server) pakai "debug token": kodenya muncul di Console browser,
       // lalu didaftarin sekali di Firebase → App Check → Apps → Manage debug tokens
       if (["localhost", "127.0.0.1"].includes(location.hostname)) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
       // pakai Fraud Defense (dulu namanya reCAPTCHA Enterprise); reCAPTCHA v3 lama udah nggak diterima
-      sdkAppCheck = await import(`${SDK}/firebase-app-check.js`);
-      const { initializeAppCheck, ReCaptchaEnterpriseProvider } = sdkAppCheck;
-      appCheck = initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(setelanAI.appCheckKey), isTokenAutoRefreshEnabled: true });
+      const { initializeAppCheck, ReCaptchaEnterpriseProvider } = await import(`${SDK}/firebase-app-check.js`);
+      initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(setelanAI.appCheckKey), isTokenAutoRefreshEnabled: true });
     } catch (err) {
       console.warn("App Check gagal dipasang:", err);
     }
@@ -61,36 +59,6 @@ export async function buatBackendFirebase(konfig) {
     if (pakaiThinkingRendah) generationConfig.thinkingConfig = { thinkingLevel: "LOW" };
     modelAI[kunci] = layananAI.sdk.getGenerativeModel(layananAI.ai, { model: nama, generationConfig }, { timeout: BATAS_TUNGGU_AI });
     return modelAI[kunci];
-  }
-  // Satu kali minta ke satu model, hasilnya teks.
-  // Kalau ai.server diisi di konfig.js: lewat backend (functions/), yang ngecek login, akun aktif,
-  // & jatah harian, dan nyimpen kunci Gemini di server. Kalau kosong: langsung lewat Firebase AI Logic.
-  // Galatnya dibikin sama bentuknya ([kode] pesan), jadi logika coba ulang di tanyaAI nggak berubah.
-  async function mintaKeModel(nama, bagian) {
-    if (!setelanAI.server) {
-      const hasil = await (await ambilModelAI(nama)).generateContent(bagian);
-      return hasil.response.text();
-    }
-    const pdf = bagian[1] ? { mime: bagian[1].inlineData.mimeType, data: bagian[1].inlineData.data } : null;
-    const header = { "Content-Type": "application/json" };
-    if (auth.currentUser) header.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
-    if (appCheck) header["X-Firebase-AppCheck"] = (await sdkAppCheck.getToken(appCheck)).token;
-    const henti = new AbortController();
-    const jam = setTimeout(() => henti.abort(), BATAS_TUNGGU_AI);
-    let res;
-    try {
-      res = await fetch(setelanAI.server, {
-        method: "POST", headers: header, signal: henti.signal,
-        body: JSON.stringify({ model: nama, perintah: bagian[0].text, pdf, thinking: pakaiThinkingRendah ? "LOW" : null })
-      });
-    } catch (err) {
-      throw new Error(henti.signal.aborted ? "Request timeout has expired" : `Error fetching from ${setelanAI.server}: ${err.message}`);
-    } finally {
-      clearTimeout(jam);
-    }
-    const isi = await res.json().catch(() => ({}));
-    if (!res.ok) throw Object.assign(new Error(isi.galat || `[${res.status}] Backend AI bermasalah`), { customErrorData: { status: res.status } });
-    return String(isi.teks || "");
   }
   const kodeHTTP = (err) => {
     const s = err && err.customErrorData && err.customErrorData.status;
@@ -247,9 +215,9 @@ export async function buatBackendFirebase(konfig) {
           await tunggu(ulang ? 3000 * i : 1000);
         }
         try {
-          const teks = await mintaKeModel(nama, bagian);
+          const hasil = await (await ambilModelAI(nama)).generateContent(bagian);
           if (nama === utama) utamaBermasalahSampai = 0;
-          return teks;
+          return hasil.response.text();
         } catch (err) {
           const kode = kodeHTTP(err);
           if (kode === 400 && pakaiThinkingRendah && /thinking/i.test(String(err && err.message))) {

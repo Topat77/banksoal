@@ -274,10 +274,6 @@ service cloud.firestore {
       }
     }
 
-    // ---------- batasAI ----------
-    // jatah AI harian per akun, cuma ditulis backend (functions/, lewat Admin SDK).
-    // Sengaja nggak ada aturannya: aplikasi nggak bisa baca / ngubah.
-
     // ---------- grup mapel ----------
     // isinya daftar pengampu semua kelas di grup + koordinator UAS.
     // Diperbarui otomatis dari perangkat admin; koordinator dipilih admin.
