@@ -18,7 +18,7 @@ import {
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache,
   doc, collection, query, where, onSnapshot, setDoc, deleteDoc, deleteField, arrayUnion, arrayRemove,
-  runTransaction
+  runTransaction, waitForPendingWrites, terminate, clearIndexedDbPersistence
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const SDK = "https://www.gstatic.com/firebasejs/12.19.0";
@@ -116,8 +116,26 @@ export async function buatBackendFirebase(konfig) {
       }
     },
 
-    keluar() {
-      return signOut(auth);
+    // Keluar, lalu hapus cache offline (siswa, nilai, soal) dari perangkat ini, biar datanya
+    // nggak ketinggalan di komputer bersama. Perubahan yang belum terkirim ditunggu dulu (maks. 5 detik);
+    // kalau masih ada yang belum terkirim (misal lagi offline), cache dibiarin biar isiannya nggak hilang.
+    async keluar() {
+      let semuaTerkirim = true;
+      try {
+        await Promise.race([waitForPendingWrites(db), tunggu(5000).then(() => { throw new Error("kelamaan"); })]);
+      } catch {
+        semuaTerkirim = false;
+      }
+      await signOut(auth);
+      if (!semuaTerkirim) return;
+      try {
+        await terminate(db);
+        await clearIndexedDbPersistence(db);
+      } catch (err) {
+        console.warn("Cache offline gagal dihapus (mungkin aplikasi masih kebuka di tab lain):", err);
+      }
+      // Firestore yang udah dihentikan nggak bisa dipakai lagi, jadi dimuat ulang (balik ke layar masuk)
+      location.reload();
     },
 
     pantauDok(jalur, cb, gagal) {
