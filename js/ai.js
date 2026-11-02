@@ -460,13 +460,13 @@ function layarAISoal() {
       gambarDraf();
       tombol.querySelector("span").textContent = "Buat draft soal";
     };
-    document.getElementById("simpanDraf").onclick = () => simpanDrafAI(bahan, d, wadah);
+    document.getElementById("simpanDraf").onclick = () => simpanDrafAI(bahan, d, wadah, gambarDraf);
   }
   gambarDraf();
 }
 
 // cek & rapikan draft yang dicentang, lalu simpan
-function simpanDrafAI(bahan, d, wadah) {
+function simpanDrafAI(bahan, d, wadah, gambarUlang) {
   const dipakai = d.soal.filter(s => s.pakai);
   if (dipakai.length === 0) { kabar("Belum ada soal yang dicentang \"Pakai\"."); return; }
 
@@ -508,13 +508,21 @@ function simpanDrafAI(bahan, d, wadah) {
     if (!t) { kabar("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return kembaliKeDaftar(); }
     if (bahan.usul) {
       if (t.status === "dikunci") { kabar("UAS ini sudah dikunci TU, jadi nggak bisa diusulkan soal lagi."); return pergi("sumatif", { usul: false }); }
-      for (const s of siap) {
-        simpanUsulan(posisi.uasGrup, {
+      // siap[i] = dipakai[i] (kalau ada yang salah, udah balik di atas)
+      const terkirim = new Set();
+      siap.forEach((s, i) => {
+        const jadi = simpanUsulan(posisi.uasGrup, {
           id: buatId(), semester: t.semester, tahun: t.tahun,
           modulId: MODUL_UJIAN, soalId: s.id,
           salinan: { soal: { ...s, pertemuanId: null, bacaanId: null }, bacaan: null, judulModul: "Soal buatan AI", namaPemilik: namaSaya() },
           catatan: ""
         });
+        if (jadi) terkirim.add(dipakai[i]);
+      });
+      if (terkirim.size < siap.length) {
+        // yang kegedean tetap di draft (yang udah terkirim dibuang, biar nggak dobel kalau dikirim ulang)
+        d.soal = d.soal.filter(s => !terkirim.has(s));
+        return gambarUlang();
       }
       drafAI = null;
       kabar(`${siap.length} soal sudah dikirim sebagai usulan. Koordinator yang memutuskan dipakai atau nggak.`);

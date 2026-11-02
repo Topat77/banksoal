@@ -56,6 +56,9 @@ function htmlKartuUAS(mp, sem) {
   if (u) {
     h += `<p class="info">${(u.butir || []).length} soal${usulan.length ? ` · ${usulan.length} usulan soal menunggu` : ""}</p>`;
     h += `<div class="baris-tombol"><button class="tombol-kedua" id="bukaUAS">Buka UAS</button></div>`;
+  } else if (saya && !isiGrupSiap(gid)) {
+    // UAS grup belum kebaca: jangan tawarin "Mulai susun", nanti draf yang udah ada ketimpa
+    h += `<p class="info">Memuat UAS...</p>`;
   } else if (saya) {
     h += `<div class="baris-tombol"><button class="tombol-utama" id="mulaiUAS">Mulai susun UAS ${aman(namaSemester(sem))}</button></div>`;
   } else if (!g || !koor) {
@@ -70,6 +73,9 @@ function pasangKartuUAS(mp, sem) {
   const gid = idGrup(mp);
   klik("bukaUAS", () => bukaUAS(gid, sem, mp.id));
   klik("mulaiUAS", () => {
+    // jaga-jaga: kalau ternyata udah ada (dibuat dari perangkat lain), buka aja, jangan ditimpa
+    if (!isiGrupSiap(gid)) return;
+    if (uasGrup(gid, sem)) return bukaUAS(gid, sem, mp.id);
     simpanUAS(gid, {
       id: idLembarNilai(sem), semester: sem.semester, tahun: sem.tahun,
       nama: "Sumatif Akhir Semester", pelaksanaan: "", status: "draf", butir: []

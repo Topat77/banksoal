@@ -77,7 +77,7 @@ function htmlBagianCadangan() {
         <input type="file" id="fileCadangan" accept="application/json,.json" hidden>
         <span class="info" id="pesanCadangan" role="status"></span>
       </div>
-      <p class="info kecil"><b>Pulihkan</b> cuma ngembaliin data yang <b>hilang</b> (kehapus). Data yang masih ada nggak ditimpa, jadi aman. Akun guru nggak ikut dipulihkan: kalau login lagi, tinggal disetujui.</p>
+      <p class="info kecil"><b>Pulihkan</b> cuma ngembaliin data yang <b>hilang</b> (kehapus). Data yang masih ada nggak ditimpa, jadi aman. Akun guru dan <b>lembar nilai</b> nggak ikut dipulihkan: akun tinggal disetujui lagi kalau gurunya login, nilainya masih ada di file cadangan (buka file .json-nya buat nyalin ulang).</p>
     </section>`;
 }
 
@@ -86,10 +86,12 @@ function htmlBagianCadangan() {
 //  Yang ditulis cuma dokumen yang belum ada di database (dicek ke server lewat
 //  buatKalauBelumAda), jadi data yang masih ada nggak ketimpa dan aman dijalanin
 //  berkali-kali. Butuh internet.
+//  Lembar nilai NGGAK ikut: rules cuma ngebolehin guru pengampu bikin lembar nilai,
+//  sedangkan pulihkan jalan di akun TU. Nilainya tetap ada di file cadangan.
 // =====================================================
 const JENIS_PULIHKAN = {
   pengaturan: "pengaturan", mapel: "mapel", santri: "siswa", grup: "grup mapel",
-  modul: "modul", sumatif: "ujian sumatif", nilai: "lembar nilai", uas: "UAS bersama", usulan: "usulan soal UAS"
+  modul: "modul", sumatif: "ujian sumatif", uas: "UAS bersama", usulan: "usulan soal UAS"
 };
 
 // isi file cadangan → { jenis: [[jalur, isi dokumen], ...] }, cuma yang sekarang nggak kelihatan di aplikasi
@@ -105,13 +107,12 @@ function rencanaPulihkan(c) {
   for (const s of daftar(c.santri)) if (!ada(toko.santri, s.id)) r.santri.push([`santri/${s.id}`, tanpaId(s)]);
 
   for (const m of daftar(c.mapel)) {
+    // nilai ikut dipisah biar nggak masuk ke dokumen mapel (lembar nilai nggak dipulihkan)
     const { modul, sumatif, nilai, ...dok } = m;
     const mapelAda = ada(toko.mapel, m.id);
     if (!mapelAda) r.mapel.push([`mapel/${m.id}`, tanpaId(dok)]);
-    const isi = mapelAda ? (toko.isi[m.id] || {}) : {};
     for (const x of daftar(modul)) if (!ada(mapelAda && modulMapel(m.id), x.id)) r.modul.push([`mapel/${m.id}/modul/${x.id}`, tanpaId(x)]);
     for (const x of daftar(sumatif)) if (!ada(mapelAda && sumatifMapel(m.id), x.id)) r.sumatif.push([`mapel/${m.id}/sumatif/${x.id}`, tanpaId(x)]);
-    for (const x of daftar(nilai)) if (!ada(isi.nilai, x.id)) r.nilai.push([`mapel/${m.id}/nilai/${x.id}`, tanpaId(x)]);
   }
   for (const g of daftar(c.grup)) {
     const { uas, usulan, ...dok } = g;
@@ -126,7 +127,7 @@ function rencanaPulihkan(c) {
 // induk dulu (mapel, grup, ...), baru isinya (modul, nilai, UAS, ...)
 async function pulihkanCadangan(r) {
   const hasil = { ditulis: 0, sudahAda: 0, gagal: [] };
-  for (const tahap of [["pengaturan", "mapel", "santri", "grup"], ["modul", "sumatif", "nilai", "uas", "usulan"]]) {
+  for (const tahap of [["pengaturan", "mapel", "santri", "grup"], ["modul", "sumatif", "uas", "usulan"]]) {
     const tugas = tahap.flatMap(j => r[j]);
     const jadi = await Promise.allSettled(tugas.map(([jalur, isi]) => toko.backend.buatKalauBelumAda(jalur, isi)));
     jadi.forEach((x, i) => {
@@ -158,7 +159,7 @@ function pasangPulihkanCadangan() {
     const ringkas = Object.entries(JENIS_PULIHKAN).filter(([k]) => r[k].length).map(([k, nama]) => `• ${r[k].length} ${nama}`);
     const tanggal = c.dibuat ? new Date(c.dibuat).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "tanpa tanggal";
     if (!ringkas.length) return kabar(`Semua isi cadangan ${tanggal} masih ada di aplikasi. Nggak ada yang perlu dipulihkan.`);
-    if (!(await tanyaYakin(`Cadangan ${tanggal}.\n\nYang hilang dan bakal dipulihkan:\n${ringkas.join("\n")}\n\nData yang masih ada nggak ditimpa. Lanjut?`, { ya: "Pulihkan" }))) return;
+    if (!(await tanyaYakin(`Cadangan ${tanggal}.\n\nYang hilang dan bakal dipulihkan:\n${ringkas.join("\n")}\n\nData yang masih ada nggak ditimpa. Lembar nilai nggak ikut dipulihkan. Lanjut?`, { ya: "Pulihkan" }))) return;
 
     input.disabled = true;
     pesan.textContent = "Memulihkan...";
