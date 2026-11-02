@@ -874,14 +874,6 @@ function hapusSantri(id) {
   toko.backend.hapus(`santri/${id}`).catch(gagalSimpan);
   berubah();
 }
-function simpanLembarNilai(idMapel, lembar) {
-  const baru = { ...salin(lembar), diubah: Date.now(), diubahOleh: uidSaya(), namaPengubah: namaSaya() };
-  const w = toko.isi[idMapel];
-  if (w) pasangDiDaftar(w.nilai, baru);
-  toko.backend.tulis(`mapel/${idMapel}/nilai/${baru.id}`, tanpaId(baru)).catch(gagalSimpan);
-  berubah();
-  return baru;
-}
 // simpan sebagian lembar nilai: cuma sel yang berubah yang dikirim, biar isian dari HP lain
 // (atau pengampu lain) nggak ketimpa. perubahan: [[jalur], nilai], nilai undefined = dihapus.
 // Lembar yang belum pernah tersimpan juga dikirim sebagian: semester & tahun diisi, kolomnya

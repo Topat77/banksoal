@@ -138,12 +138,6 @@ function layarAkun() {
       if (await tanyaYakin(`Tolak ${p.nama} (${p.email})? Akun ini nggak bisa membuka isi aplikasi.`, { bahaya: true, ya: "Tolak" })) ubahPeran(p.id, "ditolak");
     };
   });
-  isi.querySelectorAll("[data-nonaktif]").forEach(b => {
-    b.onclick = async () => {
-      const p = toko.pengguna.find(x => x.id === b.dataset.nonaktif);
-      if (await tanyaYakin(`Nonaktifkan ${p.nama}? Modul dan soalnya tetap tersimpan, cuma dia nggak bisa masuk sampai diaktifkan lagi.`, { bahaya: true, ya: "Nonaktifkan" })) ubahPeran(p.id, "nonaktif");
-    };
-  });
   isi.querySelectorAll("[data-peran]").forEach(sel => {
     sel.onchange = async () => {
       const p = toko.pengguna.find(x => x.id === sel.dataset.peran);
@@ -261,9 +255,6 @@ function kelasPutra(kelas) {
 function pengampuTakSesuai(mp) {
   if (!kelasPutra(mp.kelas)) return [];
   return (mp.pengampu || []).filter(uid => sapaanPengguna(toko.pengguna.find(p => p.id === uid)) === "ustadzah");
-}
-function namaPengampuMapel(mp, uid) {
-  return namaPengguna(uid) || (mp.namaPengampu || {})[uid] || "";
 }
 
 // =====================================================
