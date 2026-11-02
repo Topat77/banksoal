@@ -20,6 +20,10 @@
 //     appCheckKey: "site key" reCAPTCHA v3 buat App Check (pengaman
 //                  biar kuota AI nggak dipakai orang lain). Boleh kosong
 //                  waktu nyoba, tapi sebaiknya diisi sebelum dipakai rame-rame.
+//     server     : alamat backend AI (functions/, fungsi tanyaAI) setelah di-deploy.
+//                  Kalau diisi, AI lewat backend: dicek login, akun aktif, & jatah
+//                  harian, dan kunci Gemini nggak pernah sampai ke HP. Kalau kosong,
+//                  AI langsung lewat Firebase AI Logic (kayak dulu). Lihat CLAUDE.md.
 // =====================================================
 
 const KONFIG = {
@@ -42,6 +46,7 @@ const KONFIG = {
   ai: {
     model: "gemini-3.8-flash",
     modelCadangan: "gemini-3.5-flash-lite",
-    appCheckKey: "6LfLRP4tAAAAAE-ZJ7xPTPcemz4mGBiACH3QVNMw"
+    appCheckKey: "6LfLRP4tAAAAAE-ZJ7xPTPcemz4mGBiACH3QVNMw",
+    server: ""   // isi setelah deploy: "https://asia-southeast2-banksoal-pkbm.cloudfunctions.net/tanyaAI"
   }
 };
