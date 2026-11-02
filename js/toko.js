@@ -729,9 +729,13 @@ function simpanNilaiSebagian(idMapel, lembar, perubahan) {
   const w = toko.isi[idMapel];
   const lama = w ? (w.nilai || []).find(x => x.id === lembar.id) : null;
   const tanda = { diubah: Date.now(), diubahOleh: uidSaya(), namaPengubah: namaSaya() };
+  // Lembar baru: lembar.kolom udah berisi hasil akhirnya (kolom yang ditambah / dibuang ikut),
+  // jadi perubahan ke "kolom" dibuang. Kalau ikut dikirim, Firebase cuma make yang terakhir
+  // (satu kolom dokumen = satu nilai), dan kolom bawaannya hilang.
+  const kolomLembar = ([jalur]) => jalur.length === 1 && jalur[0] === "kolom";
   const semua = [
     ...(lama ? [] : [[["semester"], lembar.semester], [["tahun"], lembar.tahun], [["kolom"], tambahKeDaftar(...lembar.kolom)]]),
-    ...perubahan,
+    ...(lama ? perubahan : perubahan.filter(p => !kolomLembar(p))),
     ...Object.entries(tanda).map(([k, v]) => [[k], v])
   ];
   const baru = lama ? salin(lama) : { id: lembar.id };

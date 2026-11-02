@@ -42,11 +42,12 @@ vm.runInContext([
       "amankanSoal", "amankanSalinan", "amankanDok", "aman", "arah", "potong"].map(n => ambilFungsi(alat, n)),
   ambilFungsi(soalJs, "kartuSoal"),
   ambilKonstanta(cadanganJs, "JENIS_PULIHKAN"), ambilFungsi(cadanganJs, "rencanaPulihkan"),
+  ambilFungsi(baca("js/toko.js"), "simpanNilaiSebagian"),
   baca("js/aturan.js"),
-  "this.ekspor = { buatAturan, pasangDiJalur, rapikanSoal, galatPanjangSoal, salin, tambahKeDaftar, buangDariDaftar, samaIsi, ukuranDok, BATAS_DOK, amankanDok, kartuSoal, rencanaPulihkan };"
+  "this.ekspor = { buatAturan, pasangDiJalur, rapikanSoal, galatPanjangSoal, salin, tambahKeDaftar, buangDariDaftar, samaIsi, ukuranDok, BATAS_DOK, amankanDok, kartuSoal, rencanaPulihkan, simpanNilaiSebagian };"
 ].join("\n"), ctx);
 const { buatAturan, pasangDiJalur, rapikanSoal, galatPanjangSoal, salin, tambahKeDaftar, buangDariDaftar,
-  ukuranDok, BATAS_DOK, amankanDok, kartuSoal, rencanaPulihkan } = ctx.ekspor;
+  ukuranDok, BATAS_DOK, amankanDok, kartuSoal, rencanaPulihkan, simpanNilaiSebagian } = ctx.ekspor;
 
 // fungsi dari layar lain yang logikanya murni (global yang dibutuhin dipalsuin lewat ctx)
 const aiJs = baca("js/ai.js"), nilaiJs = baca("js/nilai.js"), cetakJs = baca("js/cetak.js"), tokoJs = baca("js/toko.js");
@@ -263,7 +264,8 @@ grup("Pulihkan cadangan: yang dipulihkan cuma yang hilang");
   harap("mapel yang hilang ikut balik (tanpa daftar modul di dalamnya)", JSON.stringify(r.mapel), JSON.stringify([["mapel/fik7", { nama: "Fikih" }]]));
   harap("modul: yang hilang aja", jalur("modul"), "mapel/bi7a/modul/m2,mapel/fik7/modul/f1");
   harap("sumatif hilang", jalur("sumatif"), "mapel/bi7a/sumatif/s1");
-  harap("nilai: yang hilang aja (punya mapel yang hilang ikut)", jalur("nilai"), "mapel/fik7/nilai/l1");
+  harap("lembar nilai nggak ikut dipulihkan (rules: TU nggak boleh bikin lembar nilai)", "nilai" in r, false);
+  harap("daftar nilai nggak nyasar ke dokumen mapel", "nilai" in r.mapel[0][1], false);
   harap("UAS & usulan: yang hilang aja", jalur("uas") + "|" + jalur("usulan"), "grup/g-bi7/uas/uas2|grup/g-bi7/usulan/us1");
   harap("id nggak ikut ditulis ke isi dokumen", "id" in r.modul[0][1], false);
 }
@@ -317,6 +319,36 @@ grup("Lembar nilai dari dua perangkat barengan");
   harap("tambah kolom dari dua perangkat: dua-duanya ada", server.kolom.map(k => k.id).join(","), "k-tugas-1,k-uh-1,a,b");
   terapkan(server, [[["kolom"], buangDariDaftar({ label: "UH 2", kelompok: "uh", id: "a" })]]);
   harap("hapus kolom: cuma kolom itu yang hilang (urutan kolom objek nggak ngaruh)", server.kolom.map(k => k.id).join(","), "k-tugas-1,k-uh-1,b");
+}
+
+// =====================================================
+grup("Lembar nilai baru: tambah / hapus kolom sebelum ngisi nilai");
+{
+  // kayak ubahSebagian di firebase.js: semua perubahan jadi SATU objek, jalur yang sama = yang terakhir menang
+  const kirimKayakFirebase = (dok, perubahan) => {
+    const peta = new Map(perubahan.map(([j, v]) => [JSON.stringify(j), [j, v]]));
+    for (const [j, v] of peta.values()) pasangDiJalur(dok, j, v);
+    return dok;
+  };
+  let terkirim = null;
+  Object.assign(ctx, {
+    toko: { isi: { bi7a: { nilai: [] } }, backend: { ubahSebagian: (jalur, p) => { terkirim = p; return Promise.resolve(); } } },
+    uidSaya: () => "hasan", namaSaya: () => "Ustadz Hasan", pasangDiDaftar: () => {}, berubah: () => {}, gagalSimpan: () => {}
+  });
+  const bawaan = [{ id: "k1", kelompok: "tugas", label: "Tugas 1" }, { id: "k2", kelompok: "uh", label: "UH 1" }];
+  const coba = (kolomAkhir, perubahan) => {
+    ctx.toko.isi.bi7a.nilai = [];
+    simpanNilaiSebagian("bi7a", { id: "l1", semester: "Ganjil", tahun: "2026/2027", kolom: kolomAkhir, nilai: {} }, perubahan);
+    const jalurKolom = terkirim.filter(([j]) => j.join("/") === "kolom").length;
+    return { jalurKolom, dok: kirimKayakFirebase({}, terkirim) };
+  };
+  const baru = { id: "k3", kelompok: "uh", label: "UH 2" };
+  const t = coba([...bawaan, baru], [[["kolom"], tambahKeDaftar(baru)]]);
+  harap("tambah kolom: jalur kolom cuma dikirim sekali", t.jalurKolom, 1);
+  harap("tambah kolom: kolom bawaan nggak hilang", t.dok.kolom.map(k => k.id).join(","), "k1,k2,k3");
+  const h = coba([bawaan[1]], [[["kolom"], buangDariDaftar(bawaan[0])]]);
+  harap("hapus kolom: yang tersisa tetap kesimpan (bukan daftar kosong)", h.dok.kolom.map(k => k.id).join(","), "k2");
+  boleh("lembar baru hasil tambah kolom lolos aturan", bolehTulis("mapel/bi7a/nilai/l1", null, t.dok, akun.hasan));
 }
 
 // =====================================================
