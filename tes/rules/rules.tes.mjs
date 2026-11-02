@@ -12,16 +12,24 @@
 import { test, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { initializeTestEnvironment, assertSucceeds, assertFails } from "@firebase/rules-unit-testing";
 import { doc, getDoc, setDoc, deleteDoc, arrayUnion, arrayRemove, deleteField } from "firebase/firestore";
 
-const ADMIN_AWAL = "topatvanjava@gmail.com";   // sama dengan emailAdminAwal() di firestore.rules
+// Email admin awal yang asli sengaja nggak ditulis di repo: firestore.rules cuma nyimpen hash-nya.
+// Buat tes, hash di rules diganti sementara dengan hash email contoh ini.
+const ADMIN_AWAL = "admin@contoh.id";
+const hashTes = createHash("sha256").update(ADMIN_AWAL).digest("hex");
+const teksRules = readFileSync(new URL("../../firestore.rules", import.meta.url), "utf8");
+const POLA_HASH = /(function hashAdminAwal\(\) \{\s*return )\[[^\]]*\]/;
+if (!POLA_HASH.test(teksRules)) throw new Error("hashAdminAwal() di firestore.rules nggak ketemu");
+const rulesTes = teksRules.replace(POLA_HASH, `$1['${hashTes}']`);
 let env;
 
 before(async () => {
   env = await initializeTestEnvironment({
     projectId: "demo-banksoal",
-    firestore: { rules: readFileSync(new URL("../../firestore.rules", import.meta.url), "utf8"), host: "127.0.0.1", port: 8080 }
+    firestore: { rules: rulesTes, host: "127.0.0.1", port: 8080 }
   });
 });
 after(async () => { await env.cleanup(); });
@@ -158,6 +166,28 @@ test("profil: kolom dikenal, nama ≤ 100, NIP cuma TU", async () => {
   await assertSucceeds(tulis(tu(), "pengguna/hasan", { ...p, nip: "999", diubahOleh: "tu", diubah: 2 }));
 });
 
+test("akun ditolak / nonaktif cuma bisa nyatat terakhirMasuk", async () => {
+  const p = { nama: "Akun Nonaktif", email: "mati@x", peran: "nonaktif", terakhirMasuk: 1 };
+  await env.withSecurityRulesDisabled(async (c) => { await setDoc(doc(c.firestore(), "pengguna/mati"), p); });
+  const db = sebagai("mati", "mati@x");
+  await assertSucceeds(tulis(db, "pengguna/mati", { ...p, terakhirMasuk: 2 }));
+  await assertFails(tulis(db, "pengguna/mati", { ...p, nama: "Ganti Nama" }));
+  await assertSucceeds(tulis(sebagai("baru", "baru@x"), "pengguna/baru", { nama: "Nama Baru", email: "baru@x", peran: "menunggu" }));
+});
+
+test("nama pembuat nggak bisa dipalsukan", async () => {
+  await assertFails(tulis(hasan(), "mapel/bi7a/modul/m2", modul({ namaPemilik: "Ustadzah Aminah" })));
+  await assertSucceeds(tulis(hasan(), "mapel/bi7a/modul/m2", modul()));
+  await assertFails(tulis(hasan(), "mapel/bi7a/modul/m1", modul({ namaPemilik: "Ustadzah Aminah" })));
+  await assertSucceeds(tulis(hasan(), "mapel/bi7a/modul/m1", modul({ judul: "Baru" })));   // nama nggak berubah: tetap boleh
+  await assertFails(tulis(hasan(), "mapel/bi7a/sumatif/s2", sumatif({ namaPemilik: "Admin TU" })));
+  await assertFails(tulis(aminah(), "grup/g-bi7/usulan/x", usulan({ namaPemilik: "Ustadz Hasan" })));
+  await assertFails(tulis(hasan(), "mapel/bi7a/nilai/l1", { namaPengubah: "Ustadzah Aminah" }, { merge: true }));
+  await assertSucceeds(tulis(hasan(), "mapel/bi7a/nilai/l1", { namaPengubah: "Ustadz Hasan", nilai: { s1: { k1: 90 } } }, { merge: true }));
+  await assertFails(tulis(hasan(), "grup/g-bi7/uas/u1", { ...sem, nama: "UAS", status: "draf", butir: [], diubahOleh: "hasan", namaPengubah: "Admin TU" }));
+  await assertSucceeds(tulis(tu(), "mapel/bi7a/modul/m9", modul()));   // pulihkan cadangan oleh TU: nama asli pemiliknya
+});
+
 test("admin awal wajib email terverifikasi", async () => {
   const profil = { nama: "Admin", email: ADMIN_AWAL, foto: "", peran: "kurikulum", dibuat: 1, terakhirMasuk: 1 };
   await assertSucceeds(tulis(sebagai("tu2", ADMIN_AWAL, true), "pengguna/tu2", profil));
@@ -183,6 +213,9 @@ test("nilai: disimpan sebagian dari dua perangkat, cuma pengampu", async () => {
   await assertFails(tulis(aminah(), j, { nilai: { s1: { k1: 1 } } }, { merge: true }));
   await assertFails(tulis(tu(), j, { nilai: { s1: { k1: 1 } } }, { merge: true }));
   await assertFails(hapus(hasan(), j));
+  // TU cuma boleh ngehapus lembar nilai buat bersih-bersih setelah mapelnya dihapus
+  await assertFails(hapus(tu(), j));
+  await env.withSecurityRulesDisabled(async (c) => { await deleteDoc(doc(c.firestore(), "mapel/bi7a")); });
   await assertSucceeds(hapus(tu(), j));
 });
 

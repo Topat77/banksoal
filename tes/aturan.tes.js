@@ -63,7 +63,7 @@ const db = {
   "grup/g-fik7": { pengampu: ["yusuf"], koordinator: "yusuf" },
   "kelas/k7a": { pengampu: ["hasan"] }
 };
-const { bolehBaca, bolehTulis } = buatAturan(j => db[j], ["tu@x"]);
+const { bolehBaca, bolehTulis } = buatAturan(j => db[j], (email) => email === "tu@x");
 const akun = {
   tu: { uid: "tu", email: "tu@x" }, hasan: { uid: "hasan", email: "hasan@x" },
   aminah: { uid: "aminah", email: "aminah@x" }, yusuf: { uid: "yusuf", email: "yusuf@x" },
@@ -303,6 +303,27 @@ grup("Lembar nilai dari dua perangkat barengan");
   harap("tambah kolom dari dua perangkat: dua-duanya ada", server.kolom.map(k => k.id).join(","), "k-tugas-1,k-uh-1,a,b");
   terapkan(server, [[["kolom"], buangDariDaftar({ label: "UH 2", kelompok: "uh", id: "a" })]]);
   harap("hapus kolom: cuma kolom itu yang hilang (urutan kolom objek nggak ngaruh)", server.kolom.map(k => k.id).join(","), "k-tugas-1,k-uh-1,b");
+}
+
+// =====================================================
+grup("Nama pembuat nggak bisa dipalsukan (sama kayak firestore.rules)");
+tolak("modul baru atas nama guru lain", bolehTulis("mapel/bi7a/modul/m2", null, modul({ namaPemilik: "Ustadzah Aminah" }), akun.hasan));
+boleh("modul baru pakai nama sendiri", bolehTulis("mapel/bi7a/modul/m2", null, modul(), akun.hasan));
+tolak("ganti nama pembuat modul jadi orang lain", bolehTulis("mapel/bi7a/modul/m1", modul(), modul({ namaPemilik: "Ustadzah Aminah" }), akun.hasan));
+boleh("modul lama dengan nama lama tetap bisa diedit", bolehTulis("mapel/bi7a/modul/m1", modul({ namaPemilik: "Nama Lama" }), modul({ namaPemilik: "Nama Lama", judul: "x" }), akun.hasan));
+tolak("sumatif atas nama orang lain", bolehTulis("mapel/bi7a/sumatif/s2", null, sumatif({ namaPemilik: "Admin TU" }), akun.hasan));
+tolak("usulan atas nama orang lain", bolehTulis("grup/g-bi7/usulan/x", null, usulan({ namaPemilik: "Ustadz Hasan" }), akun.aminah));
+tolak("nilai dengan namaPengubah orang lain", bolehTulis("mapel/bi7a/nilai/l1", lembar(), lembar({ namaPengubah: "Ustadzah Aminah" }), akun.hasan));
+boleh("nilai dengan nama sendiri", bolehTulis("mapel/bi7a/nilai/l1", lembar(), lembar({ namaPengubah: "Ustadz Hasan" }), akun.hasan));
+boleh("TU pulihkan modul atas nama pemilik aslinya", bolehTulis("mapel/bi7a/modul/m9", null, modul(), akun.tu));
+
+grup("Akun ditolak / nonaktif cuma bisa nyatat terakhirMasuk");
+{
+  db["pengguna/mati"] = { nama: "Akun Mati", email: "mati@x", peran: "nonaktif", terakhirMasuk: 1 };
+  const p = db["pengguna/mati"], mati = { uid: "mati", email: "mati@x" };
+  boleh("catat terakhirMasuk", bolehTulis("pengguna/mati", p, { ...p, terakhirMasuk: 2 }, mati));
+  tolak("ganti nama sendiri", bolehTulis("pengguna/mati", p, { ...p, nama: "Ganti" }, mati));
+  delete db["pengguna/mati"];
 }
 
 console.log(`\n${lolos} lolos, ${gagal} gagal`);

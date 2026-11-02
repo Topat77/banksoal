@@ -6,7 +6,8 @@
 //  versi online. Kalau ngubah aturan, ubah DUA-DUANYA.
 // =====================================================
 
-function buatAturan(ambilDok, adminAwal) {
+// cekAdminAwal(email) → true kalau email ini admin awal (versi online: dicocokin lewat hash SHA-256)
+function buatAturan(ambilDok, cekAdminAwal) {
   const profil = (auth) => auth ? ambilDok(`pengguna/${auth.uid}`) : null;
   const aktif = (auth) => {
     const p = profil(auth);
@@ -88,6 +89,9 @@ function buatAturan(ambilDok, adminAwal) {
     (!berubahKolom(lama, b, "nip") || teksAtauKosong(b, "nip", 30)) &&
     (!berubahKolom(lama, b, "foto") || teks(b, "foto", 2000));
   const nilaiKolom = (d, k) => ada(d, k) ? d[k] : null;
+  // nama pembuat / pengubah wajib sama dengan nama di profil sendiri (dicek cuma kalau berubah)
+  const namaAsli = (auth, lama, b, k) =>
+    !ada(b, k) || !berubahKolom(lama, b, k) || b[k] === nilaiKolom(profil(auth) || {}, "nama");
 
   function bolehBaca(jalur, d, auth) {
     if (!auth) return false;
@@ -130,11 +134,14 @@ function buatAturan(ambilDok, adminAwal) {
         return auth.uid === b[1] && profilValid(lama, baru) && baru.email === auth.email &&
           nilaiKolom(baru, "sapaan") === null && nilaiKolom(baru, "nip") === null &&
           (baru.peran === "menunggu" ||
-           (baru.peran === "kurikulum" && auth.emailTerverifikasi === true && adminAwal.includes(auth.email)));
+           (baru.peran === "kurikulum" && auth.emailTerverifikasi === true && cekAdminAwal(auth.email)));
       }
       if (lama && baru) {
         return profilValid(lama, baru) && (
-          (auth.uid === b[1] && baru.peran === lama.peran && baru.email === lama.email &&
+          // akun ditolak / nonaktif cuma boleh nyatat terakhirMasuk
+          (auth.uid === b[1] &&
+           (["menunggu", "ustadz", "kurikulum"].includes(lama.peran) || kolomDikenal(lama, baru, ["terakhirMasuk"])) &&
+           baru.peran === lama.peran && baru.email === lama.email &&
            sama(nilaiKolom(baru, "sapaan"), nilaiKolom(lama, "sapaan")) &&
            sama(nilaiKolom(baru, "nip"), nilaiKolom(lama, "nip"))) || kurikulum(auth));
       }
@@ -152,8 +159,8 @@ function buatAturan(ambilDok, adminAwal) {
     if (b[0] === "mapel" && b[2] === "nilai" && b.length === 4) {
       if (!aktif(auth)) return false;
       if (baru === null) return kurikulum(auth) && !ambilDok(`mapel/${b[1]}`);
-      if (!lama) return pengampu(auth, b[1]) && !kurikulum(auth) && nilaiValid(lama, baru);
-      return pengampu(auth, b[1]) && !kurikulum(auth) && nilaiValid(lama, baru);
+      if (!lama) return pengampu(auth, b[1]) && !kurikulum(auth) && namaAsli(auth, lama, baru, "namaPengubah") && nilaiValid(lama, baru);
+      return pengampu(auth, b[1]) && !kurikulum(auth) && namaAsli(auth, lama, baru, "namaPengubah") && nilaiValid(lama, baru);
     }
     // santri & kelas: diisi, diubah, dihapus admin; ustadz cuma lihat
     if (b[0] === "santri" && b.length === 2) return kurikulum(auth);
@@ -163,8 +170,10 @@ function buatAturan(ambilDok, adminAwal) {
       if (!aktif(auth)) return false;
       const valid = b[2] === "modul" ? modulValid : sumatifValid;
       // admin boleh BIKIN atas nama guru (mulihin dari cadangan); ngubah tetap cuma pemiliknya
-      if (!lama && baru) return ((baru.pemilik === auth.uid && pengampu(auth, b[1])) || kurikulum(auth)) && valid(lama, baru);
-      if (lama && baru) return lama.pemilik === auth.uid && baru.pemilik === auth.uid && valid(lama, baru);
+      if (!lama && baru) return ((baru.pemilik === auth.uid && pengampu(auth, b[1]) && namaAsli(auth, lama, baru, "namaPemilik")) ||
+        kurikulum(auth)) && valid(lama, baru);
+      if (lama && baru) return lama.pemilik === auth.uid && baru.pemilik === auth.uid &&
+        namaAsli(auth, lama, baru, "namaPemilik") && valid(lama, baru);
       return lama.pemilik === auth.uid || kurikulum(auth);
     }
 
@@ -176,15 +185,18 @@ function buatAturan(ambilDok, adminAwal) {
       if (kurikulum(auth)) return true;
       if (!koordinatorGrup(auth, b[1])) return false;
       const bisa = ["draf", "diajukan"];
-      if (!lama && baru) return baru.status === "draf" && uasValid(lama, baru, auth);
-      if (lama && baru) return bisa.includes(lama.status) && bisa.includes(baru.status) && uasValid(lama, baru, auth);
+      if (!lama && baru) return baru.status === "draf" && namaAsli(auth, lama, baru, "namaPengubah") && uasValid(lama, baru, auth);
+      if (lama && baru) return bisa.includes(lama.status) && bisa.includes(baru.status) &&
+        namaAsli(auth, lama, baru, "namaPengubah") && uasValid(lama, baru, auth);
       return lama.status === "draf";
     }
     // usulan soal UAS: dibuat pengampu grup, dihapus pemiliknya / koordinator / admin
     if (b[0] === "grup" && b[2] === "usulan" && b.length === 4) {
       if (!aktif(auth)) return false;
-      if (!lama && baru) return ((anggotaGrup(auth, b[1]) && baru.pemilik === auth.uid) || kurikulum(auth)) && usulanValid(lama, baru);
-      if (lama && baru) return lama.pemilik === auth.uid && baru.pemilik === auth.uid && usulanValid(lama, baru);
+      if (!lama && baru) return ((anggotaGrup(auth, b[1]) && baru.pemilik === auth.uid && namaAsli(auth, lama, baru, "namaPemilik")) ||
+        kurikulum(auth)) && usulanValid(lama, baru);
+      if (lama && baru) return lama.pemilik === auth.uid && baru.pemilik === auth.uid &&
+        namaAsli(auth, lama, baru, "namaPemilik") && usulanValid(lama, baru);
       return lama.pemilik === auth.uid || koordinatorGrup(auth, b[1]) || kurikulum(auth);
     }
     return false;

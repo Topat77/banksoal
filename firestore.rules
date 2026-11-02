@@ -15,10 +15,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Email Google admin (TU) yang pertama (huruf kecil semua).
-    // Sama dengan "adminAwal" di js/konfig.js.
-    function emailAdminAwal() {
-      return ['topatvanjava@gmail.com'];
+    // SHA-256 (hex) dari email Google admin (TU) yang pertama, huruf kecil semua.
+    // Emailnya sendiri sengaja nggak ditulis, biar nggak kebaca publik di GitHub.
+    // Sama dengan "adminAwalHash" di js/konfig.js (cara bikin hash-nya: lihat CLAUDE.md).
+    function hashAdminAwal() {
+      return ['579d5573444b0566a5ed8ca438da2c66b3ccbb69bab7666d10ef6b94d0077c21'];
+    }
+    function adminAwal() {
+      return hashing.sha256(request.auth.token.email.lower()).toHexString().lower() in hashAdminAwal();
     }
 
     function masuk() {
@@ -135,6 +139,11 @@ service cloud.firestore {
     function berubah(k) {
       return resource == null || isi().diff(resource.data).affectedKeys().hasAny([k]);
     }
+    // nama pembuat / pengubah yang ditulis (namaPemilik, namaPengubah) wajib sama dengan nama
+    // di profil sendiri, biar nggak bisa ngaku-ngaku sebagai guru lain. Dicek cuma kalau berubah.
+    function namaAsli(k) {
+      return !(k in isi()) || !berubah(k) || isi()[k] == get(jalurProfil()).data.get('nama', null);
+    }
     // profil akun: cuma kolom yang dipakai aplikasi. Ukuran cuma dicek kalau kolomnya berubah,
     // jadi profil lama tetap bisa di-update (misal waktu nyatat terakhirMasuk).
     function profilValid() {
@@ -159,13 +168,16 @@ service cloud.firestore {
         && (request.resource.data.peran == 'menunggu'
             || (request.resource.data.peran == 'kurikulum'
                 && request.auth.token.email_verified == true
-                && request.auth.token.email in emailAdminAwal()));
+                && adminAwal()));
 
       // ubah profil sendiri boleh, tapi nggak boleh ngubah peran, email, sapaan, & NIP sendiri
       // (sapaan ustadz/ustadzah nentuin kelas putra/putri yang boleh diajar, jadi diatur admin).
+      // Akun ditolak / nonaktif cuma boleh nyatat terakhirMasuk.
       // Admin boleh ngubah akun siapa pun (setujui, tolak, nonaktifkan).
       allow update: if masuk() && profilValid() && (
         (request.auth.uid == uid
+          && (resource.data.peran in ['menunggu', 'ustadz', 'kurikulum']
+              || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['terakhirMasuk']))
           && request.resource.data.peran == resource.data.peran
           && request.resource.data.email == resource.data.email
           && request.resource.data.get('sapaan', null) == resource.data.get('sapaan', null)
@@ -217,11 +229,13 @@ service cloud.firestore {
           || resource.data.pemilik == request.auth.uid
           || (resource.data.dibagikan == true && (pengampu(idMapel) || segrup(idMapel))));
         allow create: if aktif()
-          && ((request.resource.data.pemilik == request.auth.uid && pengampu(idMapel)) || kurikulum())
+          && ((request.resource.data.pemilik == request.auth.uid && pengampu(idMapel) && namaAsli('namaPemilik'))
+              || kurikulum())
           && modulValid();
         allow update: if aktif()
           && resource.data.pemilik == request.auth.uid
           && request.resource.data.pemilik == request.auth.uid
+          && namaAsli('namaPemilik')
           && modulValid();
         allow delete: if aktif()
           && (resource.data.pemilik == request.auth.uid || kurikulum());
@@ -232,8 +246,8 @@ service cloud.firestore {
       // walau uid-nya kebetulan ada di daftar pengampu
       match /nilai/{id} {
         allow read: if aktif() && (kurikulum() || pengampu(idMapel));
-        allow create: if aktif() && pengampu(idMapel) && !kurikulum() && nilaiValid();
-        allow update: if aktif() && pengampu(idMapel) && !kurikulum() && nilaiValid();
+        allow create: if aktif() && pengampu(idMapel) && !kurikulum() && namaAsli('namaPengubah') && nilaiValid();
+        allow update: if aktif() && pengampu(idMapel) && !kurikulum() && namaAsli('namaPengubah') && nilaiValid();
         // yang boleh menghapus cuma admin, dan cuma buat ngebersihin waktu mapelnya sudah dihapus
         allow delete: if kurikulum()
           && !exists(/databases/$(database)/documents/mapel/$(idMapel));
@@ -247,11 +261,13 @@ service cloud.firestore {
           || resource.data.pemilik == request.auth.uid
           || (resource.data.dibagikan == true && (pengampu(idMapel) || segrup(idMapel))));
         allow create: if aktif()
-          && ((request.resource.data.pemilik == request.auth.uid && pengampu(idMapel)) || kurikulum())
+          && ((request.resource.data.pemilik == request.auth.uid && pengampu(idMapel) && namaAsli('namaPemilik'))
+              || kurikulum())
           && sumatifValid();
         allow update: if aktif()
           && resource.data.pemilik == request.auth.uid
           && request.resource.data.pemilik == request.auth.uid
+          && namaAsli('namaPemilik')
           && sumatifValid();
         allow delete: if aktif()
           && (resource.data.pemilik == request.auth.uid || kurikulum());
@@ -270,11 +286,12 @@ service cloud.firestore {
       match /uas/{id} {
         allow read: if aktif() && (kurikulum() || anggotaGrup(idGrup));
         allow create: if aktif() && (kurikulum()
-          || (koordinatorGrup(idGrup) && request.resource.data.status == 'draf' && uasValid()));
+          || (koordinatorGrup(idGrup) && request.resource.data.status == 'draf' && namaAsli('namaPengubah') && uasValid()));
         allow update: if aktif() && (kurikulum()
           || (koordinatorGrup(idGrup)
               && resource.data.status in ['draf', 'diajukan']
               && request.resource.data.status in ['draf', 'diajukan']
+              && namaAsli('namaPengubah')
               && uasValid()));
         allow delete: if aktif() && (kurikulum()
           || (koordinatorGrup(idGrup) && resource.data.status == 'draf'));
@@ -284,11 +301,13 @@ service cloud.firestore {
       match /usulan/{id} {
         allow read: if aktif() && (kurikulum() || anggotaGrup(idGrup));
         allow create: if aktif()
-          && ((anggotaGrup(idGrup) && request.resource.data.pemilik == request.auth.uid) || kurikulum())
+          && ((anggotaGrup(idGrup) && request.resource.data.pemilik == request.auth.uid && namaAsli('namaPemilik'))
+              || kurikulum())
           && usulanValid();
         allow update: if aktif()
           && resource.data.pemilik == request.auth.uid
           && request.resource.data.pemilik == request.auth.uid
+          && namaAsli('namaPemilik')
           && usulanValid();
         allow delete: if aktif() && (
           resource.data.pemilik == request.auth.uid
