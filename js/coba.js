@@ -377,6 +377,7 @@ function buatBackendCoba() {
     return syarat.every(([kolom, op, nilai]) => {
       if (op === "==") return d[kolom] === nilai;
       if (op === "array-contains") return Array.isArray(d[kolom]) && d[kolom].includes(nilai);
+      if (op === "in") return Array.isArray(nilai) && nilai.includes(d[kolom]);
       throw new Error("operator belum didukung: " + op);
     });
   }

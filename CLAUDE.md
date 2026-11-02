@@ -80,9 +80,9 @@ Folder `tes/` nggak dimuat aplikasi, jadi nggak perlu didaftarin di `index.html`
 
 ## Kuota Firestore (paket gratis: 50.000 baca / hari)
 Tiap buka aplikasi (atau balik setelah >30 menit nggak aktif), semua langganan dibaca ulang. 1 dokumen = 1 baca; query kosong tetap 1 baca. Kira-kira per buka:
-- **Guru:** 3 (profil + pengaturan) + semua `mapel` + semua `grup` + semua `kelas` + siswa di kelasnya + tiap mapel yang diampu (lembar nilai + modul & sumatif miliknya + yang dibagikan) + tiap mapel tetangga (modul & sumatif dibagikan) + UAS & usulan grupnya.
+- **Guru:** 3 (profil + pengaturan) + `mapel` yang diampu & satu grupnya + `grup` & `kelas` yang dia ikuti (bukan semua, lihat `pasangMapelGuru()` di `toko.js`) + siswa di kelasnya + tiap mapel yang diampu (lembar nilai + modul & sumatif miliknya + yang dibagikan) + tiap mapel tetangga (modul & sumatif dibagikan) + UAS & usulan grupnya.
   Contoh 60 mapel, 10 grup, 12 kelas, guru ngampu 2 mapel, ±5 modul per mapel → **±150–200 baca**. 100 guru × 3 kali buka sehari ≈ **45.000–60.000**, udah di batas.
 - **TU:** 3 + semua mapel, grup, kelas, **semua siswa**, **semua akun** + isi **semua** mapel (nilai, modul, sumatif) + UAS & usulan semua grup. Contoh 300 siswa, 60 mapel → **±1.500 baca** per buka.
 - Modul, sumatif, dan nilai diambil **semua semester**, jadi angkanya naik terus tiap tahun.
 
-Cek di Firebase Console → Firestore → **Usage** (grafik Reads per hari). Kalau mendekati 50.000: (1) filter modul/sumatif/nilai per semester aktif, (2) guru nggak usah langganan semua `mapel`, (3) isi mapel buat TU dimuat waktu dibuka aja. Kalau kuota habis, aplikasi berhenti sinkron sampai reset (jam 00.00 waktu Pasifik ≈ 14.00/15.00 WIB).
+Cek di Firebase Console → Firestore → **Usage** (grafik Reads per hari). Kalau mendekati 50.000: (1) filter modul/sumatif/nilai per semester aktif, (2) ~~guru nggak usah langganan semua `mapel`~~ (udah), (3) isi mapel buat TU dimuat waktu dibuka aja. Kalau kuota habis, aplikasi berhenti sinkron sampai reset (jam 00.00 waktu Pasifik ≈ 14.00/15.00 WIB).
