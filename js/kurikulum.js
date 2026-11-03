@@ -241,17 +241,23 @@ function formGuru() {
 const KELAS_SD  = ["Kelas 1", "Kelas 2", "Kelas 3", "Kelas 4", "Kelas 5", "Kelas 6"];
 const KELAS_SMP = ["Kelas 7", "Kelas 8", "Kelas 9"];
 const KELAS_SMA = ["Kelas 10", "Kelas 11", "Kelas 12"];
+// I'dad (JENJANG_IDAD, di grup.js): kelas persiapan 1 tahun sebelum Paket C, naiknya ke kelas 10 Paket C
+const KELAS_IDAD = ["I'dad"];
+// urutan kunci = urutan jenjang di layar (Paket B → I'dad → Paket C)
 const KELAS_PER_JENJANG = {
-  "Paket A": KELAS_SD, "Paket B": KELAS_SMP, "Paket C": KELAS_SMA,
+  "Paket A": KELAS_SD, "Paket B": KELAS_SMP, [JENJANG_IDAD]: KELAS_IDAD, "Paket C": KELAS_SMA,
   "SD": KELAS_SD, "SMP": KELAS_SMP, "SMA": KELAS_SMA
 };
 // jenjang yang ada di PKBM Imam Syafi'i
-const JENJANG_PKBM = ["Paket B", "Paket C"];
+const JENJANG_PKBM = ["Paket B", JENJANG_IDAD, "Paket C"];
 
-// rombel A = putra, B = putri (misal 7A2 putra, 7B2 putri).
+// rombel A = putra, B = putri (misal 7A2 putra, 7B2 putri, I'dad A1 putra).
 // Ustadz boleh ngajar kelas putri, tapi ustadzah nggak boleh ngajar kelas putra.
 function kelasPutra(kelas) {
-  return /^\s*\d+\s*A/i.test(kelas || "");
+  return hurufRombel(kelas) === "A";
+}
+function kelasPutri(kelas) {
+  return hurufRombel(kelas) === "B";
 }
 // kelas putra (tahun ajaran sekarang) yang wali kelasnya akun ini
 function waliKelasPutra(uid) {
@@ -355,10 +361,11 @@ function formMapel() {
   function aturSaranKelas(gantiJenjang) {
     const j = isianJenjang.value;
     const dipakai = daftarKelas().filter(x => x.jenjang === j).map(x => x.kelas);
-    const pola = (KELAS_PER_JENJANG[j] || []).flatMap(k => {
-      const n = k.replace(/\D/g, "");
-      return [`${n}A1`, `${n}A2`, `${n}B1`, `${n}B2`];
-    });
+    const pola = j === JENJANG_IDAD ? ["I'dad A1", "I'dad A2", "I'dad B1", "I'dad B2"]
+      : (KELAS_PER_JENJANG[j] || []).flatMap(k => {
+        const n = k.replace(/\D/g, "");
+        return [`${n}A1`, `${n}A2`, `${n}B1`, `${n}B2`];
+      });
     const saran = [...new Set([...dipakai, ...pola])].sort((a, b) => a.localeCompare(b, "id", { numeric: true }));
     document.getElementById("saranKelas").innerHTML = saran.map(k => `<option value="${aman(k)}">`).join("");
     pilihKelas.placeholder = pola[0] || "Nama kelas";

@@ -39,7 +39,8 @@ const KOP_ASESMEN = {
   // baris ke-3 kop & isi footer, per jenjang
   jenjang: {
     "Paket B": { kejar: "KEJAR PAKET B (SETARA SMP)", footer: "Paket B setara SMP" },
-    "Paket C": { kejar: "KEJAR PAKET C (SETARA SMA)", footer: "Paket C setara SMA" }
+    "Paket C": { kejar: "KEJAR PAKET C (SETARA SMA)", footer: "Paket C setara SMA" },
+    "I'dad": { kejar: "I'DAD (PRA PAKET C)", footer: "I'dad pra Paket C" }
   },
   // kertas F4 (21,59 × 33 cm), sama kayak file aslinya
   kertas: { lebarMm: 215.9, tinggiMm: 330 }

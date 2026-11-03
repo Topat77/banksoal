@@ -1782,3 +1782,8 @@ body.ada-dialog { overflow: hidden; }
 .aksi-kelas-tu small { margin-left: 6px; font-weight: 500; opacity: .85; }
 .kartu-kelas-tu .kartu-kelas { box-shadow: none; }
 .kartu-kelas-tu .kartu-kelas > summary { min-height: 48px; padding: 10px 14px; }
+/* pindah kelas (Daftar siswa TU) & kelas tujuan per siswa (naik kelas I'dad / lulusan kelas 9) */
+.panel-pindah { flex-direction: column; align-items: stretch; }
+.panel-pindah .baris-tombol > button { flex: 0 0 auto; }
+.isian-tujuan-siswa { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; font-size: 14px; }
+.isian-tujuan-siswa select { max-width: 260px; }

@@ -310,8 +310,8 @@ function layarKelasSiswa() {
   if (!dataDasarSiap()) return tampilMemuat("Siswa");
   const tahun = semesterSekarang().tahun;
   const semua = daftarKelas();
-  const BAGIAN = [["putra", "Putra (A)", x => kelasPutra(x.kelas)], ["putri", "Putri (B)", x => /^\s*\d+\s*B/i.test(x.kelas)],
-    ["lain", "Lainnya", x => !/^\s*\d+\s*[AB]/i.test(x.kelas)]];
+  const BAGIAN = [["putra", "Putra (A)", x => kelasPutra(x.kelas)], ["putri", "Putri (B)", x => kelasPutri(x.kelas)],
+    ["lain", "Lainnya", x => !hurufRombel(x.kelas)]];
   const ada = BAGIAN.filter(([k, , cocok]) => k !== "lain" || semua.some(cocok));
   const pilih = ada.some(b => b[0] === posisi.bagianSiswa) ? posisi.bagianSiswa : "putra";
   const cocok = ada.find(b => b[0] === pilih)[2];

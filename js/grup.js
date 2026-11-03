@@ -9,9 +9,22 @@
 // dibagikan bisa dipakai semua pengampu di grupnya, biar soalnya terstandar.
 // Daftar pengampu tiap grup disimpan di grup/{id} (diperbarui otomatis dari
 // perangkat admin), karena aturan database butuh daftar itu buat ngasih izin.
+// I'dad: kelas persiapan 1 tahun sebelum Paket C (siswa baru dari luar), naiknya ke kelas 10 Paket C
+const JENJANG_IDAD = "I'dad";
+// huruf rombel: "A" (putra) / "B" (putri), dari 7A2, 10B1, I'dad A1. Selain itu kosong.
+function hurufRombel(kelas) {
+  const m = String(kelas || "").match(/^\s*(?:\d+|i['’]?dad)\s*([AB])/i);
+  return m ? m[1].toUpperCase() : "";
+}
+// "7A1 Paket B", tapi "I'dad A1" aja (nama jenjangnya udah ada di nama kelas)
+function labelKelas(jenjang, kelas) {
+  return jenjang === JENJANG_IDAD && /^\s*i['’]?dad/i.test(kelas || "") ? kelas : `${kelas} ${jenjang}`;
+}
 function tingkatKelas(kelas) {
   const cocok = String(kelas || "").match(/^\s*(\d+)/);
-  return cocok ? cocok[1] : String(kelas || "").trim();
+  if (cocok) return cocok[1];
+  if (/^\s*i['’]?dad/i.test(kelas || "")) return "I'dad";   // I'dad A1, I'dad B2 → satu tingkat
+  return String(kelas || "").trim();
 }
 function idGrup(mp) {
   const teks = `${mp.jenjang || ""}-${tingkatKelas(mp.kelas)}-${mp.nama || ""}`

@@ -581,14 +581,15 @@ grup("Naik kelas & riwayat kelas santri");
   vm.createContext(nk);
   vm.runInContext([
     ambilFungsi(alat, "salin"), ambilFungsi(baca("js/grup.js"), "tingkatKelas"),
-    ambilFungsi(baca("js/grup.js"), "idKelas"),
-    "const KELAS_SD = [], KELAS_SMP = [], KELAS_SMA = [];", ambilKonstanta(baca("js/kurikulum.js"), "KELAS_PER_JENJANG"),
+    ambilFungsi(baca("js/grup.js"), "idKelas"), ambilFungsi(baca("js/grup.js"), "hurufRombel"),
+    ambilKonstanta(baca("js/grup.js"), "JENJANG_IDAD"),
+    "const KELAS_SD = [], KELAS_SMP = [], KELAS_SMA = [], KELAS_IDAD = [];", ambilKonstanta(baca("js/kurikulum.js"), "KELAS_PER_JENJANG"),
     ambilFungsi(nilaiJs, "bandingKelas"), ambilFungsi(tokoJs, "simpanSantri"),
     "const toko = { santri: [], backend: { tulis: () => Promise.resolve() } }; function berubah() {} function gagalSimpan() {} function pasangDiDaftar(d, x) { const i = d.findIndex(y => y.id === x.id); if (i >= 0) d[i] = x; else d.push(x); }",
     ambilFungsi(tokoJs, "tanpaId"),
     ambilFungsi(nilaiJs, "santriLembar"), ambilFungsi(nilaiJs, "jumlahNilaiTakTerbaca"),
     baca("js/naikkelas.js"),
-    "this.ekspor = { toko, tingkatAkhir, tebakKelasTujuan, tahunBerikut, kelasSantriDi, santriKelasDi, kelasDiTahun, terapkanNaikKelas, keluarkanSantri, aktifkanLagiSantri, keputusanTahun, bisaDiputuskan, ubahKeputusan, tujuanTebakan, simpanSantri, santriLembar, jumlahNilaiTakTerbaca, batalkanNaikKelas };"
+    "this.ekspor = { toko, tingkatAkhir, tebakKelasTujuan, tahunBerikut, kelasSantriDi, santriKelasDi, kelasDiTahun, terapkanNaikKelas, keluarkanSantri, aktifkanLagiSantri, keputusanTahun, bisaDiputuskan, ubahKeputusan, tujuanTebakan, simpanSantri, santriLembar, jumlahNilaiTakTerbaca, batalkanNaikKelas, hurufRombel, tingkatKelas, jenjangTujuan, tujuanDipilihPerSiswa, pindahkanKelas };"
   ].join("\n"), nk);
   const N = nk.ekspor;
   const s7 = { id: "a", nama: "Ahmad", jenjang: "Paket B", kelas: "7A1", absen: 3, aktif: true };
@@ -769,6 +770,36 @@ grup("Naik kelas & riwayat kelas santri");
   harap("yang tidak naik nggak dihitung", N.tujuanTebakan([kTinggal], "Paket B", "7A1", TH), "8A1");
   harap("tingkat akhir: nggak ada tujuan", N.tujuanTebakan([s9], "Paket B", "9A1", TH), "");
   harap("tebakan ngikutin kelas asal di tahun itu, bukan kelas sekarang", N.tujuanTebakan([kNaik], "Paket B", "7A1", TH), "8A1");
+
+  // ---- I'dad, lulus lanjut ke kelas 10, pindah kelas ----
+  harap("huruf rombel 7A2 / 10B1 / I'dad A1", [N.hurufRombel("7A2"), N.hurufRombel("10B1"), N.hurufRombel("I'dad A1"), N.hurufRombel("12 IPA")].join(","), "A,B,A,");
+  harap("tingkat I'dad A1 & I'dad B2 sama", N.tingkatKelas("I'dad A1") === N.tingkatKelas("I'dad B2"), true);
+  tolak("I'dad bukan tingkat akhir", N.tingkatAkhir("I'dad", "I'dad A1"));
+  boleh("I'dad: kelas tujuan dipilih per siswa", N.tujuanDipilihPerSiswa("I'dad", "I'dad A1"));
+  boleh("kelas 9 Paket B: kelas tujuan lanjut dipilih per siswa", N.tujuanDipilihPerSiswa("Paket B", "9A1"));
+  tolak("kelas 7: tetap ditebak otomatis", N.tujuanDipilihPerSiswa("Paket B", "7A1"));
+  harap("tebakan kelas tujuan I'dad kosong (wajib pilih)", N.tujuanTebakan([], "I'dad", "I'dad A1", "2026/2027"), "");
+  const sI = { id: "i", nama: "Ilham", jenjang: "I'dad", kelas: "I'dad A1", absen: 4, aktif: true };
+  const naikI = N.ubahKeputusan(sI, "2026/2027", "naik", "10A2");
+  harap("I'dad naik → Paket C kelas yang dipilih", naikI && `${naikI.jenjang} ${naikI.kelas}`, "Paket C 10A2");
+  harap("riwayat I'dad tercatat", JSON.stringify(N.kelasSantriDi(naikI, "2026/2027")), JSON.stringify({ jenjang: "I'dad", kelas: "I'dad A1", absen: 4 }));
+  const batalI = N.ubahKeputusan(naikI, "2026/2027", "batal");
+  harap("batal: balik ke I'dad A1", batalI && `${batalI.jenjang} ${batalI.kelas}`, "I'dad I'dad A1");
+  const lanjut = N.ubahKeputusan(s9, "2026/2027", "lanjut", "10A1");
+  harap("kelas 9 lulus lanjut → Paket C 10A1, tetap aktif", lanjut && `${lanjut.jenjang} ${lanjut.kelas} ${lanjut.aktif}`, "Paket C 10A1 true");
+  harap("keputusan lanjut kebaca", N.keputusanTahun(lanjut, "2026/2027").fase, "lanjut");
+  harap("lanjut cuma buat kelas 9 Paket B", N.ubahKeputusan(s7, "2026/2027", "lanjut", "10A1"), null);
+  harap("lanjut tanpa kelas tujuan ditolak", N.ubahKeputusan(s9, "2026/2027", "lanjut", ""), null);
+  // pindah kelas waktu Genap: Ganjil tetap kelas lama, Genap & akhir tahun kelas baru
+  const pindahK = N.pindahkanKelas(s7, "7A2", { tahun: "2026/2027", semester: "Genap" });
+  harap("pindah kelas: kelas sekarang 7A2", pindahK.kelas, "7A2");
+  harap("pindah waktu Genap: Ganjil tetap 7A1", N.kelasSantriDi(pindahK, "2026/2027", "Ganjil").kelas, "7A1");
+  harap("pindah waktu Genap: Genap pakai 7A2", N.kelasSantriDi(pindahK, "2026/2027", "Genap").kelas, "7A2");
+  const pindahGanjil = N.pindahkanKelas(s7, "7A2", { tahun: "2026/2027", semester: "Ganjil" });
+  harap("pindah waktu Ganjil: Ganjil sudah 7A2", N.kelasSantriDi(pindahGanjil, "2026/2027", "Ganjil").kelas, "7A2");
+  const naikSesudahPindah = N.ubahKeputusan(pindahK, "2026/2027", "naik", "8A2");
+  harap("naik sesudah pindah: riwayat akhir tahun 7A2, Ganjil tetap 7A1",
+    [N.kelasSantriDi(naikSesudahPindah, "2026/2027").kelas, N.kelasSantriDi(naikSesudahPindah, "2026/2027", "Ganjil").kelas, naikSesudahPindah.kelas].join(","), "7A2,7A1,8A2");
 }
 function tanpaKelas(s) { const { id, ...isi } = s; return isi; }
 
