@@ -475,6 +475,15 @@ function layarAISoal() {
     document.getElementById("simpanDraf").onclick = () => simpanDrafAI(bahan, d, wadah, gambarDraf);
   }
   gambarDraf();
+  // dari tombol "Buatkan soal" di modul: langsung jalan (sekali aja, dan cuma kalau draft masih kosong)
+  if (posisi.aiLangsung) {
+    posisi.aiLangsung = false;
+    if (d.soal.length === 0) setTimeout(() => {
+      if (!tombol.isConnected || tombol.disabled) return;
+      tombol.scrollIntoView({ block: "center" });
+      tombol.click();
+    }, 0);
+  }
 }
 
 // cek & rapikan draft yang dicentang, lalu simpan

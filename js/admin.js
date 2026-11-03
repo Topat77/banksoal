@@ -127,6 +127,22 @@ function semesterPantauTU(daftarMapel) {
 }
 
 // satu nama mapel: tiap kelas + pantauan per guru (modul, pertemuan, soal, sumatif, terakhir diisi)
+// pesan pengingat buat guru (dibuka di WhatsApp, TU tinggal pilih kontak lalu kirim)
+function pesanPengingat(uid, nama, mp, sem, kurang) {
+  const sapaan = sapaanPengguna(toko.pengguna.find(p => p.id === uid) || {});
+  // nama yang udah pakai sapaan ("Ustadzah Aminah") nggak ditambah sapaan lagi
+  const sudahAda = /^(ustadz|ustadzah|ust\.?|bapak|ibu|bu|pak)\b/i.test(nama.trim());
+  const depan = sapaan === "ustadzah" ? "Ustadzah" : sapaan === "ustadz" ? "Ustadz" : "Bapak/Ibu";
+  const panggilan = sudahAda ? nama.trim() : `${depan} ${nama}`.trim();
+  return `Assalamu'alaikum ${panggilan},\n\n` +
+    `Pengingat dari TU ${toko.lembaga.nama || KONFIG.namaLembaga || ""} untuk ${mp.nama} ${mp.kelas} (${namaSemester(sem)}) di aplikasi Bank Soal:\n` +
+    kurang.map(k => `• ${k}`).join("\n") +
+    `\n\nMohon dilengkapi jika sudah sempat. Jazakumullahu khairan.`;
+}
+function linkWA(teks) {
+  return `https://wa.me/?text=${encodeURIComponent(teks)}`;
+}
+
 function layarMapelNamaTU() {
   wajibKurikulum();
   const nama = posisi.namaMapelTU || "";
@@ -162,7 +178,7 @@ function layarMapelNamaTU() {
     else if (!orang.length) h += `<p class="info isi-kelas-mapel">Belum ada guru.</p>`;
     else {
       h += `<table class="tabel-pantau">
-        <thead><tr><th>Guru</th><th>Modul</th><th>Pertemuan</th><th>Soal</th><th>Sumatif</th><th>Terakhir diisi</th></tr></thead><tbody>`;
+        <thead><tr><th>Guru</th><th>Modul</th><th>Pertemuan</th><th>Soal</th><th>Sumatif</th><th>Nilai</th><th>Terakhir diisi</th><th><span class="sr-only">Pengingat</span></th></tr></thead><tbody>`;
       for (const uid of orang) {
         const mm = modul.filter(m => m.pemilik === uid);
         const ss = sumatif.filter(x => x.pemilik === uid);
@@ -171,6 +187,8 @@ function layarMapelNamaTU() {
         const terakhir = Math.max(0, ...mm.map(m => m.diubah || 0), ...ss.map(x => x.diubah || 0));
         const namaGuru = namaPengguna(uid) || (mp.namaPengampu || {})[uid] || (mm[0] && mm[0].namaPemilik) || "Tanpa nama";
         const bukanPengampu = !(mp.pengampu || []).includes(uid);
+        const g = progresMapel(mp, uid, sem);
+        const kurang = bukanPengampu ? [] : kekuranganMapel(g);
         h += `
           <tr>
             <td data-label="Guru"><b>${aman(namaGuru)}</b>${bukanPengampu ? ` <small>(sudah bukan pengampu)</small>` : ""}</td>
@@ -178,7 +196,11 @@ function layarMapelNamaTU() {
             <td data-label="Pertemuan">${pertemuan}${tanpaTarget ? ` <small>(${tanpaTarget} tanpa target)</small>` : ""}</td>
             <td data-label="Soal">${mm.reduce((x, m) => x + jumlahSoal(m), 0)}</td>
             <td data-label="Sumatif">${ss.length}</td>
+            <td data-label="Nilai">${g.santri.length ? (g.lembar ? `${Math.round(g.persenNilai * 100)}%` : `<span class="merah">Belum</span>`) : "-"}</td>
             <td data-label="Terakhir diisi">${terakhir ? aman(waktuRapi(terakhir)) : "-"}</td>
+            <td class="sel-wa">${kurang.length
+              ? `<a class="tombol-wa" href="${aman(linkWA(pesanPengingat(uid, namaGuru, mp, sem, kurang)))}" target="_blank" rel="noopener" title="${aman(kurang.join("; "))}">Ingatkan via WA</a>`
+              : ""}</td>
           </tr>`;
       }
       h += `</tbody></table>`;

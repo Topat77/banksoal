@@ -289,8 +289,9 @@ function layarModul() {
   kanan += `<h2 class="subjudul">Pertemuan &amp; soal formatif <small>${soal.length} soal</small></h2>`;
   if (boleh) {
     kanan += `<div class="ajakan-ai">
-        <div><b>Bikin soal lebih cepat</b><span>AI nyusun draft soal dari target capaian, ringkasan, atau PDF modul. Kamu tinggal cek &amp; edit.</span></div>
-        <button class="tombol-kedua tombol-ai" id="keAI">${IKON_AI}<span>Buat soal pakai AI</span></button>
+        <div><b>Bikin soal sekali pencet</b><span>AI langsung bikinin draft soal dari isi modul ini. Kamu tinggal cek, lalu simpan.</span></div>
+        <button class="tombol-utama tombol-ai" id="keAIOtomatis">${IKON_AI}<span>Buatkan soal</span></button>
+        <button class="tombol-teks" id="keAI">Atur sendiri</button>
       </div>`;
   }
   if (pertemuan.length === 0) {
@@ -347,7 +348,8 @@ function layarModul() {
   klik("salinModul", () => pergi("formSalin", { salinDari: "modul", salinModul: m.id }));
   klik("tambahBacaan", () => pergi("formBacaan", { bacaanId: null }));
   klik("cetakFormatif", () => pergi("cetak", { cetakDari: "modul", cetakPertemuan: null }));
-  klik("keAI", () => pergi("aiSoal", { aiUntuk: "modul", aiPertemuan: null }));
+  klik("keAI", () => pergi("aiSoal", { aiUntuk: "modul", aiPertemuan: null, aiLangsung: false }));
+  klik("keAIOtomatis", () => pergi("aiSoal", { aiUntuk: "modul", aiPertemuan: null, aiLangsung: true }));
   isi.querySelectorAll("[data-ke-modul]").forEach(b => { b.onclick = () => bukaModulLain(mp.id, b.dataset.keModul); });
 
   const saklar = document.getElementById("bagikan");
@@ -599,13 +601,17 @@ let modulLamaHasil = null;   // { idMapel, nama, daftar: [{ mp, modul: [...] }] 
 async function muatModulLama(mp) {
   const uid = uidSaya();
   try {
+    // kelas ini (semester lain) + mapel yang sama di kelas lain
     const sejenis = (await toko.backend.ambilKoleksi("mapel", [["nama", "==", mp.nama]])).filter(x => x.id !== mp.id);
+    const sem = semAktif();
     const daftar = [];
-    for (const m of sejenis) {
-      const modul = (await toko.backend.ambilKoleksi(`mapel/${m.id}/modul`, [["pemilik", "==", uid]])).map(amankanDok).filter(Boolean);
+    for (const m of [mp, ...sejenis]) {
+      const modul = (await toko.backend.ambilKoleksi(`mapel/${m.id}/modul`, [["pemilik", "==", uid]])).map(amankanDok).filter(Boolean)
+        .filter(x => m.id !== mp.id || !samaSemester(x, sem));
       if (modul.length) daftar.push({ mp: m, modul: modul.sort((a, b) => bandingSemester(b, a) || (a.dibuat || 0) - (b.dibuat || 0)) });
     }
-    return { idMapel: mp.id, daftar: daftar.sort((a, b) => bandingKelas(a.mp, b.mp)) };
+    // kelas ini dulu, baru kelas lain
+    return { idMapel: mp.id, daftar: daftar.sort((a, b) => (b.mp.id === mp.id) - (a.mp.id === mp.id) || bandingKelas(a.mp, b.mp)) };
   } catch (err) {
     console.error(err);
     return { idMapel: mp.id, gagal: true };
@@ -621,7 +627,7 @@ function layarModulLama() {
   tombolKembali.hidden = false;
 
   if (!modulLamaHasil || modulLamaHasil.idMapel !== mp.id) {
-    isi.innerHTML = `<p class="info">Mencari modul kamu di ${aman(mp.nama)} kelas lain...</p>`;
+    isi.innerHTML = `<p class="info">Mencari modul lama kamu di ${aman(mp.nama)}...</p>`;
     muatModulLama(mp).then(hasil => {
       modulLamaHasil = hasil;
       if (posisi.layar === "modulLama" && posisi.mapelId === mp.id) layarModulLama();
@@ -636,15 +642,15 @@ function layarModulLama() {
     return;
   }
   if (!hasil.daftar.length) {
-    isi.innerHTML = `<p class="kosong">Belum ada modul kamu di ${aman(mp.nama)} kelas lain.</p>`;
+    isi.innerHTML = `<p class="kosong">Belum ada modul lama kamu di ${aman(mp.nama)}, baik di kelas ini (semester lain) maupun kelas lain.</p>`;
     return;
   }
   isi.innerHTML = `
-    <p class="info">Modul yang kamu buat dulu di ${aman(mp.nama)} kelas lain. Centang yang mau dipakai lagi, nanti disalin lengkap (pertemuan, target capaian, teks bacaan, soal) ke <b>${aman(namaMapel(mp))}, ${aman(namaSemester(sem))}</b>. Modul aslinya tetap aman. Salinannya tertutup dulu.</p>
+    <p class="info">Modul yang kamu buat dulu di ${aman(mp.nama)}: kelas ini di semester lain, dan kelas lain. Centang yang mau dipakai lagi, nanti disalin lengkap (pertemuan, target capaian, teks bacaan, soal) ke <b>${aman(namaMapel(mp))}, ${aman(namaSemester(sem))}</b>. Modul aslinya tetap aman. Salinannya tertutup dulu.</p>
     <form id="form">
       ${hasil.daftar.map(({ mp: asal, modul }) => `
         <fieldset>
-          <legend>${aman(namaMapel(asal))} <small>${aman(asal.jenjang)}</small></legend>
+          <legend>${aman(namaMapel(asal))} <small>${asal.id === mp.id ? "kelas ini, semester lain" : aman(asal.jenjang)}</small></legend>
           <div class="kolom daftar-centang">
             ${modul.map(m => `
               <label class="centang">

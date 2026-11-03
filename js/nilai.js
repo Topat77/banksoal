@@ -737,6 +737,21 @@ function pasangAksiAdminNilai(mp, sem, santri, tersimpan) {
   });
 }
 
+// cara ngisi nilai: "kolom" (satu kolom, kotak gede; bawaan di HP) atau "tabel" (semua kolom)
+const KUNCI_MODE_NILAI = "banksoal-mode-nilai";
+function modeIsiNilai() {
+  const ingat = bacaLokal(KUNCI_MODE_NILAI, null);
+  if (ingat === "kolom" || ingat === "tabel") return ingat;
+  return matchMedia("(max-width: 700px)").matches ? "kolom" : "tabel";
+}
+// kolom yang lagi diisi di mode satu kolom: yang dipilih, atau kolom pertama yang belum lengkap
+function kolomNilaiDipilih(kolom, lembar, santri) {
+  if (posisi.kolomNilai === "hadir" || kolom.some(k => k.id === posisi.kolomNilai)) return posisi.kolomNilai;
+  const belum = kolom.find(k => santri.some(s => typeof ((lembar.nilai || {})[s.id] || {})[k.id] !== "number"));
+  posisi.kolomNilai = (belum || kolom[0] || { id: "hadir" }).id;
+  return posisi.kolomNilai;
+}
+
 function layarNilai() {
   const mp = mapelAktif();
   const bisaIsi = sayaPengampu(mp);          // yang ngisi nilai cuma pengampunya
@@ -792,9 +807,21 @@ function layarNilai() {
     ${htmlSiapkan}`;
 
   // ---- tabel ----
-  const kolom = [...lembar.kolom].sort((a, b) =>
+  const semuaKolom = [...lembar.kolom].sort((a, b) =>
     KELOMPOK_NILAI.findIndex(g => g.k === a.kelompok) - KELOMPOK_NILAI.findIndex(g => g.k === b.kelompok));
+  const modeKolom = modeIsiNilai() === "kolom";
+  const pilihan = modeKolom ? kolomNilaiDipilih(semuaKolom, lembar, santri) : null;
+  const kolom = modeKolom ? semuaKolom.filter(k => k.id === pilihan) : semuaKolom;
+  const tampilHadir = !modeKolom || pilihan === "hadir";
   h += `
+    <div class="pilih-kelompok pilih-mode-nilai" role="group" aria-label="Cara ngisi">
+      <button data-mode-nilai="kolom" class="${modeKolom ? "aktif" : ""}" aria-pressed="${modeKolom}">Satu kolom</button>
+      <button data-mode-nilai="tabel" class="${modeKolom ? "" : "aktif"}" aria-pressed="${!modeKolom}">Tabel lengkap</button>
+    </div>
+    ${modeKolom ? `<div class="pilih-semester pilih-kolom-nilai" role="group" aria-label="Kolom yang diisi">
+      ${semuaKolom.map(k => `<button class="chip ${k.id === pilihan ? "aktif" : ""}" data-pilih-kolom="${aman(k.id)}" aria-pressed="${k.id === pilihan}">${aman(k.label)}</button>`).join("")}
+      <button class="chip ${pilihan === "hadir" ? "aktif" : ""}" data-pilih-kolom="hadir" aria-pressed="${pilihan === "hadir"}">Kehadiran</button>
+    </div>` : ""}
     <div class="aksi-nilai">
       ${bisaIsi ? `<span class="info">Tambah kolom:</span>
       ${KELOMPOK_NILAI.filter(g => g.k !== "kehadiran" && !(KELOMPOK_SEKALI.includes(g.k) && lembar.kolom.some(k => k.kelompok === g.k)))
@@ -802,12 +829,12 @@ function layarNilai() {
       <span class="spasi"></span>
       <span class="status-simpan" id="statusSimpan" role="status">${tersimpan ? `${bisaIsi ? "Tersimpan · diubah" : "Terakhir diubah"} ${aman(waktuRapi(tersimpan.diubah))}` : "Belum ada nilai"}</span>
     </div>
-    <div class="wadah-lembar-nilai">
+    <div class="wadah-lembar-nilai${modeKolom ? " mode-kolom" : ""}">
     <table class="lembar-nilai">
       <thead><tr>
         <th class="kol-nama">Siswa</th>
         ${kolom.map(k => `<th class="kol-${aman(k.kelompok)}">${bisaIsi ? `<button class="judul-kolom" data-kolom="${aman(k.id)}" title="Ketuk untuk ganti nama / hapus">${aman(k.label)}</button>` : `<span class="judul-kolom">${aman(k.label)}</span>`}</th>`).join("")}
-        <th class="kol-hadir">Hadir</th><th class="kol-hadir">Sakit</th><th class="kol-hadir">Izin</th>
+        ${tampilHadir ? `<th class="kol-hadir">Hadir</th><th class="kol-hadir">Sakit</th><th class="kol-hadir">Izin</th>` : ""}
         <th class="kol-akhir">Akhir</th>
       </tr></thead><tbody>`;
   santri.forEach((s, i) => {
@@ -818,7 +845,7 @@ function layarNilai() {
     h += `<tr data-santri="${aman(s.id)}">
       <th class="kol-nama" scope="row"><span class="nomor-santri">${aman(noAbsen(kelasSantriDi(s, sem.tahun, sem.semester), i + 1))}</span>${aman(s.nama)}${tandaKeluarSantri(s)}</th>
       ${kolom.map(k => `<td><input type="number" inputmode="decimal" min="0" max="100" step="any" aria-label="${aman(k.label)} ${aman(s.nama)}" data-nilai="${aman(k.id)}" value="${aman(n[k.id] ?? "")}"${kunciIsi}></td>`).join("")}
-      ${["hadir", "sakit", "izin"].map(x => `<td><input type="number" inputmode="numeric" min="0" step="1" aria-label="${x} ${aman(s.nama)}" data-hadir="${x}" value="${aman(hd[x] ?? "")}"${kunciIsi}></td>`).join("")}
+      ${(tampilHadir ? ["hadir", "sakit", "izin"] : []).map(x => `<td><input type="number" inputmode="numeric" min="0" step="1" aria-label="${x} ${aman(s.nama)}" data-hadir="${x}" value="${aman(hd[x] ?? "")}"${kunciIsi}></td>`).join("")}
       <td class="kol-akhir" data-akhir>${angkaRapi(hasil.akhir)}</td>
     </tr>`;
   });
@@ -831,6 +858,19 @@ function layarNilai() {
   klik("keBobot", () => pergi("bobot"));
 
   pasangAksiAdminNilai(mp, sem, santri, tersimpan);
+  isi.querySelectorAll("[data-mode-nilai]").forEach(b => b.onclick = () => {
+    kirimNilaiTertunda();
+    tulisLokal(KUNCI_MODE_NILAI, b.dataset.modeNilai);
+    tampilkan(true);
+  });
+  isi.querySelectorAll("[data-pilih-kolom]").forEach(b => b.onclick = () => {
+    kirimNilaiTertunda();
+    posisi.kolomNilai = b.dataset.pilihKolom;
+    tampilkan(true);
+    // langsung siap ngetik di siswa pertama
+    const pertama = isi.querySelector(".lembar-nilai input:not([readonly])");
+    if (pertama) pertama.focus();
+  });
   if (!bisaIsi) return;
 
   // ---- perilaku ----
@@ -892,6 +932,7 @@ function layarNilai() {
       const label = KELOMPOK_SEKALI.includes(g.k) ? g.label : `${g.label} ${ada + 1}`;
       const kolomBaru = { id: buatId(), kelompok: g.k, label };
       lembar.kolom.push(kolomBaru);
+      posisi.kolomNilai = kolomBaru.id;   // mode satu kolom: langsung buka kolom barunya
       kirimNilaiTertunda();
       // ditambahkan, bukan ngirim daftar utuh: kolom yang ditambah dari perangkat lain nggak hilang
       simpanNilaiSebagian(mp.id, lembar, [[["kolom"], tambahKeDaftar(kolomBaru)]]);

@@ -182,6 +182,19 @@ function temaSekarang() {
   const p = pilihanTema();
   return p || (mediaGelap.matches ? "gelap" : "terang");
 }
+// ====== UKURAN TULISAN (buat yang matanya butuh huruf lebih gede) ======
+const KUNCI_HURUF = "banksoal-huruf";
+function ukuranHuruf() {
+  return bacaLokal(KUNCI_HURUF, "normal") === "besar" ? "besar" : "normal";
+}
+function pasangUkuranHuruf(ukuran) {
+  tulisLokal(KUNCI_HURUF, ukuran);
+  if (ukuran === "besar") document.documentElement.dataset.huruf = "besar";
+  else delete document.documentElement.dataset.huruf;
+}
+// dipasang secepatnya waktu aplikasi dibuka
+if (ukuranHuruf() === "besar") document.documentElement.dataset.huruf = "besar";
+
 function pasangTema(pilihan) {
   try {
     if (pilihan) localStorage.setItem(KUNCI_TEMA, pilihan);

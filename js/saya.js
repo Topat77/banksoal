@@ -48,6 +48,11 @@ function layarLainnya() {
         <label class="radio"><input type="radio" name="tema" value="gelap" ${pilih === "gelap" ? "checked" : ""}> Gelap</label>
       </div>
       <p class="info hanya-lebar">Bisa juga lewat tombol bulan/matahari di pojok kanan atas.</p>
+      <h3 class="label-isian">Ukuran tulisan</h3>
+      <div class="pilih-jenis" role="radiogroup" aria-label="Ukuran tulisan">
+        <label class="radio"><input type="radio" name="huruf" value="normal" ${ukuranHuruf() === "normal" ? "checked" : ""}> Normal</label>
+        <label class="radio huruf-besar-contoh"><input type="radio" name="huruf" value="besar" ${ukuranHuruf() === "besar" ? "checked" : ""}> Besar</label>
+      </div>
     </section>`;
 
   let teksPasang;
@@ -101,6 +106,7 @@ function layarLainnya() {
     toko.backend.keluar();
   };
   isi.querySelectorAll('[name="tema"]').forEach(r => r.onchange = () => pasangTema(r.value));
+  isi.querySelectorAll('[name="huruf"]').forEach(r => r.onchange = () => pasangUkuranHuruf(r.value));
   const pasang = document.getElementById("pasang");
   if (pasang) {
     pasang.onclick = async () => {

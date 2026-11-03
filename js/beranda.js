@@ -305,6 +305,15 @@ function layarBeranda() {
   isi.querySelectorAll(".baris[data-mapel]").forEach(b => {
     b.onclick = () => pergi("mapel", { mapelId: b.dataset.mapel, semester: null, tab: "modul" });
   });
+  const tugas = !kur ? tugasHariIni(diampu, sem) : [];
+  isi.querySelectorAll("[data-tugas]").forEach(b => {
+    b.onclick = () => {
+      const t = tugas[Number(b.dataset.tugas)];
+      if (!t) return;
+      const { layar, ...tambahan } = t.ke;
+      pergi(layar, tambahan);
+    };
+  });
   pasangAktivitas();
 }
 
@@ -357,8 +366,96 @@ function htmlBerandaTU(sem) {
   return h;
 }
 
+// =====================================================
+//  PROGRES SATU MAPEL buat satu guru, satu semester
+//  Dipakai kartu "Hari ini" & progres di beranda guru, dan pengingat WA di Pantauan (TU).
+//  Cuma ngitung dari data yang udah dimuat, jadi nggak nambah baca database.
+// =====================================================
+function progresMapel(mp, uid, sem) {
+  const modul = modulMapel(mp.id).filter(m => m.pemilik === uid && samaSemester(m, sem));
+  const pertemuan = modul.flatMap(m => (m.pertemuan || []).map((p, i) => ({
+    modul: m, nomor: i + 1, soal: (m.soal || []).filter(s => s.pertemuanId === p.id).length
+  })));
+  const tanpaSoal = pertemuan.filter(x => x.soal === 0);
+  const soal = modul.reduce((a, m) => a + jumlahSoal(m), 0);
+  const sumatif = sumatifMapel(mp.id).filter(s => s.pemilik === uid && samaSemester(s, sem));
+  const lembar = lembarNilai(mp.id, sem);
+  const santri = santriLembar(mp, sem);
+  // tiap kolom nilai: berapa siswa yang udah diisi
+  const kolom = (lembar ? lembar.kolom || [] : []).map(k => ({
+    k, isi: santri.filter(s => typeof ((lembar.nilai || {})[s.id] || {})[k.id] === "number").length
+  }));
+  const sel = santri.length * kolom.length;
+  const terisi = kolom.reduce((a, x) => a + x.isi, 0);
+  const persenNilai = sel ? terisi / sel : 0;
+  // skor kasar 0..1 buat garis progres: ada modul, pertemuan ada soalnya, nilai keisi
+  const bagian = [modul.length ? 1 : 0, pertemuan.length ? 1 - tanpaSoal.length / pertemuan.length : 0];
+  if (santri.length) bagian.push(persenNilai);
+  const skor = bagian.reduce((a, b) => a + b, 0) / bagian.length;
+  return { mp, modul, pertemuan, tanpaSoal, soal, sumatif, lembar, santri, kolom, persenNilai, skor };
+}
+
+// yang masih kurang, dalam kalimat (buat pesan pengingat)
+function kekuranganMapel(g) {
+  const kurang = [];
+  if (!g.modul.length) kurang.push("modul ajar semester ini belum ada");
+  else if (g.tanpaSoal.length) kurang.push(`${g.tanpaSoal.length} pertemuan belum ada soalnya`);
+  if (g.santri.length && !g.lembar) kurang.push("nilai belum mulai diisi");
+  for (const x of g.kolom) if (g.santri.length && x.isi < g.santri.length) kurang.push(`nilai ${x.k.label} baru ${x.isi} dari ${g.santri.length} siswa`);
+  return kurang;
+}
+
+// kartu "Hari ini": maksimal 3 langkah berikutnya yang tinggal dipencet
+function tugasHariIni(diampu, sem) {
+  const tugas = [];
+  for (const mp of diampu.filter(m => isiMapelSiap(m.id))) {
+    const g = progresMapel(mp, uidSaya(), sem);
+    const kelas = `${mp.nama} ${mp.kelas}`;
+    // 1. nilai yang udah mulai diisi tapi belum lengkap: lanjutkan
+    const separuh = g.kolom.find(x => x.isi > 0 && x.isi < g.santri.length);
+    if (separuh) tugas.push({ urut: 1, ikon: "nilai", judul: `Lanjutkan isi nilai ${separuh.k.label}`, ket: `${kelas} · ${separuh.isi} dari ${g.santri.length} siswa`, ke: { layar: "nilai", mapelId: mp.id, semester: kunciSemester(sem), kolomNilai: separuh.k.id } });
+    // 2. belum punya modul semester ini
+    if (!g.modul.length) tugas.push({ urut: 2, ikon: "modul", judul: "Buat modul ajar pertama", ket: `${kelas} · ${namaSemester(sem)}`, ke: { layar: "mapel", mapelId: mp.id, semester: kunciSemester(sem), tab: "modul" } });
+    // 3. pertemuan yang belum ada soalnya
+    const kosong = g.tanpaSoal[0];
+    if (kosong) tugas.push({ urut: 3, ikon: "soal", judul: `Tambah soal pertemuan ${kosong.nomor}`, ket: `${kosong.modul.judul} · ${kelas}`, ke: { layar: "modul", mapelId: mp.id, modId: kosong.modul.id, semester: kunciSemester(sem) } });
+    // 4. ada siswa tapi lembar nilai belum ada
+    if (g.santri.length && !g.lembar) tugas.push({ urut: 4, ikon: "nilai", judul: "Mulai isi nilai", ket: `${kelas} · ${g.santri.length} siswa`, ke: { layar: "nilai", mapelId: mp.id, semester: kunciSemester(sem), kolomNilai: null } });
+  }
+  return tugas.sort((a, b) => a.urut - b.urut).slice(0, 3);
+}
+
+function htmlHariIni(diampu, sem) {
+  if (!diampu.length) return "";
+  if (!diampu.every(m => isiMapelSiap(m.id))) return "";
+  const tugas = tugasHariIni(diampu, sem);
+  let h = `<section class="panel hari-ini"><div class="panel-kepala"><h2>Hari ini</h2></div>`;
+  if (!tugas.length) {
+    h += `<p class="info">Semua sudah beres untuk ${aman(namaSemester(sem))}. Terima kasih!</p>`;
+  } else {
+    h += `<div class="daftar-tugas">${tugas.map((t, i) => `
+      <button class="tugas-hari-ini" data-tugas="${i}">
+        <span class="ikon-kotak ${t.ikon === "nilai" ? "ungu" : t.ikon === "soal" ? "biru" : "hijau"}">${IKON[t.ikon] || ""}</span>
+        <span class="tugas-isi"><strong dir="auto">${aman(t.judul)}</strong><small dir="auto">${aman(t.ket)}</small></span>
+        <span class="baris-panah" aria-hidden="true">›</span>
+      </button>`).join("")}</div>`;
+  }
+  return h + `</section>`;
+}
+
+// progres satu mapel: garis + ringkasan pendek
+function htmlProgresMapel(g) {
+  const persen = Math.round(g.skor * 100);
+  const bagian = [
+    `${g.modul.length} modul`,
+    g.pertemuan.length ? `${g.pertemuan.length - g.tanpaSoal.length}/${g.pertemuan.length} pertemuan ada soal` : "",
+    g.santri.length ? `nilai ${Math.round(g.persenNilai * 100)}%` : ""
+  ].filter(Boolean);
+  return `<span class="progres-mini" role="img" aria-label="Kelengkapan ${persen}%"><span style="width:${persen}%"></span></span><span class="progres-teks">${aman(bagian.join(" · "))}</span>`;
+}
+
 function htmlBerandaGuru(sem, diampu) {
-  let h = "";
+  let h = htmlHariIni(diampu, sem);
   // ---- kartu angka (punya sendiri) ----
   const semuaMilik = diampu.flatMap(m => modulMapel(m.id)).filter(milikSaya);
   const milikSem = semuaMilik.filter(x => samaSemester(x, sem));
@@ -403,12 +500,13 @@ function htmlBerandaGuru(sem, diampu) {
     for (const k of kelompokJenis(diampu)) {
       mapelHtml += `<p class="label-kelompok">Mapel ${namaJenis(k.jenis).toLowerCase()}</p><div class="daftar">`;
       for (const m of k.mapel) {
-        const milik = modulMapel(m.id).filter(x => milikSaya(x) && samaSemester(x, sem));
+        const siap = isiMapelSiap(m.id);
+        const g = siap ? progresMapel(m, uidSaya(), sem) : null;
         mapelHtml += htmlBaris({
           attr: `data-mapel="${aman(m.id)}"`,
           judulBaris: aman(m.nama),
-          sub: `${aman(m.kelas)}, ${aman(m.jenjang)}`,
-          kanan: isiMapelSiap(m.id) ? `${milik.length} modul` : ""
+          sub: `${aman(m.kelas)}, ${aman(m.jenjang)}${g ? `<span class="progres-baris">${htmlProgresMapel(g)}</span>` : ""}`,
+          kanan: g ? `${Math.round(g.skor * 100)}%` : ""
         });
       }
       mapelHtml += `</div>`;
