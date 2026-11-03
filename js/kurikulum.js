@@ -117,9 +117,9 @@ function layarAkun() {
     sel.onchange = async () => {
       const p = toko.pengguna.find(x => x.id === sel.dataset.sapaan);
       if (!p) return;
-      const kelasA = toko.mapel.filter(m => kelasPutra(m.kelas) && (m.pengampu || []).includes(p.id));
+      const kelasA = [...toko.mapel.filter(m => kelasPutra(m.kelas) && (m.pengampu || []).includes(p.id)).map(namaMapel), ...waliKelasPutra(p.id).map(k => `wali ${k}`)];
       if (sel.value === "ustadzah" && kelasA.length &&
-          !(await tanyaYakin(`Peringatan: ${p.nama} masih tercatat ngajar di kelas putra (${kelasA.map(namaMapel).join(", ")}).\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu mapel tersebut.`, { ya: "Tetap simpan" }))) {
+          !(await tanyaYakin(`Peringatan: ${p.nama} masih tercatat di kelas putra (${kelasA.join(", ")}).\n\nUstadzah tidak boleh mengajar atau menjadi wali kelas putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu / wali kelas tersebut.`, { ya: "Tetap simpan" }))) {
         sel.value = sapaanPengguna(p) || "";
         return;
       }
@@ -212,9 +212,9 @@ function formGuru() {
     if (nip && !/^[0-9 ]+$/.test(nip)) return kabar("NIP cuma boleh berisi angka (dan spasi).");
     const kembar = nip && toko.pengguna.find(x => x.id !== p.id && (x.nip || "").replace(/\s/g, "") === nip.replace(/\s/g, ""));
     if (kembar && !(await tanyaYakin(`NIP ini sudah dipakai ${kembar.nama}. Tetap simpan?`, { ya: "Tetap simpan" }))) return;
-    const kelasA = ampu.filter(m => kelasPutra(m.kelas));
+    const kelasA = [...ampu.filter(m => kelasPutra(m.kelas)).map(namaMapel), ...waliKelasPutra(p.id).map(k => `wali ${k}`)];
     if (sapaan === "ustadzah" && kelasA.length &&
-        !(await tanyaYakin(`Peringatan: ${nama} masih tercatat ngajar di kelas putra (${kelasA.map(namaMapel).join(", ")}).\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu mapel tersebut.`, { ya: "Tetap simpan" }))) return;
+        !(await tanyaYakin(`Peringatan: ${nama} masih tercatat di kelas putra (${kelasA.join(", ")}).\n\nUstadzah tidak boleh mengajar atau menjadi wali kelas putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu / wali kelas tersebut.`, { ya: "Tetap simpan" }))) return;
     if (peran !== p.peran && !(await tanyaYakin(`Jadikan ${nama} sebagai ${peran === "kurikulum" ? "admin (TU)" : "guru"}?${peran === "kurikulum" ? "\n\nAdmin bisa menyetujui akun, mengatur mapel, daftar siswa, bobot nilai, dan rapor." : ""}`, { ya: "Ya, ubah" }))) return;
     const terbaru = toko.pengguna.find(x => x.id === p.id) || p;
     const { id, ...data } = terbaru;
@@ -252,6 +252,11 @@ const JENJANG_PKBM = ["Paket B", "Paket C"];
 // Ustadz boleh ngajar kelas putri, tapi ustadzah nggak boleh ngajar kelas putra.
 function kelasPutra(kelas) {
   return /^\s*\d+\s*A/i.test(kelas || "");
+}
+// kelas putra (tahun ajaran sekarang) yang wali kelasnya akun ini
+function waliKelasPutra(uid) {
+  const tahun = semesterSekarang().tahun;
+  return daftarKelas().filter(k => kelasPutra(k.kelas) && (waliKelas(tahun, idKelas(k.jenjang, k.kelas)) || {}).uid === uid).map(k => k.kelas);
 }
 // pengampu yang nggak sesuai aturan di satu mapel: ustadzah di kelas putra
 function pengampuTakSesuai(mp) {
@@ -374,7 +379,7 @@ function formMapel() {
     form.querySelector(`[name=jenis][value="${CSS.escape(j)}"]`).checked = true;
   });
 
-  // ustadzah yang dicentang di kelas putra (rombel A) → peringatan
+  // ustadzah yang dicentang di kelas putra (rombel A) → tidak bisa disimpan
   const peringatan = document.getElementById("peringatanPengampu");
   function ustadzahDiKelasPutra() {
     if (!kelasPutra(pilihKelas.value)) return [];
@@ -385,7 +390,7 @@ function formMapel() {
   function cekPengampu() {
     const salah = ustadzahDiKelasPutra();
     peringatan.hidden = !salah.length;
-    peringatan.innerHTML = salah.length ? `<b>Peringatan:</b> ${aman(pilihKelas.value)} kelas putra (rombel A), sedangkan ${aman(salah.join(", "))} ustadzah. Ustadzah nggak boleh ngajar siswa putra.` : "";
+    peringatan.innerHTML = salah.length ? `<b>Tidak bisa disimpan:</b> ${aman(pilihKelas.value)} kelas putra (rombel A), sedangkan ${aman(salah.join(", "))} ustadzah. Ustadzah tidak boleh mengajar siswa putra. Hapus centangnya dulu.` : "";
   }
   form.querySelectorAll('[name="pengampu"]').forEach(c => c.onchange = cekPengampu);
   pilihKelas.oninput = cekPengampu;
@@ -404,7 +409,7 @@ function formMapel() {
       x.nama.toLowerCase() === nama.toLowerCase() && x.jenjang === f.get("jenjang") && x.kelas === kelas);
     if (kembar && !(await tanyaYakin(`Mapel ${nama} ${kelas} (${f.get("jenjang")}) sudah ada. Tetap bikin satu lagi?`, { ya: "Tetap bikin" }))) return;
     const salah = ustadzahDiKelasPutra();
-    if (salah.length && !(await tanyaYakin(`Peringatan: ${kelas} kelas putra, tapi ${salah.join(", ")} ustadzah.\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan?`, { ya: "Tetap simpan" }))) return;
+    if (salah.length) return kabar(`${kelas} kelas putra, sedangkan ${salah.join(", ")} ustadzah. Ustadzah tidak boleh mengajar siswa putra, jadi hapus centangnya dulu.`);
 
     const baru = simpanMapelData({
       ...(lama || {}),

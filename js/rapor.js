@@ -205,10 +205,17 @@ function layarRaporCetak() {
 function htmlPilihWali(jenjang, kelas, tahun) {
   const id = idKelas(jenjang, kelas);
   const w = waliKelas(tahun, id);
-  const guru = toko.pengguna.filter(p => p.peran === "ustadz").sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
-  // wali lama yang akunnya udah nonaktif / dihapus tetap kelihatan
-  const lama = w && !guru.some(p => p.id === w.uid) ? `<option value="${aman(w.uid)}" selected>${aman(w.nama)} (akun nggak aktif)</option>` : "";
-  return `<label class="pilih-wali">Wali kelas ${aman(kelas)} · ${aman(tahun)}
+  // kelas putra (rombel A): ustadzah tidak boleh jadi wali kelas
+  const putra = kelasPutra(kelas);
+  const guru = toko.pengguna.filter(p => p.peran === "ustadz" && !(putra && sapaanPengguna(p) === "ustadzah"))
+    .sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
+  const akunLama = w && toko.pengguna.find(p => p.id === w.uid);
+  const salah = w && putra && akunLama && sapaanPengguna(akunLama) === "ustadzah";
+  // wali lama yang akunnya udah nonaktif / dihapus / ustadzah di kelas putra tetap kelihatan
+  const lama = w && !guru.some(p => p.id === w.uid)
+    ? `<option value="${aman(w.uid)}" selected>${aman(w.nama)} (${salah ? "ustadzah, harus diganti" : "akun nggak aktif"})</option>` : "";
+  return `${salah ? `<p class="pemberitahuan-kecil">Wali kelas ${aman(kelas)} tercatat ustadzah. Kelas putra harus diwalikan ustadz, silakan ganti.</p>` : ""}
+    <label class="pilih-wali">Wali kelas ${aman(kelas)} · ${aman(tahun)}${putra ? ` <small>(kelas putra: hanya ustadz)</small>` : ""}
       <select data-wali="${aman(id)}" data-wali-tahun="${aman(tahun)}">
         <option value="">Belum dipilih</option>${lama}
         ${guru.map(p => `<option value="${aman(p.id)}" ${w && w.uid === p.id ? "selected" : ""}>${aman(p.nama || p.email || "")}</option>`).join("")}
@@ -224,6 +231,12 @@ function pasangPilihWali() {
   isi.querySelectorAll("[data-wali]").forEach(sel => sel.onchange = () => {
     const akun = toko.pengguna.find(p => p.id === sel.value && p.peran === "ustadz");
     if (sel.value && !akun) return;   // wali lama yang nggak aktif dipilih lagi: biarin
+    const id = sel.dataset.wali;
+    const kelas = daftarKelas().find(k => idKelas(k.jenjang, k.kelas) === id);
+    if (akun && kelas && kelasPutra(kelas.kelas) && sapaanPengguna(akun) === "ustadzah") {
+      kabar("Ustadzah tidak boleh menjadi wali kelas putra.");
+      return tampilkan(true);
+    }
     simpanWali(sel.dataset.waliTahun, sel.dataset.wali, akun || null);
   });
 }
