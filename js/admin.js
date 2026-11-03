@@ -295,6 +295,12 @@ function layarPantauGuru() {
     pergi("mapel", { mapelId: b.dataset.bukaMapel, semester: null, tab: "modul", namaMapelTU: null }));
 }
 
+// berapa siswa satu kelas yang keputusan naik kelasnya sudah diisi di tahun itu
+function hitungKeputusanKelas(jenjang, kelas, tahun) {
+  const fase = santriKelasDi(jenjang, kelas, tahun).map(s => keputusanTahun(s, tahun).fase).filter(f => f !== "dilewati");
+  return { total: fase.length, sudah: fase.filter(f => f !== "belum").length };
+}
+
 // =====================================================
 //  SISWA (TU): Putra (A) / Putri (B) → Paket → kelas → siswa
 // =====================================================
@@ -316,6 +322,16 @@ function layarKelasSiswa() {
     return `<button class="${k === pilih ? "aktif" : ""}" data-bagian="${k}" aria-pressed="${k === pilih}">${label} <small>${n} siswa</small></button>`;
   }).join("")}</div>`;
 
+  // naik kelas (setelah rapat pleno): semester Genap ada pengingat & hitungan per kelas
+  const semNaik = semesterNaikKelas();
+  const genap = semesterSekarang().semester === "Genap";
+  if (genap) {
+    const semuaNaik = semua.reduce((x, kl) => { const n = hitungKeputusanKelas(kl.jenjang, kl.kelas, semNaik.tahun); return { sudah: x.sudah + n.sudah, total: x.total + n.total }; }, { sudah: 0, total: 0 });
+    if (semuaNaik.total && semuaNaik.sudah < semuaNaik.total) {
+      h += `<div class="pemberitahuan"><p><b>Semester Genap:</b> setelah rapat pleno, isi keputusan naik kelas lewat tombol <b>Naik kelas</b> di tiap kelas. Di semua kelas, sudah diputuskan ${semuaNaik.sudah} dari ${semuaNaik.total} siswa.</p></div>`;
+    }
+  }
+
   let adaKelas = false;
   for (const jenjang of daftarJenjang()) {
     const kelas = semua.filter(x => x.jenjang === jenjang && cocok(x));
@@ -330,29 +346,34 @@ function layarKelasSiswa() {
       const wali = waliKelas(tahun, idKelas(kl.jenjang, kl.kelas));
       const mapel = toko.mapel.filter(m => m.jenjang === kl.jenjang && m.kelas === kl.kelas).sort(urutMapelJenis);
       const kunci = `${kl.jenjang}|${kl.kelas}`;
+      const naik = hitungKeputusanKelas(kl.jenjang, kl.kelas, semNaik.tahun);
+      const belumSemua = genap && naik.total && naik.sudah < naik.total;
       h += `
-        <details class="kartu-kelas" data-kartu-kelas="${aman(kunci)}" ${posisi.kelasTerbuka === kunci ? "open" : ""}>
-          <summary>
+        <article class="kartu-kelas-tu">
+          <div class="kepala-kelas-tu">
             <span><strong>Kelas ${aman(kl.kelas)}</strong><small>Wali kelas: ${wali ? aman(wali.nama) : "belum dipilih"}</small></span>
             <span class="angka-kecil"><span><b>${siswa.length}</b> siswa</span><span><b>${mapel.length}</b> mapel</span></span>
-          </summary>
-          <div class="isi-kartu-kelas">
-            ${htmlPilihWali(kl.jenjang, kl.kelas, tahun)}
-            <h3>Daftar siswa</h3>
-            ${siswa.length ? `<ol class="daftar-siswa-kelas">${siswa.map((s, i) => `<li><span class="nomor-santri">${aman(noAbsen(s, i + 1))}</span><span dir="auto">${aman(s.nama)}</span>${s.nis ? `<small>${aman(s.nis)}</small>` : ""}</li>`).join("")}</ol>`
-              : `<p class="info">Belum ada siswa.</p>`}
-            <h3>Guru per mapel</h3>
-            ${mapel.length ? `<ul class="daftar-guru-kelas">${mapel.map(m => {
-              const g = (m.pengampu || []).map(u => namaPengguna(u) || (m.namaPengampu || {})[u]).filter(Boolean);
-              return `<li><span dir="auto">${aman(m.nama)}</span><small>${g.length ? aman(g.join(", ")) : "belum ada guru"}</small></li>`;
-            }).join("")}</ul>` : `<p class="info">Belum ada mapel di kelas ini.</p>`}
-            <div class="baris-tombol">
-              <button class="tombol-kedua" data-ubah-siswa="${aman(kunci)}">Ubah daftar siswa</button>
-              <button class="tombol-kedua" data-rapor="${aman(kunci)}">Rapor</button>
-              <button class="tombol-kedua" data-naik-kelas="${aman(kunci)}">Naik kelas</button>
-            </div>
           </div>
-        </details>`;
+          <div class="baris-tombol aksi-kelas-tu">
+            <button class="${belumSemua ? "tombol-utama" : "tombol-kedua"}" data-naik-kelas="${aman(kunci)}">Naik kelas${genap && naik.total ? ` <small>${naik.sudah}/${naik.total} diputuskan</small>` : ""}</button>
+            <button class="tombol-kedua" data-ubah-siswa="${aman(kunci)}">Ubah daftar siswa</button>
+            <button class="tombol-kedua" data-rapor="${aman(kunci)}">Rapor</button>
+          </div>
+          <details class="kartu-kelas" data-kartu-kelas="${aman(kunci)}" ${posisi.kelasTerbuka === kunci ? "open" : ""}>
+            <summary><span><strong>Siswa, wali kelas &amp; guru</strong></span></summary>
+            <div class="isi-kartu-kelas">
+              ${htmlPilihWali(kl.jenjang, kl.kelas, tahun)}
+              <h3>Daftar siswa</h3>
+              ${siswa.length ? `<ol class="daftar-siswa-kelas">${siswa.map((s, i) => `<li><span class="nomor-santri">${aman(noAbsen(s, i + 1))}</span><span dir="auto">${aman(s.nama)}</span>${s.nis ? `<small>${aman(s.nis)}</small>` : ""}</li>`).join("")}</ol>`
+                : `<p class="info">Belum ada siswa.</p>`}
+              <h3>Guru per mapel</h3>
+              ${mapel.length ? `<ul class="daftar-guru-kelas">${mapel.map(m => {
+                const g = (m.pengampu || []).map(u => namaPengguna(u) || (m.namaPengampu || {})[u]).filter(Boolean);
+                return `<li><span dir="auto">${aman(m.nama)}</span><small>${g.length ? aman(g.join(", ")) : "belum ada guru"}</small></li>`;
+              }).join("")}</ul>` : `<p class="info">Belum ada mapel di kelas ini.</p>`}
+            </div>
+          </details>
+        </article>`;
     }
     h += `</section>`;
   }
