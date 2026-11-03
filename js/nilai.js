@@ -249,10 +249,12 @@ function layarSantri() {
   h += `<p class="info">Naik kelas dicatat dari lembar nilai semester Genap (menu mapel → Nilai → Keputusan naik kelas).</p>`;
   isi.innerHTML = h;
   pasangTab();
+
 wali-kelas
   pasangPilihWali();
   klik("keNaikKelas", () => pergi("naikKelas", { tahunNaik: null }));
 
+ main
   isi.querySelectorAll("[data-aktifkan]").forEach(b => b.onclick = async () => {
     const s = toko.santri.find(y => y.id === b.dataset.aktifkan);
     if (!s || !(await tanyaYakin(`Aktifkan lagi ${s.nama} di kelas ${s.kelas}?`, { ya: "Aktifkan" }))) return;
