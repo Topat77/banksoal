@@ -1,16 +1,16 @@
 // =====================================================
 //  admin.js — menu TU (admin): Mapel, Guru, Siswa
 //  Menu TU cuma 5: Beranda · Mapel · Guru · Siswa · Saya.
-//  Layar lama (Mapel & pengampu, Bobot, UAS bersama, Pantauan, Rapor, Daftar siswa)
-//  tetap ada dan alurnya sama; sekarang dibuka dari dalam tiga layar di bawah.
-//  - Mapel: kotak per nama mapel → daftar kelas yang punya mapel itu
-//  - Guru:  akun guru · pantau per guru · pantau per mapel
-//  - Siswa: Putra (A) / Putri (B) → Paket B / Paket C → kelas → daftar siswa
+//  Layar lain (Bobot, UAS bersama, Rapor, Daftar siswa, ubah mapel) dibuka dari dalam tiga layar ini.
+//  - Mapel: kotak per nama mapel → kelas-kelasnya + pantauan per guru (modul, soal, sumatif)
+//  - Guru:  akun guru · pantau per guru
+//  - Siswa: Putra (A) / Putri (B) → Paket B / Paket C → kelas → daftar siswa;
+//           Daftar siswa & Rapor dibuka langsung ke satu kelas (tanpa pilih kelas lagi)
 // =====================================================
 
 // ---- induk layar TU (dipakai tombol ‹ dan penanda menu) ----
 const INDUK_TU = {
-  mapelNamaTU: "mapelTU", kelolaMapel: "mapelTU", bobot: "mapelTU", daftarUAS: "mapelTU",
+  mapelNamaTU: "mapelTU", formMapel: "mapelTU", bobot: "mapelTU", daftarUAS: "mapelTU",
   rapor: "kelasSiswa", santri: "kelasSiswa"
 };
 // layar TU yang punya induk: tombol ‹ ditampilkan (santri dari lembar nilai tetap balik ke nilai)
@@ -18,7 +18,8 @@ function indukLayarTU() {
   if (!sayaKurikulum()) return null;
   const L = posisi.layar;
   if (L === "santri" && posisi.dariNilai) return null;
-  if (L === "formMapel" && !posisi.dariMapel && posisi.dariMapelTU) return "mapelNamaTU";
+  if (L === "formMapel" && posisi.dariMapel) return null;        // dari halaman mapel: balik ke mapel
+  if (L === "formMapel" && posisi.dariMapelTU) return "mapelNamaTU";
   if (L === "mapel" && posisi.namaMapelTU) {
     const mp = cariMapel(posisi.mapelId);
     if (mp && mp.nama === posisi.namaMapelTU) return "mapelNamaTU";
@@ -31,15 +32,16 @@ function kelompokLayarTU() {
   if (L === "beranda" || L === "pilihMapel") return "beranda";
   if (L === "cari") return "cari";
   if (L === "lainnya") return "lainnya";
-  if (["akun", "formGuru", "pantauan", "pantauGuru"].includes(L)) return "guru";
+  if (["akun", "formGuru", "pantauGuru"].includes(L)) return "guru";
   if (["kelasSiswa", "rapor", "raporCetak"].includes(L) || (L === "santri" && !posisi.dariNilai)) return "siswa";
   return "mapelTU";
 }
 
-// ---- tab di atas layar Guru: Akun guru · Pantau per guru · Pantau per mapel ----
+// ---- tab di atas layar Guru: Akun guru · Pantau guru ----
+// (pantauan per mapel ada di menu Mapel → pilih mapel)
 function htmlSegmenGuru(aktif) {
   const n = jumlahMenunggu();
-  const tombol = [["akun", "Akun guru", n ? `<small>${n} menunggu</small>` : ""], ["pantauGuru", "Pantau per guru", ""], ["pantauan", "Pantau per mapel", ""]];
+  const tombol = [["akun", "Akun guru", n ? `<small>${n} menunggu</small>` : ""], ["pantauGuru", "Pantau guru", ""]];
   return `<div class="pilih-kelompok segmen-tu" role="group" aria-label="Bagian halaman Guru">${tombol.map(([ke, teks, tambah]) =>
     `<button class="${ke === aktif ? "aktif" : ""}" data-segmen="${ke}" aria-pressed="${ke === aktif}">${teks}${tambah ? " " + tambah : ""}</button>`).join("")}</div>`;
 }
@@ -72,8 +74,11 @@ function layarMapelTU() {
     <div class="aksi-tu">
       <button class="tombol-kedua" data-ke-tu="bobot">${ikonMenu("bobot")}Bobot nilai</button>
       <button class="tombol-kedua" data-ke-tu="daftarUAS">${ikonMenu("uas")}UAS bersama${nUAS ? ` <span class="lencana">${nUAS}<span class="sr"> diajukan</span></span>` : ""}</button>
-      <button class="tombol-kedua" data-ke-tu="kelolaMapel">${ikonMenu("mapel")}Daftar lengkap</button>
     </div>`;
+  const salah = mapelJenjang.filter(m => pengampuTakSesuai(m).length);
+  if (salah.length) {
+    h += `<div class="pemberitahuan-kecil"><b>Perlu dicek:</b> ada ustadzah yang tercatat mengajar di kelas putra (${aman(salah.map(namaMapel).join(", "))}). Ustadzah tidak boleh mengajar siswa putra.</div>`;
+  }
 
   if (mapelJenjang.length === 0) {
     h += `<p class="kosong">Belum ada mapel ${aman(jenjang)}.</p>`;
@@ -107,34 +112,79 @@ function layarMapelTU() {
   document.getElementById("tambahMapel").onclick = () => pergi("formMapel", { mapelEditId: null, dariMapel: false, dariMapelTU: false });
 }
 
-// satu nama mapel: daftar kelasnya, pengampu, dan isi semester sekarang
+// semester yang bisa dipilih di pantauan: semester sekarang + yang sudah dimuat + yang ada lembar nilainya
+function semesterPantauTU(daftarMapel) {
+  const semua = new Map();
+  const tambah = (x) => semua.set(kunciSemester(x), x);
+  tambah(semesterSekarang());
+  semesterDimuat.forEach(tambah);
+  for (const mp of daftarMapel) {
+    ((toko.isi[mp.id] || {}).nilai || []).forEach(tambah);
+    modulMapel(mp.id).forEach(tambah);
+    sumatifMapel(mp.id).forEach(tambah);
+  }
+  return [...semua.values()].sort(bandingSemester);
+}
+
+// satu nama mapel: tiap kelas + pantauan per guru (modul, pertemuan, soal, sumatif, terakhir diisi)
 function layarMapelNamaTU() {
   wajibKurikulum();
   const nama = posisi.namaMapelTU || "";
   const jenjang = jenjangAktif();
-  const sem = semesterSekarang();
   judul.textContent = nama || "Mapel";
-  jejak.textContent = `${jenjang} · ${namaSemester(sem)}`;
   if (!dataDasarSiap()) return tampilMemuat(nama);
   const daftar = toko.mapel.filter(m => m.jenjang === jenjang && m.nama === nama).sort(bandingKelas);
   if (daftar.length === 0) throw new DataHilang();
+  const pilihanSem = semesterPantauTU(daftar);
+  const kunci = posisi.semPantau && pilihanSem.some(x => kunciSemester(x) === posisi.semPantau) ? posisi.semPantau : kunciSemester(semesterSekarang());
+  const sem = dariKunciSemester(kunci);
+  pastikanSemester(sem);
+  jejak.textContent = `${jenjang} · ${namaSemester(sem)}`;
 
-  let h = `<div class="daftar-kelas-mapel">`;
+  let h = `<div class="pilih-semester" role="group" aria-label="Semester">${pilihanSem.map(x => {
+    const k = kunciSemester(x);
+    return `<button class="chip ${k === kunci ? "aktif" : ""}" data-sem="${aman(k)}" aria-pressed="${k === kunci}">${aman(namaSemester(x))}</button>`;
+  }).join("")}</div><div class="daftar-kelas-mapel">`;
   for (const mp of daftar) {
     const siap = isiMapelSiap(mp.id);
     const modul = siap ? modulMapel(mp.id).filter(x => samaSemester(x, sem)) : [];
     const sumatif = siap ? sumatifMapel(mp.id).filter(x => samaSemester(x, sem)) : [];
-    const soal = modul.reduce((x, m) => x + jumlahSoal(m), 0);
-    const guru = (mp.pengampu || []).map(u => namaPengguna(u) || (mp.namaPengampu || {})[u]).filter(Boolean);
+    // baris: semua pengampu + siapa pun yang punya modul / ujian di mapel ini
+    const orang = [...new Set([...(mp.pengampu || []), ...modul.map(m => m.pemilik), ...sumatif.map(x => x.pemilik)])];
     const takSesuai = pengampuTakSesuai(mp).length;
     h += `
       <section class="kartu-pantau">
         <button class="kartu-pantau-judul" data-buka-mapel="${aman(mp.id)}">
-          <span><strong>${aman(mp.kelas)}</strong><small>${guru.length ? aman(guru.join(", ")) : "Belum ada guru"}</small></span>
+          <span><strong>Kelas ${aman(mp.kelas)}</strong><small>${modul.length} modul · ${sumatif.length} sumatif</small></span>
           <span class="baris-panah" aria-hidden="true">›</span>
-        </button>
+        </button>`;
+    if (!siap) h += `<p class="info isi-kelas-mapel">Memuat...</p>`;
+    else if (!orang.length) h += `<p class="info isi-kelas-mapel">Belum ada guru.</p>`;
+    else {
+      h += `<table class="tabel-pantau">
+        <thead><tr><th>Guru</th><th>Modul</th><th>Pertemuan</th><th>Soal</th><th>Sumatif</th><th>Terakhir diisi</th></tr></thead><tbody>`;
+      for (const uid of orang) {
+        const mm = modul.filter(m => m.pemilik === uid);
+        const ss = sumatif.filter(x => x.pemilik === uid);
+        const pertemuan = mm.reduce((x, m) => x + (m.pertemuan || []).length, 0);
+        const tanpaTarget = mm.reduce((x, m) => x + (m.pertemuan || []).filter(p => !p.target).length, 0);
+        const terakhir = Math.max(0, ...mm.map(m => m.diubah || 0), ...ss.map(x => x.diubah || 0));
+        const namaGuru = namaPengguna(uid) || (mp.namaPengampu || {})[uid] || (mm[0] && mm[0].namaPemilik) || "Tanpa nama";
+        const bukanPengampu = !(mp.pengampu || []).includes(uid);
+        h += `
+          <tr>
+            <td data-label="Guru"><b>${aman(namaGuru)}</b>${bukanPengampu ? ` <small>(sudah bukan pengampu)</small>` : ""}</td>
+            <td data-label="Modul">${mm.length || `<span class="merah">Belum ada</span>`}</td>
+            <td data-label="Pertemuan">${pertemuan}${tanpaTarget ? ` <small>(${tanpaTarget} tanpa target)</small>` : ""}</td>
+            <td data-label="Soal">${mm.reduce((x, m) => x + jumlahSoal(m), 0)}</td>
+            <td data-label="Sumatif">${ss.length}</td>
+            <td data-label="Terakhir diisi">${terakhir ? aman(waktuRapi(terakhir)) : "-"}</td>
+          </tr>`;
+      }
+      h += `</tbody></table>`;
+    }
+    h += `
         <div class="isi-kelas-mapel">
-          ${siap ? `<p class="angka-kecil"><span><b>${modul.length}</b> modul</span><span><b>${soal}</b> soal</span><span><b>${sumatif.length}</b> sumatif</span></p>` : `<p class="info">Memuat...</p>`}
           ${takSesuai ? `<p class="pemberitahuan-kecil">Ada ustadzah yang tercatat mengajar di kelas putra ini.</p>` : ""}
           <button class="tombol-teks" data-ubah-mapel="${aman(mp.id)}">Ubah mapel &amp; guru</button>
         </div>
@@ -144,8 +194,9 @@ function layarMapelNamaTU() {
   isi.innerHTML = h;
   tombolKembali.hidden = false;
 
+  isi.querySelectorAll(".chip[data-sem]").forEach(b => b.onclick = () => pergi("mapelNamaTU", { semPantau: b.dataset.sem }));
   isi.querySelectorAll("[data-buka-mapel]").forEach(b => b.onclick = () =>
-    pergi("mapel", { mapelId: b.dataset.bukaMapel, semester: null, tab: "modul" }));
+    pergi("mapel", { mapelId: b.dataset.bukaMapel, semester: kunci, tab: "modul" }));
   isi.querySelectorAll("[data-ubah-mapel]").forEach(b => b.onclick = () =>
     pergi("formMapel", { mapelEditId: b.dataset.ubahMapel, dariMapel: false, dariMapelTU: true }));
 }

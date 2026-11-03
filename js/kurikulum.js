@@ -292,49 +292,6 @@ function pasangTabJenjang(ke, tambahan = {}) {
   });
 }
 
-function layarKelolaMapel() {
-  wajibKurikulum();
-  judul.textContent = "Mapel & pengampu";
-  jejak.textContent = toko.lembaga.nama || KONFIG.namaLembaga || "";
-  if (!dataDasarSiap()) return tampilMemuat("Mapel & pengampu");
-
-  const jenjang = jenjangAktif();
-  const daftar = toko.mapel.filter(m => m.jenjang === jenjang)
-    .sort((a, b) => bandingKelas(a, b) || a.nama.localeCompare(b.nama, "id"));
-  jejak.textContent = jenjang;
-  let h = htmlTabJenjang() + `<p class="info">Mapel dibuat di sini, lalu tentukan ustadz/ustadzah pengampunya. Satu mapel boleh diampu lebih dari satu orang.</p>`;
-  const salah = daftar.filter(m => pengampuTakSesuai(m).length);
-  if (salah.length) {
-    h += `<div class="pemberitahuan-kecil"><b>Perlu dicek:</b> ada ustadzah yang tercatat ngajar di kelas putra (${aman(salah.map(namaMapel).join(", "))}). Ustadzah nggak boleh ngajar siswa putra.</div>`;
-  }
-  if (daftar.length === 0) {
-    h += `<p class="kosong">Belum ada mapel ${aman(jenjang)}.</p>`;
-  }
-  for (const k of kelompokJenis(daftar)) {
-    h += `<h2 class="subjudul">Mapel ${namaJenis(k.jenis).toLowerCase()} <small>${k.mapel.length} mapel</small></h2><div class="daftar">`;
-    for (const m of k.mapel) {
-      const nama = (m.pengampu || []).map(u => namaPengguna(u) || (m.namaPengampu || {})[u]).filter(Boolean);
-      const takSesuai = pengampuTakSesuai(m);
-      h += htmlBaris({
-        attr: `data-mapel="${aman(m.id)}"`,
-        judulBaris: aman(m.nama),
-        sub: `${aman(m.kelas)} · ${nama.length ? aman(nama.join(", ")) : "<em>belum ada pengampu</em>"}`,
-        tanda: takSesuai.length ? "Ustadzah di kelas putra" : nama.length ? "" : "Belum ada pengampu",
-        tandaJenis: takSesuai.length ? "tanda-ragu" : "tanda-tutup"
-      });
-    }
-    h += `</div>`;
-  }
-  h += `<button class="tombol-utama" id="tambah">+ Tambah mapel ${aman(jenjang)}</button>`;
-  isi.innerHTML = h;
-  pasangTabJenjang("kelolaMapel", { dariMapel: false });
-
-  document.getElementById("tambah").onclick = () => pergi("formMapel", { mapelEditId: null, dariMapel: false });
-  isi.querySelectorAll(".baris[data-mapel]").forEach(b => {
-    b.onclick = () => pergi("formMapel", { mapelEditId: b.dataset.mapel, dariMapel: false });
-  });
-}
-
 function formMapel() {
   wajibKurikulum();
   const lama = posisi.mapelEditId ? butuh(cariMapel(posisi.mapelEditId)) : null;
@@ -458,7 +415,7 @@ function formMapel() {
     pilihJenjang(baru.jenjang);   // daftar mapel langsung nunjukin jenjang mapel yang barusan disimpan
     if (posisi.dariMapel) pergi("mapel", { mapelId: baru.id });
     else if (posisi.dariMapelTU && toko.mapel.some(m => m.jenjang === baru.jenjang && m.nama === posisi.namaMapelTU)) pergi("mapelNamaTU");
-    else pergi("kelolaMapel");
+    else pergi("mapelTU");
   };
 
   if (lama) {
@@ -479,125 +436,8 @@ function formMapel() {
       // dialog tadi bisa lama; kalau datanya ternyata belum siap, jangan lanjut
       if (!hapusMapelData(lama.id, isi)) { kabar("Data masih dimuat, coba lagi sebentar."); return; }
       await hapusSisaKosong();
-      pergi("kelolaMapel", { mapelId: null });
+      pergi("mapelTU", { mapelId: null });
     };
   }
 }
 
-// =====================================================
-//  PANTAUAN: siapa sudah ngisi apa
-// =====================================================
-function layarPantauan() {
-  wajibKurikulum();
-  judul.textContent = "Guru";
-  const semuaSem = new Map();
-  const tambah = (x) => semuaSem.set(kunciSemester(x), x);
-  tambah(semesterSekarang());
-  semesterDimuat.forEach(tambah);
-  for (const mp of toko.mapel) {
-    ((toko.isi[mp.id] || {}).nilai || []).forEach(tambah);   // semester lama: dari lembar nilai
-    modulMapel(mp.id).forEach(tambah);
-    sumatifMapel(mp.id).forEach(tambah);
-  }
-  const kunci = posisi.semPantau && semuaSem.has(posisi.semPantau) ? posisi.semPantau : kunciSemester(semesterSekarang());
-  const sem = dariKunciSemester(kunci);
-  pastikanSemester(sem);
-  const jenjang = jenjangAktif();
-  const mapelJenjang = toko.mapel.filter(m => m.jenjang === jenjang)
-    .sort((a, b) => bandingKelas(a, b) || a.nama.localeCompare(b.nama, "id"));
-  jejak.textContent = `Pantau per mapel · ${jenjang} · ${namaSemester(sem)}`;
-
-  // siapa saja yang muncul di pantauan jenjang ini, dikelompokkan ustadz / ustadzah
-  const isiPantau = mapelJenjang.filter(mp => isiMapelSiap(mp.id)).map(mp => {
-    const modul = modulMapel(mp.id).filter(x => samaSemester(x, sem));
-    const sumatif = sumatifMapel(mp.id).filter(x => samaSemester(x, sem));
-    // baris: semua pengampu + siapa pun yang punya modul di mapel ini
-    const orang = [...new Set([...(mp.pengampu || []), ...modul.map(m => m.pemilik), ...sumatif.map(s => s.pemilik)])];
-    return { mp, modul, sumatif, orang };
-  });
-  const sapaanUid = (uid, mp, modul) => {
-    const p = toko.pengguna.find(x => x.id === uid);
-    const nama = (p && p.nama) || (mp.namaPengampu || {})[uid] || ((modul.find(m => m.pemilik === uid) || {}).namaPemilik) || "";
-    return sapaanPengguna({ ...(p || {}), nama }) || "belum";
-  };
-  const hitung = { ustadz: new Set(), ustadzah: new Set(), belum: new Set() };
-  for (const x of isiPantau) for (const uid of x.orang) hitung[sapaanUid(uid, x.mp, x.modul)].add(uid);
-  const KELOMPOK = [["ustadz", "Ustadz"], ["ustadzah", "Ustadzah"], ["belum", "Belum diatur"]];
-  let kelompok = posisi.kelompokPantau || "ustadz";
-  if (hitung[kelompok].size === 0) kelompok = KELOMPOK.map(k => k[0]).find(k => hitung[k].size) || "ustadz";
-
-  let h = htmlSegmenGuru("pantauan") + htmlTabJenjang();
-  h += `<div class="pilih-kelompok" role="group" aria-label="Ustadz atau ustadzah">`;
-  for (const [k, label] of KELOMPOK) {
-    if (k === "belum" && hitung.belum.size === 0) continue;
-    h += `<button class="${k === kelompok ? "aktif" : ""}" data-kelompok="${k}" aria-pressed="${k === kelompok}">${label} <small>${hitung[k].size}</small></button>`;
-  }
-  h += `</div>`;
-  if (kelompok === "belum") h += `<p class="info">Atur sapaannya di halaman Guru biar masuk ke kelompok Ustadz atau Ustadzah.</p>`;
-  h += `<div class="pilih-semester" role="group" aria-label="Semester">`;
-  for (const x of [...semuaSem.values()].sort(bandingSemester)) {
-    const k = kunciSemester(x);
-    h += `<button class="chip ${k === kunci ? "aktif" : ""}" data-sem="${aman(k)}" aria-pressed="${k === kunci}">${aman(namaSemester(x))}</button>`;
-  }
-  h += `</div>`;
-
-  if (mapelJenjang.length === 0) {
-    h += `<p class="kosong">Belum ada mapel ${aman(jenjang)}. Tambahkan dulu di halaman Mapel &amp; pengampu.</p>`;
-  }
-
-  const belumSiap = isiPantau.length < mapelJenjang.length;
-  let adaKartu = false;
-  for (const { mp, modul, sumatif, orang: semua } of isiPantau) {
-    const orang = semua.filter(uid => sapaanUid(uid, mp, modul) === kelompok);
-    // mapel tanpa pengampu tetap tampil (biar ketahuan), mapel yang diampu kelompok lain disembunyikan
-    if (orang.length === 0 && semua.length > 0) continue;
-    adaKartu = true;
-
-    h += `
-      <section class="kartu-pantau">
-        <button class="kartu-pantau-judul" data-mapel="${aman(mp.id)}">
-          <span><strong>${aman(mp.nama)}</strong><small>${aman(mp.kelas)}</small></span>
-          <span class="baris-panah" aria-hidden="true">›</span>
-        </button>`;
-    if (orang.length === 0) {
-      h += `<p class="info">Belum ada pengampu.</p>`;
-    } else {
-      h += `<table class="tabel-pantau">
-        <thead><tr><th>Pengampu</th><th>Modul</th><th>Pertemuan</th><th>Soal</th><th>Sumatif</th><th>Terakhir diisi</th></tr></thead><tbody>`;
-      for (const uid of orang) {
-        const mm = modul.filter(m => m.pemilik === uid);
-        const ss = sumatif.filter(s => s.pemilik === uid);
-        const pertemuan = mm.reduce((x, m) => x + (m.pertemuan || []).length, 0);
-        const tanpaTarget = mm.reduce((x, m) => x + (m.pertemuan || []).filter(p => !p.target).length, 0);
-        const soal = mm.reduce((x, m) => x + jumlahSoal(m), 0);
-        const terakhir = Math.max(0, ...mm.map(m => m.diubah || 0), ...ss.map(s => s.diubah || 0));
-        const nama = namaPengguna(uid) || (mp.namaPengampu || {})[uid] || (mm[0] && mm[0].namaPemilik) || "Tanpa nama";
-        const bukanPengampu = !(mp.pengampu || []).includes(uid);
-        h += `
-          <tr class="${mm.length === 0 ? "kurang" : ""}">
-            <td data-label="Pengampu"><b>${aman(nama)}</b>${bukanPengampu ? ` <small>(sudah bukan pengampu)</small>` : ""}</td>
-            <td data-label="Modul">${mm.length || `<span class="merah">Belum ada</span>`}</td>
-            <td data-label="Pertemuan">${pertemuan}${tanpaTarget ? ` <small>(${tanpaTarget} tanpa target)</small>` : ""}</td>
-            <td data-label="Soal">${soal}</td>
-            <td data-label="Sumatif">${ss.length}</td>
-            <td data-label="Terakhir diisi">${terakhir ? aman(waktuRapi(terakhir)) : "-"}</td>
-          </tr>`;
-      }
-      h += `</tbody></table>`;
-    }
-    h += `</section>`;
-  }
-  if (!adaKartu && isiPantau.length > 0) {
-    h += `<p class="kosong">Belum ada ${kelompok === "ustadzah" ? "ustadzah" : kelompok === "ustadz" ? "ustadz" : "pengampu tanpa sapaan"} yang ngampu mapel ${aman(jenjang)}.</p>`;
-  }
-  if (belumSiap) h += `<p class="info">Sebagian data masih dimuat...</p>`;
-  isi.innerHTML = h;
-
-  pasangTabJenjang("pantauan");
-  pasangSegmenGuru();
-  isi.querySelectorAll("[data-kelompok]").forEach(b => b.onclick = () => pergi("pantauan", { kelompokPantau: b.dataset.kelompok }));
-  isi.querySelectorAll(".chip[data-sem]").forEach(b => b.onclick = () => pergi("pantauan", { semPantau: b.dataset.sem }));
-  isi.querySelectorAll("[data-mapel]").forEach(b => {
-    b.onclick = () => pergi("mapel", { mapelId: b.dataset.mapel, semester: kunci, tab: "modul" });
-  });
-}

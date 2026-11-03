@@ -39,9 +39,7 @@ const daftarLayar = {
   cari: "layarCari",
   lainnya: "layarLainnya",
   akun: "layarAkun",
-  kelolaMapel: "layarKelolaMapel",
   formMapel: "formMapel",
-  pantauan: "layarPantauan",
   santri: "layarSantri",
   nilai: "layarNilai",
   rapor: "layarRapor",
@@ -225,7 +223,7 @@ function layarInduk() {
   if (L === "formModul") return posisi.modEditId ? "modul" : "mapel";
   if (L === "formSumatif") return posisi.sumEditId ? "sumatif" : "mapel";
   if (L === "cetak") return posisi.cetakDari;
-  if (L === "formMapel") return posisi.dariMapel ? "mapel" : "kelolaMapel";
+  if (L === "formMapel") return posisi.dariMapel ? "mapel" : "mapelTU";
   if (L === "formSalin") return posisi.salinDari === "modul" ? "modul" : "mapel";
   if (L === "santri") return posisi.dariNilai ? "nilai" : "beranda";
   if (L === "aiSoal") return posisi.aiUntuk === "sumatif" ? "sumatif" : "modul";
@@ -529,13 +527,7 @@ function kelompokLayar() {
   const L = posisi.layar;
   if (["cari"].includes(L)) return "cari";
   if (["lainnya"].includes(L)) return "lainnya";
-  if (["pantauan"].includes(L)) return "pantauan";
-  if (["akun", "formGuru"].includes(L)) return "akun";
   if (["santri"].includes(L) && !posisi.dariNilai) return "santri";
-  if (["rapor", "raporCetak"].includes(L)) return "rapor";
-  if (L === "bobot") return "bobot";
-  if (L === "daftarUAS" || (posisi.uasGrup && sayaKurikulum() && !sayaPengampu(cariMapel(posisi.mapelId)))) return "uas";
-  if (["kelolaMapel", "formMapel"].includes(L) && !posisi.dariMapel) return "kelola";
   if (L === "beranda" || L === "pilihMapel") return "beranda";
   if (L === "aiGenerator" || (posisi.dariAI && LAYAR_ALUR_AI.includes(L))) return "ai";
   return "mapel";
@@ -641,7 +633,6 @@ function gambarSamping() {
     b.onclick = async () => {
       if (!(await bolehTinggalkan())) return;
       const d = b.dataset;
-      if (d.ke === "kelolaMapel") return pergi("kelolaMapel", { dariMapel: false });
       if (d.ke === "santri") return pergi("santri", { dariNilai: false });
       if (d.ke) return pergi(d.ke);
       if (d.mod) return pergi("modul", { mapelId: d.mapel, modId: d.mod });
@@ -657,19 +648,18 @@ function gambarNavBawah() {
   const item = sayaKurikulum()
     ? [["beranda", "beranda", "Beranda"], ["mapelTU", "mapelTU", "Mapel"], ["akun", "guru", "Guru"], ["kelasSiswa", "siswa", "Siswa"], ["lainnya", "lainnya", "Saya"]]
     : [["beranda", "beranda", "Beranda"], ["aiGenerator", "ai", "AI"], ["cari", "cari", "Cari"], ["lainnya", "lainnya", "Saya"]];
-  const ikonDari = { ai: "ai", beranda: "beranda", pantauan: "pantauan", akun: "akun", kelola: "mapel", lainnya: "lainnya", cari: "cari", rapor: "rapor", santri: "santri", mapelTU: "mapel", guru: "akun", siswa: "santri" };
+  const ikonDari = { ai: "ai", beranda: "beranda", lainnya: "lainnya", cari: "cari", mapelTU: "mapel", guru: "akun", siswa: "santri" };
   navBawah.style.setProperty("--jumlah", item.length);
   const n = sayaKurikulum() ? jumlahMenunggu() : 0;
   navBawah.innerHTML = item.map(([ke, kunci, teks]) => {
     const aktif = grup === kunci || (kunci === "beranda" && grup === "mapel");
-    const lencana = (kunci === "akun" || kunci === "guru") && n ? `<span class="lencana">${n}<span class="sr"> menunggu</span></span>` : "";
+    const lencana = kunci === "guru" && n ? `<span class="lencana">${n}<span class="sr"> menunggu</span></span>` : "";
     return `<button data-ke="${ke}" class="${aktif ? "aktif" : ""}" ${aktif ? 'aria-current="page"' : ""}>${IKON[ikonDari[kunci]]}${lencana}<span>${teks}</span></button>`;
   }).join("");
   navBawah.querySelectorAll("button").forEach(b => {
     b.onclick = async () => {
       if (!(await bolehTinggalkan())) return;
-      if (b.dataset.ke === "kelolaMapel") pergi("kelolaMapel", { dariMapel: false });
-      else if (b.dataset.ke === "santri") pergi("santri", { dariNilai: false });
+      if (b.dataset.ke === "santri") pergi("santri", { dariNilai: false });
       else pergi(b.dataset.ke);
     };
   });

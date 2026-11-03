@@ -261,7 +261,7 @@ function layarBeranda() {
         <h2>${kur ? `Selamat datang, ${aman(namaSaya())}!` : `Halo, ${aman(namaSaya())}!`}</h2>
         <p>${kur ? `Kelola perangkat pembelajaran dan pantau kegiatan guru di ${aman(lembaga)}.` : "Semangat mengajar, semoga hari ini penuh berkah."}</p>
         <span class="tanggal">${aman(hariIni)} · ${aman(namaSemester(sem))}</span>
-        ${kur ? `<div class="baris-tombol"><button class="tombol-utama" id="kePantauan">Buka pantauan</button></div>` : ""}
+        ${kur ? `<div class="baris-tombol"><button class="tombol-utama" id="kePantauan">Pantau guru</button></div>` : ""}
       </div>
       ${ILUSTRASI_SAMBUT}
     </section>`;
@@ -274,18 +274,14 @@ function layarBeranda() {
   isi.innerHTML = `<div class="beranda">${h}</div>`;
 
   klik("keAkun", () => pergi("akun"));
-  klik("kePantauan", () => pergi("pantauan"));
-  klik("kePantauan2", () => pergi("pantauan"));
+  klik("kePantauan", () => pergi("pantauGuru"));
+  klik("kePantauan2", () => pergi("pantauGuru"));
   klik("keUASDiajukan", () => pergi("daftarUAS"));
   klik("cadanganBeranda", async () => {
     const b = document.getElementById("cadanganBeranda");
     if (await unduhCadangan(b, null)) tampilkan(true);
   });
   isi.querySelectorAll("[data-kelas-kosong]").forEach(b => b.onclick = () => pergi("santri", { kelasSantri: b.dataset.kelasKosong, dariNilai: false }));
-  isi.querySelectorAll("[data-panel-jenjang]").forEach(b => b.onclick = () => {
-    pilihJenjang(b.dataset.panelJenjang);
-    pergi(b.dataset.ke, { dariMapel: false, dariNilai: false, kelasSantri: null, kelasRapor: null });
-  });
   isi.querySelectorAll("[data-kartu-ke]").forEach(b => {
     b.onclick = () => {
       const ke = b.dataset.kartuKe;
@@ -337,49 +333,14 @@ function htmlBerandaTU(sem) {
   const siswa = toko.santri.filter(x => x.aktif !== false);
   h += htmlKartuAngka([
     { ikon: "akun", warna: "hijau", label: "Guru aktif", angka: guru.length, tambah: jumlahBulanIni(guru), ke: "akun" },
-    { ikon: "modul", warna: "biru", label: "Modul ajar", angka: modulSem.length, tambah: jumlahBulanIni(semuaModul), ke: "pantauan" },
-    { ikon: "soal", warna: "ungu", label: "Bank soal", angka: soal.length, tambah: jumlahBulanIni(soal), ke: "pantauan" },
-    { ikon: "santri", warna: "oranye", label: "Siswa", angka: siswa.length, tambah: jumlahBulanIni(siswa), ke: "santri" }
+    { ikon: "modul", warna: "biru", label: "Modul ajar", angka: modulSem.length, tambah: jumlahBulanIni(semuaModul), ke: "pantauGuru" },
+    { ikon: "soal", warna: "ungu", label: "Bank soal", angka: soal.length, tambah: jumlahBulanIni(soal), ke: "pantauGuru" },
+    { ikon: "santri", warna: "oranye", label: "Siswa", angka: siswa.length, tambah: jumlahBulanIni(siswa), ke: "kelasSiswa" }
   ]);
 
-  // ---- kelengkapan, aktivitas, akses cepat ----
+  // ---- kelengkapan & aktivitas (menu Mapel / Guru / Siswa ada di menu samping & bawah) ----
   h += htmlKelengkapan(sem);
-  h += `<div class="dasbor-dua">
-    ${htmlAktivitas()}
-    <section class="panel">
-      <div class="panel-kepala"><h2>Akses cepat</h2></div>
-      ${htmlAksesCepat([
-        { id: "daftarUAS", ikon: "cetak", warna: "hijau", judul: "Cetak soal UAS", ket: "Periksa, kunci, lalu cetak" },
-        { id: "rapor", ikon: "rapor", warna: "biru", judul: "Cetak rapor siswa", ket: "Per kelas atau per siswa" },
-        { id: "akun", ikon: "akun", warna: "ungu", judul: "Kelola guru", ket: "Setujui akun, NIP, sapaan" },
-        { id: "kelolaMapel", ikon: "mapel", warna: "oranye", judul: "Mapel & pengampu", ket: "Guru ngajar mapel apa di kelas mana" },
-        { id: "bobot", ikon: "bobot", warna: "hijau", judul: "Bobot nilai", ket: "Paket B & C, umum & diniah" }
-      ])}
-    </section>
-  </div>`;
-
-  // ---- ringkasan per jenjang ----
-  h += `<div class="panel-jenjang">${daftarJenjang().map(j => {
-    const mp = toko.mapel.filter(m => m.jenjang === j);
-    const kelas = daftarKelas().filter(x => x.jenjang === j);
-    const jml = toko.santri.filter(x => x.jenjang === j && x.aktif !== false).length;
-    const tanpaAmpu = mp.filter(m => !(m.pengampu || []).length).length;
-    return `
-      <section class="kartu-jenjang">
-        <h2>${aman(j)}</h2>
-        <dl>
-          <div><dt>Mapel</dt><dd>${mp.length}</dd></div>
-          <div><dt>Kelas</dt><dd>${kelas.length}</dd></div>
-          <div><dt>Siswa</dt><dd>${jml}</dd></div>
-        </dl>
-        ${tanpaAmpu ? `<p class="info">${tanpaAmpu} mapel belum ada pengampunya.</p>` : ""}
-        <div class="baris-tombol">
-          <button class="tombol-teks" data-panel-jenjang="${aman(j)}" data-ke="kelolaMapel">Mapel</button>
-          <button class="tombol-teks" data-panel-jenjang="${aman(j)}" data-ke="santri">Siswa</button>
-          <button class="tombol-teks" data-panel-jenjang="${aman(j)}" data-ke="rapor">Rapor</button>
-        </div>
-      </section>`;
-  }).join("")}</div>`;
+  h += htmlAktivitas();
 
   if (toko.mapel.length === 0) {
     h += `

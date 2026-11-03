@@ -65,12 +65,20 @@ function layarRapor() {
   judul.textContent = "Rapor";
   jejak.textContent = kelas ? `${kelas}, ${jenjang} · ${namaSemester(sem)}` : jenjangAktif();
 
-  let h = htmlTabJenjang() + `<div class="pilih-semester" role="group" aria-label="Kelas">`;
-  for (const x of kelasAda) {
-    const k = `${x.jenjang}|${x.kelas}`;
-    h += `<button class="chip ${k === kunciKelas ? "aktif" : ""}" data-kelas="${aman(k)}" aria-pressed="${k === kunciKelas}">${aman(x.kelas)}</button>`;
+  // kelasnya dipilih di menu Siswa (kartu kelas). Pilihan kelas cuma muncul kalau di tahun itu
+  // ada kelas yang sekarang sudah tidak ada (misal kelas 9 yang siswanya sudah lulus).
+  const sekarang = new Set(daftarKelas().map(x => `${x.jenjang}|${x.kelas}`));
+  const kelasLama = kelasAda.filter(x => !sekarang.has(`${x.jenjang}|${x.kelas}`));
+  let h = "";
+  if (kelasLama.length) {
+    h += `<p class="info">Kelas tahun ${aman(sem.tahun)} yang sekarang sudah tidak ada:</p><div class="pilih-semester" role="group" aria-label="Kelas">`;
+    for (const x of kelasAda.filter(x => kelasLama.includes(x) || `${x.jenjang}|${x.kelas}` === kunciKelas)) {
+      const k = `${x.jenjang}|${x.kelas}`;
+      h += `<button class="chip ${k === kunciKelas ? "aktif" : ""}" data-kelas="${aman(k)}" aria-pressed="${k === kunciKelas}">${aman(x.kelas)}</button>`;
+    }
+    h += `</div>`;
   }
-  h += `</div><div class="pilih-semester" role="group" aria-label="Semester">`;
+  h += `<div class="pilih-semester" role="group" aria-label="Semester">`;
   for (const x of semAda) {
     const k = kunciSemester(x);
     h += `<button class="chip ${k === kunciSem ? "aktif" : ""}" data-sem="${aman(k)}" aria-pressed="${k === kunciSem}">${aman(namaSemester(x))}</button>`;

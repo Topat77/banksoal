@@ -167,12 +167,16 @@ function layarSantri() {
   jejak.textContent = kelas ? `${kelas}, ${jenjang}` : (boleh ? jenjangAktif() : "");
   tombolKembali.hidden = !posisi.dariNilai;
 
-  let h = (boleh ? htmlTabJenjang() : "") + `<div class="pilih-semester" role="group" aria-label="Kelas">`;
-  for (const x of semua) {
-    const k = `${x.jenjang}|${x.kelas}`;
-    h += `<button class="chip ${k === kunci ? "aktif" : ""}" data-kelas="${aman(k)}" aria-pressed="${k === kunci}">${aman(x.kelas)}${boleh ? "" : ` · ${aman(x.jenjang)}`}</button>`;
+  // admin: kelasnya sudah dipilih di menu Siswa (kartu kelas), jadi tanpa pilihan paket & kelas lagi
+  let h = "";
+  if (!boleh) {
+    h += `<div class="pilih-semester" role="group" aria-label="Kelas">`;
+    for (const x of semua) {
+      const k = `${x.jenjang}|${x.kelas}`;
+      h += `<button class="chip ${k === kunci ? "aktif" : ""}" data-kelas="${aman(k)}" aria-pressed="${k === kunci}">${aman(x.kelas)} · ${aman(x.jenjang)}</button>`;
+    }
+    h += `</div>`;
   }
-  h += `</div>`;
 
   if (!kelas) {
     h += boleh

@@ -1331,18 +1331,6 @@ textarea:dir(rtl), input:dir(rtl) {
 .tab-jenjang button small { font: 500 13px var(--huruf-ui); }
 .tab-jenjang button.aktif { background: var(--hijau-muda); color: var(--hijau-tua); box-shadow: inset 0 0 0 1px var(--hijau); }
 .tab-jenjang button:focus-visible { outline: 2px solid var(--hijau); outline-offset: 2px; }
-.panel-jenjang { display: grid; grid-template-columns: 1fr; gap: 12px; }
-@media (min-width: 640px) { .panel-jenjang { grid-template-columns: 1fr 1fr; } }
-.kartu-jenjang {
-  display: flex; flex-direction: column; gap: 8px; padding: 16px 18px;
-  background: var(--lembar); border: 1px solid var(--kaca-garis); border-radius: var(--sudut);
-}
-.kartu-jenjang h2 { margin: 0; font: 700 19px var(--huruf-judul); }
-.kartu-jenjang dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
-.kartu-jenjang dl div { display: flex; flex-direction: column; }
-.kartu-jenjang dt { order: 2; font-size: 12.5px; color: var(--tinta-redup); }
-.kartu-jenjang dd { order: 1; margin: 0; font: 700 24px var(--huruf-judul); color: var(--hijau); font-variant-numeric: tabular-nums; }
-.kartu-jenjang .baris-tombol { gap: 4px 14px; }
 
 /* pantauan: pilih kelompok ustadz / ustadzah */
 .pilih-kelompok {
