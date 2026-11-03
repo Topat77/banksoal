@@ -942,9 +942,29 @@ label.pilih-peran select { width: auto; padding: 8px 10px; font-size: 17px; }
   overflow: hidden;
 }
 .kartu-pantau > .info { padding: 0 16px 14px; }
-.naik-isi { display: flex; flex-direction: column; gap: 10px; padding: 0 16px 14px; }
-.naik-isi > label { max-width: 260px; }
-.naik-isi select { width: 100%; min-width: 0; }
+/* panel keputusan naik kelas (di bawah lembar nilai, khusus TU) */
+.panel-keputusan { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--garis); }
+.panel-keputusan .subjudul { margin: 0; }
+.isian-tujuan { max-width: 280px; }
+.daftar-keputusan { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.baris-keputusan {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px 14px; background: var(--lembar);
+  border: 1px solid var(--kaca-garis); border-radius: var(--sudut);
+}
+.keputusan-info { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.keputusan-nama { font-weight: 600; overflow-wrap: anywhere; }
+.keputusan-label { font-size: 14px; color: var(--tinta-redup); }
+.keputusan-label.ada { color: var(--hijau-tua); font-weight: 600; }
+.keputusan-sebaris { font-weight: 400; color: var(--tinta-redup); }
+.keputusan-ket { font-size: 14px; color: var(--tinta-redup); overflow-wrap: anywhere; }
+.keputusan-ket.gagal { color: var(--merah); font-weight: 600; }
+.keputusan-tombol { display: flex; flex-wrap: wrap; gap: 8px; }
+.keputusan-tombol .tombol-kecil { flex: 1 1 130px; }
+.keputusan-tombol .tombol-kecil[aria-pressed="true"] { background: var(--hijau); border-color: transparent; color: var(--di-atas-hijau); }
+.keputusan-tombol .keputusan-batal { flex: 0 0 auto; color: var(--merah); }
+.keputusan-tombol .tombol-kecil:disabled { opacity: .55; cursor: not-allowed; }
+@media (min-width: 700px) { .keputusan-tombol .tombol-kecil { flex: 0 0 auto; min-width: 130px; } }
 .kartu-pantau-judul {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   width: 100%; min-height: 56px; padding: 12px 16px;
