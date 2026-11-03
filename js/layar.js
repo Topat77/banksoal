@@ -51,7 +51,11 @@ const daftarLayar = {
   daftarUAS: "layarDaftarUAS",
   pilihMapel: "layarPilihMapel",
   formGuru: "formGuru",
-  aiGenerator: "layarAIGenerator"
+  aiGenerator: "layarAIGenerator",
+  mapelTU: "layarMapelTU",
+  mapelNamaTU: "layarMapelNamaTU",
+  pantauGuru: "layarPantauGuru",
+  kelasSiswa: "layarKelasSiswa"
 };
 
 // layar yang nggak boleh digambar ulang sendiri waktu data berubah
@@ -143,6 +147,9 @@ function tampilkan(tetapDiTempat = false) {
     }
   }
 
+  // layar TU yang dibuka dari dalam menu Mapel / Siswa: tombol ‹ balik ke induknya (admin.js)
+  if (indukLayarTU()) tombolKembali.hidden = false;
+
   gambarSamping();
   gambarNavBawah();
   gambarTanda();
@@ -212,6 +219,8 @@ function segarkanLayar(penuh) {
 // tombol ‹ : tiap layar balik ke layar "induk"-nya
 function layarInduk() {
   const L = posisi.layar;
+  const indukTU = indukLayarTU();
+  if (indukTU) return indukTU;
   if (posisi.dariAI && LAYAR_ALUR_AI.includes(L) && L !== "aiGenerator") return "aiGenerator";
   if (L === "formModul") return posisi.modEditId ? "modul" : "mapel";
   if (L === "formSumatif") return posisi.sumEditId ? "sumatif" : "mapel";
@@ -516,6 +525,7 @@ window.addEventListener("offline", gambarTanda);
 //  MENU SAMPING (laptop) & MENU BAWAH (HP)
 // =====================================================
 function kelompokLayar() {
+  if (sayaKurikulum()) return kelompokLayarTU();
   const L = posisi.layar;
   if (["cari"].includes(L)) return "cari";
   if (["lainnya"].includes(L)) return "lainnya";
@@ -557,16 +567,16 @@ function gambarSamping() {
       <button class="menu-item ${grup === "beranda" ? "aktif" : ""}" data-ke="beranda">${ikonMenu("beranda")}<span>Beranda</span></button>`;
 
   if (kur) {
+    // TU: Mapel · Guru · Siswa (layar lama dibuka dari dalamnya, lihat admin.js)
     const n = jumlahMenunggu();
+    const nUAS = jumlahUASDiajukan();
     h += `
-      <button class="menu-item ${grup === "pantauan" ? "aktif" : ""}" data-ke="pantauan">${ikonMenu("pantauan")}<span>Pantauan</span></button>
-      <button class="menu-item ${grup === "akun" ? "aktif" : ""}" data-ke="akun">${ikonMenu("akun")}<span>Guru</span>${n ? `<span class="lencana">${n}<span class="sr"> menunggu</span></span>` : ""}</button>
-      <button class="menu-item ${grup === "kelola" ? "aktif" : ""}" data-ke="kelolaMapel">${ikonMenu("mapel")}<span>Mapel &amp; pengampu</span></button>
-      <button class="menu-item ${grup === "bobot" ? "aktif" : ""}" data-ke="bobot">${ikonMenu("bobot")}<span>Bobot nilai</span></button>
-      <button class="menu-item ${grup === "uas" ? "aktif" : ""}" data-ke="daftarUAS">${ikonMenu("uas")}<span>UAS bersama</span>${jumlahUASDiajukan() ? `<span class="lencana">${jumlahUASDiajukan()}<span class="sr"> diajukan</span></span>` : ""}</button>
-      <button class="menu-item ${grup === "rapor" ? "aktif" : ""}" data-ke="rapor">${ikonMenu("rapor")}<span>Rapor siswa</span></button>`;
+      <button class="menu-item ${grup === "mapelTU" ? "aktif" : ""}" data-ke="mapelTU">${ikonMenu("mapel")}<span>Mapel</span>${nUAS ? `<span class="lencana">${nUAS}<span class="sr"> UAS diajukan</span></span>` : ""}</button>
+      <button class="menu-item ${grup === "guru" ? "aktif" : ""}" data-ke="akun">${ikonMenu("akun")}<span>Guru</span>${n ? `<span class="lencana">${n}<span class="sr"> menunggu</span></span>` : ""}</button>
+      <button class="menu-item ${grup === "siswa" ? "aktif" : ""}" data-ke="kelasSiswa">${ikonMenu("santri")}<span>Siswa</span></button>`;
+  } else {
+    h += `<button class="menu-item ${grup === "santri" ? "aktif" : ""}" data-ke="santri">${ikonMenu("santri")}<span>Daftar siswa</span></button>`;
   }
-  h += `<button class="menu-item ${grup === "santri" ? "aktif" : ""}" data-ke="santri">${ikonMenu("santri")}<span>Daftar siswa</span></button>`;
 
   const urutJ = Object.keys(KELAS_PER_JENJANG);
   // admin: per jenjang, lalu per jenis; ustadz: per jenis (diniah dulu, lalu umum)
@@ -575,10 +585,10 @@ function gambarSamping() {
     h += `<button class="menu-item ${grup === "ai" ? "aktif" : ""}" data-ke="aiGenerator">${ikonMenu("ai")}<span>AI Generator</span></button>`;
     h += `<p class="menu-judul">Mapel kamu</p>`;
   }
-  if (daftar.length === 0) h += `<p class="menu-kosong">${!toko.mapelSiap ? "Memuat..." : kur ? "Belum ada mapel" : "Belum ditugaskan ke mapel"}</p>`;
+  if (!kur && daftar.length === 0) h += `<p class="menu-kosong">${!toko.mapelSiap ? "Memuat..." : "Belum ditugaskan ke mapel"}</p>`;
 
   let jenjangTadi = null, jenisTadi = null;
-  for (const m of daftar) {
+  for (const m of kur ? [] : daftar) {
     // admin: mapel dikelompokkan per jenjang (Paket B, Paket C)
     if (kur && m.jenjang !== jenjangTadi) {
       jenjangTadi = m.jenjang;
@@ -645,14 +655,14 @@ function gambarSamping() {
 function gambarNavBawah() {
   const grup = kelompokLayar();
   const item = sayaKurikulum()
-    ? [["beranda", "beranda", "Beranda"], ["pantauan", "pantauan", "Pantauan"], ["rapor", "rapor", "Rapor"], ["akun", "akun", "Guru"], ["lainnya", "lainnya", "Saya"]]
+    ? [["beranda", "beranda", "Beranda"], ["mapelTU", "mapelTU", "Mapel"], ["akun", "guru", "Guru"], ["kelasSiswa", "siswa", "Siswa"], ["lainnya", "lainnya", "Saya"]]
     : [["beranda", "beranda", "Beranda"], ["aiGenerator", "ai", "AI"], ["cari", "cari", "Cari"], ["lainnya", "lainnya", "Saya"]];
-  const ikonDari = { ai: "ai", beranda: "beranda", pantauan: "pantauan", akun: "akun", kelola: "mapel", lainnya: "lainnya", cari: "cari", rapor: "rapor", santri: "santri" };
+  const ikonDari = { ai: "ai", beranda: "beranda", pantauan: "pantauan", akun: "akun", kelola: "mapel", lainnya: "lainnya", cari: "cari", rapor: "rapor", santri: "santri", mapelTU: "mapel", guru: "akun", siswa: "santri" };
   navBawah.style.setProperty("--jumlah", item.length);
   const n = sayaKurikulum() ? jumlahMenunggu() : 0;
   navBawah.innerHTML = item.map(([ke, kunci, teks]) => {
     const aktif = grup === kunci || (kunci === "beranda" && grup === "mapel");
-    const lencana = kunci === "akun" && n ? `<span class="lencana">${n}<span class="sr"> menunggu</span></span>` : "";
+    const lencana = (kunci === "akun" || kunci === "guru") && n ? `<span class="lencana">${n}<span class="sr"> menunggu</span></span>` : "";
     return `<button data-ke="${ke}" class="${aktif ? "aktif" : ""}" ${aktif ? 'aria-current="page"' : ""}>${IKON[ikonDari[kunci]]}${lencana}<span>${teks}</span></button>`;
   }).join("");
   navBawah.querySelectorAll("button").forEach(b => {

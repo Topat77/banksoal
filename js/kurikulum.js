@@ -31,7 +31,7 @@ function layarAkun() {
               <option value="ustadzah" ${sapaanPengguna(p) === "ustadzah" ? "selected" : ""}>Ustadzah</option>
             </select>
           </label>`;
-  let h = `<h2 class="subjudul">Menunggu persetujuan <small>${menunggu.length} akun</small></h2>`;
+  let h = htmlSegmenGuru("akun") + `<h2 class="subjudul">Menunggu persetujuan <small>${menunggu.length} akun</small></h2>`;
   if (menunggu.length === 0) {
     h += `<p class="info">Nggak ada yang menunggu. Akun baru muncul di sini setelah ustadz/ustadzah masuk pakai akun Google-nya.</p>`;
   } else {
@@ -90,6 +90,7 @@ function layarAkun() {
     h += `</div>`;
   }
   isi.innerHTML = h;
+  pasangSegmenGuru();
 
   const cari = document.getElementById("cariGuru");
   cari.oninput = () => {
@@ -456,6 +457,7 @@ function formMapel() {
     });
     pilihJenjang(baru.jenjang);   // daftar mapel langsung nunjukin jenjang mapel yang barusan disimpan
     if (posisi.dariMapel) pergi("mapel", { mapelId: baru.id });
+    else if (posisi.dariMapelTU && toko.mapel.some(m => m.jenjang === baru.jenjang && m.nama === posisi.namaMapelTU)) pergi("mapelNamaTU");
     else pergi("kelolaMapel");
   };
 
@@ -487,7 +489,7 @@ function formMapel() {
 // =====================================================
 function layarPantauan() {
   wajibKurikulum();
-  judul.textContent = "Pantauan";
+  judul.textContent = "Guru";
   const semuaSem = new Map();
   const tambah = (x) => semuaSem.set(kunciSemester(x), x);
   tambah(semesterSekarang());
@@ -503,7 +505,7 @@ function layarPantauan() {
   const jenjang = jenjangAktif();
   const mapelJenjang = toko.mapel.filter(m => m.jenjang === jenjang)
     .sort((a, b) => bandingKelas(a, b) || a.nama.localeCompare(b.nama, "id"));
-  jejak.textContent = `${jenjang} · ${namaSemester(sem)}`;
+  jejak.textContent = `Pantau per mapel · ${jenjang} · ${namaSemester(sem)}`;
 
   // siapa saja yang muncul di pantauan jenjang ini, dikelompokkan ustadz / ustadzah
   const isiPantau = mapelJenjang.filter(mp => isiMapelSiap(mp.id)).map(mp => {
@@ -524,7 +526,7 @@ function layarPantauan() {
   let kelompok = posisi.kelompokPantau || "ustadz";
   if (hitung[kelompok].size === 0) kelompok = KELOMPOK.map(k => k[0]).find(k => hitung[k].size) || "ustadz";
 
-  let h = htmlTabJenjang();
+  let h = htmlSegmenGuru("pantauan") + htmlTabJenjang();
   h += `<div class="pilih-kelompok" role="group" aria-label="Ustadz atau ustadzah">`;
   for (const [k, label] of KELOMPOK) {
     if (k === "belum" && hitung.belum.size === 0) continue;
@@ -592,6 +594,7 @@ function layarPantauan() {
   isi.innerHTML = h;
 
   pasangTabJenjang("pantauan");
+  pasangSegmenGuru();
   isi.querySelectorAll("[data-kelompok]").forEach(b => b.onclick = () => pergi("pantauan", { kelompokPantau: b.dataset.kelompok }));
   isi.querySelectorAll(".chip[data-sem]").forEach(b => b.onclick = () => pergi("pantauan", { semPantau: b.dataset.sem }));
   isi.querySelectorAll("[data-mapel]").forEach(b => {
