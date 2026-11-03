@@ -841,7 +841,9 @@ function santriKelas(jenjang, kelas) {
     .sort((a, c) => (nomor(a) - nomor(c)) || (a.nama || "").localeCompare(c.nama || "", "id"));
 }
 
-function simpanSantri(santri) {
+// pantau (opsional): fungsi yang nerima promise hasil tulis ke server, buat yang mau ngitung berhasil / gagal
+// (status "menyimpan / tersimpan / gagal" di panel keputusan naik kelas). Tanpa pantau, galatnya langsung ditampilin lewat gagalSimpan.
+function simpanSantri(santri, pantau) {
   const baru = salin(santri);
   // lulus / pindah: kelasId dicopot, biar nggak ikut dibaca guru kelas mana pun
   if (baru.aktif === false && (baru.status === "lulus" || baru.status === "pindah")) delete baru.kelasId;
@@ -850,7 +852,9 @@ function simpanSantri(santri) {
   baru.diubah = Date.now();
   pasangDiDaftar(toko.santri, baru);
   toko.santri.sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
-  toko.backend.tulis(`santri/${baru.id}`, tanpaId(baru)).catch(gagalSimpan);
+  const janji = Promise.resolve(toko.backend.tulis(`santri/${baru.id}`, tanpaId(baru)));
+  if (typeof pantau === "function") pantau(janji);
+  else janji.catch(gagalSimpan);
   berubah();
   return baru;
 }

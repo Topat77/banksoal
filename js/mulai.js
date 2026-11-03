@@ -32,7 +32,7 @@ function fileKurang() {
     "js/cadangan.js": typeof unduhCadangan === "function",
     "js/nilai.js": typeof layarNilai === "function",
     "js/rapor.js": typeof layarRapor === "function",
-    "js/naikkelas.js": typeof layarNaikKelas === "function"
+    "js/naikkelas.js": typeof ubahKeputusan === "function"
   };
   return Object.keys(cek).filter(k => !cek[k]);
 }

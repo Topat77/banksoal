@@ -46,7 +46,6 @@ const daftarLayar = {
   nilai: "layarNilai",
   rapor: "layarRapor",
   raporCetak: "layarRaporCetak",
-  naikKelas: "layarNaikKelas",
   bobot: "layarBobot",
   aiSoal: "layarAISoal",
   daftarUAS: "layarDaftarUAS",
@@ -58,7 +57,7 @@ const daftarLayar = {
 // layar yang nggak boleh digambar ulang sendiri waktu data berubah
 // (lagi ngetik / milih sesuatu, nanti isiannya hilang)
 const LAYAR_DIAM = ["formSemester", "formModul", "formBacaan", "formSoal", "formSumatif",
-                    "pilihSoal", "cetak", "cari", "lainnya", "formMapel", "formGuru", "aiGenerator", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal", "naikKelas"];
+                    "pilihSoal", "cetak", "cari", "lainnya", "formMapel", "formGuru", "aiGenerator", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal"];
 
 // layar yang lagi nampilin kerangka "memuat" (datanya belum kebaca): tetap digambar ulang
 // waktu data datang, walau layarnya ada di LAYAR_DIAM (belum ada isian yang bisa hilang)
@@ -194,6 +193,8 @@ function segarkanLayar(penuh) {
     gambarNavBawah();
     // cari: hasilnya dihitung ulang (kotak ketiknya nggak diganggu), biar mapel yang baru kebaca ikut
     if (posisi.layar === "cari" && typeof cariUlang === "function") cariUlang();
+    // lembar nilai: cuma panel keputusan naik kelas yang disegarkan (data santri bisa berubah dari HP lain)
+    if (posisi.layar === "nilai" && typeof segarkanKeputusan === "function") segarkanKeputusan();
     return;
   }
   if (posisi.layar === "modul") {
@@ -232,8 +233,7 @@ function layarInduk() {
     pilihSoal: "sumatif",
     formSoalUjian: "sumatif",
     nilai: "mapel",
-    raporCetak: "rapor",
-    naikKelas: "santri"
+    raporCetak: "rapor"
   }[L] || "beranda";
 }
 function kembali() {
@@ -521,7 +521,7 @@ function kelompokLayar() {
   if (["lainnya"].includes(L)) return "lainnya";
   if (["pantauan"].includes(L)) return "pantauan";
   if (["akun", "formGuru"].includes(L)) return "akun";
-  if ((L === "santri" && !posisi.dariNilai) || L === "naikKelas") return "santri";
+  if (["santri"].includes(L) && !posisi.dariNilai) return "santri";
   if (["rapor", "raporCetak"].includes(L)) return "rapor";
   if (L === "bobot") return "bobot";
   if (L === "daftarUAS" || (posisi.uasGrup && sayaKurikulum() && !sayaPengampu(cariMapel(posisi.mapelId)))) return "uas";
