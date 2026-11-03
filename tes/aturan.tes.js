@@ -809,13 +809,18 @@ grup("Panel keputusan naik kelas (lembar nilai Genap)");
   const grupJs = baca("js/grup.js");
   vm.runInContext([
     ambilFungsi(alat, "salin"), ambilFungsi(alat, "aman"), ambilFungsi(grupJs, "tingkatKelas"), ambilFungsi(grupJs, "idKelas"),
-    "const KELAS_SD = [], KELAS_SMP = [], KELAS_SMA = [];", ambilKonstanta(baca("js/kurikulum.js"), "KELAS_PER_JENJANG"),
+    ambilFungsi(grupJs, "hurufRombel"), ambilKonstanta(grupJs, "JENJANG_IDAD"),
+    "const KELAS_SD = [], KELAS_SMP = [], KELAS_SMA = [], KELAS_IDAD = [];", ambilKonstanta(baca("js/kurikulum.js"), "KELAS_PER_JENJANG"),
+    // kelas yang ada (buat pilihan kelas tujuan per siswa) & hitungan keputusan (pengingat urutan, admin.js)
+    "function daftarKelas() { return [...F.adaMapel].map(x => { const [jenjang, kelas] = x.split('|'); return { jenjang, kelas }; }); }",
+    "function hitungKeputusanKelas() { return { total: 0, sudah: 0 }; }",
     ambilFungsi(nilaiJs, "bandingKelas"), ambilFungsi(tokoJs, "simpanSantri"), ambilFungsi(tokoJs, "tanpaId"),
     // tiruan browser & layar lain: dialog, backend, DOM, timer
     "const F = { peran: 'kurikulum', sekarang: { semester: 'Ganjil', tahun: '2026/2027' }, adaMapel: new Set(['Paket B|8A1']), dialog: [], jawab: () => Promise.resolve(true), tulis: () => Promise.resolve(), tulisan: [], timer: [], digambar: [], elemen: {}, fokus: false };",
     "const toko = { santri: [], backend: { tulis: (j, d) => { F.tulisan.push([j, d]); return F.tulis(j, d); } } };",
     "const navigator = { onLine: true };",
-    "const document = { getElementById: id => F.elemen[id] || null, activeElement: null };",
+    "const document = { getElementById: id => F.elemen[id] || null, querySelector: () => null, activeElement: null };",
+    "const CSS = { escape: x => String(x) };",
     "function setTimeout(f) { F.timer.push(f); }",
     "function sayaKurikulum() { return F.peran === 'kurikulum'; } function semesterSekarang() { return F.sekarang; }",
     "function mapelKelas(j, k) { return F.adaMapel.has(j + '|' + k) ? [{}] : []; }",
@@ -826,7 +831,7 @@ grup("Panel keputusan naik kelas (lembar nilai Genap)");
     baca("js/naikkelas.js"),
     "let panelKeputusan = null;",
     ambilKonstanta(nilaiJs, "TEKS_STATUS_KEPUTUSAN"),
-    ...["noAbsen", "panelKeputusanBoleh", "rapikanTujuan", "labelHasilKeputusan", "htmlIsiBarisKeputusan", "htmlPanelKeputusan"].map(n => ambilFungsi(nilaiJs, n)),
+    ...["noAbsen", "panelKeputusanBoleh", "rapikanTujuan", "labelHasilKeputusan", "htmlIsiBarisKeputusan", "pengingatUrutanNaik", "htmlPanelKeputusan"].map(n => ambilFungsi(nilaiJs, n)),
     "async " + ambilFungsi(nilaiJs, "putuskanSantri"),   // ambilFungsi nggak bawa kata async
     "this.ekspor = { F, toko, navigator, pasangPanel: p => { panelKeputusan = p; }, ubahKeputusan, keluarkanSantri, panelKeputusanBoleh, rapikanTujuan, labelHasilKeputusan, htmlIsiBarisKeputusan, htmlPanelKeputusan, putuskanSantri };"
   ].join("\n"), pk);
@@ -867,9 +872,9 @@ grup("Panel keputusan naik kelas (lembar nilai Genap)");
   const bNaik = P.htmlIsiBarisKeputusan(kNaik, 3, TH, null);
   harap("udah naik: Naik ditekan + ada Batalin", tombol(bNaik).join(), "naik*,tinggal,batal");
   boleh("udah naik: label 'Naik ke 8A1'", bNaik.includes("Naik ke 8A1"));
-  harap("tingkat akhir: tombol Lulus & Tidak lulus", tombol(P.htmlIsiBarisKeputusan(s9, 1, TH, null)).join(), "lulus,tinggal");
+  harap("tingkat akhir kelas 9: tombol Lulus, Lulus lanjut ke kelas 10, Tidak lulus", tombol(P.htmlIsiBarisKeputusan(s9, 1, TH, null)).join(), "lulus,lanjut,tinggal");
   const lulus9 = P.ubahKeputusan(s9, TH, "lulus");
-  harap("udah lulus lewat tombol: Lulus ditekan + Batalin", tombol(P.htmlIsiBarisKeputusan(lulus9, 1, TH, null)).join(), "lulus*,tinggal,batal");
+  harap("udah lulus lewat tombol: Lulus ditekan + Batalin", tombol(P.htmlIsiBarisKeputusan(lulus9, 1, TH, null)).join(), "lulus*,lanjut,tinggal,batal");
   const kunci = P.ubahKeputusan(kNaik, "2026/2027", "naik", "9A1");
   const bKunci = P.htmlIsiBarisKeputusan(kunci, 3, TH, null);
   harap("terkunci: semua tombol mati, nggak ada Batalin, hasil lama tetap ditandai", tombol(bKunci).join(), "naik!*,tinggal!");
