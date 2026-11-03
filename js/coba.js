@@ -127,6 +127,9 @@ function dataAwalCoba() {
   db["santri/san-13"] = { absen: 7, nama: "Umar Faruq", nis: "2526013", jenjang: "Paket B", kelas: "7A1", aktif: false, status: "pindah",
     keluar: { tahun: t.tahun, tanggal: jam - 3 * hari }, riwayatKelas: [{ tahun: t.tahun, jenjang: "Paket B", kelas: "7A1", absen: 7, hasil: "pindah" }], dibuat: jam - 25 * hari };
   const tahunLalu = t.tahun.replace(/\d{4}/g, n => String(Number(n) - 1));
+  // wali kelas tahun ini: 7A1 udah dipilih, 7B1 belum
+  db["pengaturan/wali"] = { tahun: { [t.tahun.replace("/", "-")]: {
+    [idKelas("Paket B", "7A1")]: { uid: "u-hasan", nama: "Ustadz Hasan", nip: "198905232015031001" } } } };
   db["santri/san-14"] = { absen: 1, nama: "Yahya Ilham", nis: "2425001", jenjang: "Paket B", kelas: "9A1", aktif: false, status: "lulus",
     keluar: { tahun: tahunLalu, tanggal: jam - 120 * hari }, riwayatKelas: [{ tahun: tahunLalu, jenjang: "Paket B", kelas: "9A1", absen: 1, hasil: "lulus" }], dibuat: jam - 400 * hari };
 

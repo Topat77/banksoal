@@ -83,6 +83,7 @@ function layarRapor() {
   }
   const santri = santriKelasDi(jenjang, kelas, sem.tahun);
   const mapel = mapelKelas(jenjang, kelas);
+  h += htmlPilihWali(jenjang, kelas, sem.tahun);
   h += `<p class="info">${mapel.length} mapel di kelas ini: ${mapel.map(m => `${aman(m.nama)} (${namaJenis(jenisMapel(m))})`).join(", ") || "belum ada"}. Bentuk rapor masih sementara, nanti disesuaikan dengan format resmi pondok.</p>`;
 
   if (santri.length === 0) {
@@ -105,6 +106,7 @@ function layarRapor() {
   }
   isi.innerHTML = h;
   pasangPilihRapor();
+  pasangPilihWali();
   isi.querySelectorAll(".baris[data-santri]").forEach(b => b.onclick = () => pergi("raporCetak", { raporSantri: b.dataset.santri }));
   klik("cetakKelas", () => pergi("raporCetak", { raporSantri: null }));
   klik("keSantri", () => pergi("santri", { kelasSantri: kunciKelas, dariNilai: false }));
@@ -134,6 +136,7 @@ function htmlTabelRapor(judulBagian, baris, mulai) {
 function htmlLembarRapor(santri, sem) {
   const r = nilaiRapor(santri, sem);
   const k = kelasSantriDi(santri, sem.tahun);
+  const wali = waliKelas(sem.tahun, idKelas(k.jenjang, k.kelas));
   const tanggal = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
   let h = `<div class="kop${pakaiKopResmi() ? " ada-resmi" : ""}">
       ${pakaiKopResmi() ? htmlKopResmi() : `<p class="kop-sekolah">${aman(toko.lembaga.nama || KONFIG.namaLembaga || "")}</p>`}
@@ -154,7 +157,9 @@ function htmlLembarRapor(santri, sem) {
     <p class="petunjuk kecil">H = hadir, S = sakit, I = izin (jumlah pertemuan di tiap mapel).</p>
     <table class="ttd-rapor" width="100%"><tr>
       <td>Mengetahui,<br>Kepala PKBM<br><br><br><br>(..............................)</td>
-      <td>Tulungagung, ${aman(tanggal)}<br>Wali Kelas<br><br><br><br>(..............................)</td>
+      <td>Tulungagung, ${aman(tanggal)}<br>Wali Kelas<br><br><br><br>${wali
+        ? `<b><u>${aman(wali.nama)}</u></b>${wali.nip ? `<br>NIP. ${aman(wali.nip)}` : ""}`
+        : "(..............................)"}</td>
     </tr></table>`;
   return h;
 }
@@ -185,4 +190,26 @@ function layarRaporCetak() {
       <div id="lembar">${daftar.map((s, i) => (i ? `<div class="halaman-baru"></div>` : "") + htmlLembarRapor(s, sem)).join("")}</div>
     </div>`;
   document.getElementById("print").onclick = () => window.print();
+}
+// ====== PILIH WALI KELAS (admin) ======
+// dipakai di layar Rapor (tahun rapor yang dipilih) & Daftar siswa (tahun ajaran sekarang)
+function htmlPilihWali(jenjang, kelas, tahun) {
+  const id = idKelas(jenjang, kelas);
+  const w = waliKelas(tahun, id);
+  const guru = toko.pengguna.filter(p => p.peran === "ustadz").sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
+  // wali lama yang akunnya udah nonaktif / dihapus tetap kelihatan
+  const lama = w && !guru.some(p => p.id === w.uid) ? `<option value="${aman(w.uid)}" selected>${aman(w.nama)} (akun nggak aktif)</option>` : "";
+  return `<label class="pilih-wali">Wali kelas ${aman(kelas)} · ${aman(tahun)}
+      <select data-wali="${aman(id)}" data-wali-tahun="${aman(tahun)}">
+        <option value="">Belum dipilih</option>${lama}
+        ${guru.map(p => `<option value="${aman(p.id)}" ${w && w.uid === p.id ? "selected" : ""}>${aman(p.nama || p.email || "")}</option>`).join("")}
+      </select>
+    </label>`;
+}
+function pasangPilihWali() {
+  isi.querySelectorAll("[data-wali]").forEach(sel => sel.onchange = () => {
+    const akun = toko.pengguna.find(p => p.id === sel.value && p.peran === "ustadz");
+    if (sel.value && !akun) return;   // wali lama yang nggak aktif dipilih lagi: biarin
+    simpanWali(sel.dataset.waliTahun, sel.dataset.wali, akun || null);
+  });
 }
