@@ -91,7 +91,8 @@ function layarRapor() {
   }
   const santri = santriKelasDi(jenjang, kelas, sem.tahun);
   const mapel = mapelKelas(jenjang, kelas);
-  h += htmlPilihWali(jenjang, kelas, sem.tahun);
+  // wali tahun ajaran sekarang dipilih di menu Siswa; tahun lama dipilih di sini (buat rapor lama)
+  h += sem.tahun === semesterSekarang().tahun ? htmlNamaWali(jenjang, kelas, sem.tahun) : htmlPilihWali(jenjang, kelas, sem.tahun);
   h += `<p class="info">${mapel.length} mapel di kelas ini: ${mapel.map(m => `${aman(m.nama)} (${namaJenis(jenisMapel(m))})`).join(", ") || "belum ada"}. Bentuk rapor masih sementara, nanti disesuaikan dengan format resmi pondok.</p>`;
 
   if (santri.length === 0) {
@@ -213,6 +214,11 @@ function htmlPilihWali(jenjang, kelas, tahun) {
         ${guru.map(p => `<option value="${aman(p.id)}" ${w && w.uid === p.id ? "selected" : ""}>${aman(p.nama || p.email || "")}</option>`).join("")}
       </select>
     </label>`;
+}
+// cuma nampilin nama wali (pilihannya ada di kartu kelas, menu Siswa)
+function htmlNamaWali(jenjang, kelas, tahun) {
+  const w = waliKelas(tahun, idKelas(jenjang, kelas));
+  return `<p class="info">Wali kelas ${aman(kelas)} · ${aman(tahun)}: <b>${w ? aman(w.nama) : "belum dipilih"}</b>. Diatur di menu Siswa.</p>`;
 }
 function pasangPilihWali() {
   isi.querySelectorAll("[data-wali]").forEach(sel => sel.onchange = () => {

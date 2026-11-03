@@ -331,12 +331,13 @@ function layarKelasSiswa() {
       const mapel = toko.mapel.filter(m => m.jenjang === kl.jenjang && m.kelas === kl.kelas).sort(urutMapelJenis);
       const kunci = `${kl.jenjang}|${kl.kelas}`;
       h += `
-        <details class="kartu-kelas">
+        <details class="kartu-kelas" data-kartu-kelas="${aman(kunci)}" ${posisi.kelasTerbuka === kunci ? "open" : ""}>
           <summary>
             <span><strong>Kelas ${aman(kl.kelas)}</strong><small>Wali kelas: ${wali ? aman(wali.nama) : "belum dipilih"}</small></span>
             <span class="angka-kecil"><span><b>${siswa.length}</b> siswa</span><span><b>${mapel.length}</b> mapel</span></span>
           </summary>
           <div class="isi-kartu-kelas">
+            ${htmlPilihWali(kl.jenjang, kl.kelas, tahun)}
             <h3>Daftar siswa</h3>
             ${siswa.length ? `<ol class="daftar-siswa-kelas">${siswa.map((s, i) => `<li><span class="nomor-santri">${aman(noAbsen(s, i + 1))}</span><span dir="auto">${aman(s.nama)}</span>${s.nis ? `<small>${aman(s.nis)}</small>` : ""}</li>`).join("")}</ol>`
               : `<p class="info">Belum ada siswa.</p>`}
@@ -357,6 +358,12 @@ function layarKelasSiswa() {
   if (!adaKelas && !semua.length) h += `<p class="kosong">Belum ada kelas. Kelas muncul setelah mapel atau siswanya ditambahkan.</p>`;
   isi.innerHTML = h;
 
+  // kartu yang lagi dibuka diingat, biar tetap terbuka waktu layar digambar ulang (misal habis milih wali)
+  isi.querySelectorAll("[data-kartu-kelas]").forEach(d => d.addEventListener("toggle", () => {
+    if (d.open) posisi.kelasTerbuka = d.dataset.kartuKelas;
+    else if (posisi.kelasTerbuka === d.dataset.kartuKelas) posisi.kelasTerbuka = null;
+  }));
+  pasangPilihWali();
   isi.querySelectorAll("[data-bagian]").forEach(b => b.onclick = () => pergi("kelasSiswa", { bagianSiswa: b.dataset.bagian }));
   isi.querySelectorAll("[data-ubah-siswa]").forEach(b => b.onclick = () => pergi("santri", { kelasSantri: b.dataset.ubahSiswa, dariNilai: false }));
   isi.querySelectorAll("[data-rapor]").forEach(b => b.onclick = () => pergi("rapor", { kelasRapor: b.dataset.rapor }));

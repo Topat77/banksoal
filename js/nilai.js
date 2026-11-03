@@ -221,7 +221,7 @@ function layarSantri() {
 
   h += `
     <h2 class="subjudul">Siswa ${aman(kelas)} ${aman(jenjang)} <small id="jumlahSantri">${daftar.length} siswa</small></h2>
-    ${htmlPilihWali(jenjang, kelas, semesterSekarang().tahun)}
+    ${htmlNamaWali(jenjang, kelas, semesterSekarang().tahun)}
     <p class="info">Ketik langsung di tabel, tersimpan otomatis. Bisa juga salin 3 kolom dari Excel (No. Absen, NIS, Nama) lalu tempel di kotak pertama.</p>
     <div class="wadah-tabel-santri">
       <table class="tabel-santri">
@@ -254,7 +254,6 @@ function layarSantri() {
   isi.innerHTML = h;
   pasangTab();
 
-  pasangPilihWali();
 
   isi.querySelectorAll("[data-aktifkan]").forEach(b => b.onclick = async () => {
     const s = toko.santri.find(y => y.id === b.dataset.aktifkan);
