@@ -742,15 +742,31 @@ function simpanMapelData(mapel) {
   return baru;
 }
 
-function hapusMapelData(idMapel) {
-  // isi mapel belum selesai dimuat: daftar modul/ujian/nilai masih kosong sementara, jadi yang ada di database bakal ketinggalan
-  if (!isiMapelSiap(idMapel)) return false;
+// ambil isi LENGKAP satu mapel (semua semester) dari server; null kalau gagal (offline / jatah habis).
+// Modul & sumatif cuma dimuat buat semester yang dibuka, jadi buat hapus mapel harus ambil ini dulu.
+async function ambilIsiMapel(idMapel) {
+  try {
+    const [modul, sumatif] = await Promise.all([
+      toko.backend.ambilKoleksi(`mapel/${idMapel}/modul`, []),
+      toko.backend.ambilKoleksi(`mapel/${idMapel}/sumatif`, [])
+    ]);
+    return { modul: modul.map(amankanDok), sumatif: sumatif.map(amankanDok) };
+  } catch (err) {
+    console.warn("Gagal ambil isi mapel:", err);
+    return null;
+  }
+}
+
+// isi: hasil ambilIsiMapel() (semua semester), biar modul & sumatif semester lain nggak jadi yatim
+function hapusMapelData(idMapel, isi) {
+  // isi mapel belum selesai dimuat: daftar nilai masih kosong sementara, jadi yang ada di database bakal ketinggalan
+  if (!isi || !isiMapelSiap(idMapel)) return false;
   // dokumen mapel dihapus dulu, baru isinya satu-satu (database nggak ngehapus isi otomatis;
   // aturan baru boleh ngehapus lembar nilai kalau mapelnya sudah nggak ada).
   // Nggak ditunggu: tanpa sinyal, penghapusan antre dan dikirim nanti.
   toko.backend.hapus(`mapel/${idMapel}`).catch(gagalSimpan);
-  for (const m of modulMapel(idMapel)) toko.backend.hapus(`mapel/${idMapel}/modul/${m.id}`).catch(gagalSimpan);
-  for (const s of sumatifMapel(idMapel)) toko.backend.hapus(`mapel/${idMapel}/sumatif/${s.id}`).catch(gagalSimpan);
+  for (const m of isi.modul) toko.backend.hapus(`mapel/${idMapel}/modul/${m.id}`).catch(gagalSimpan);
+  for (const s of isi.sumatif) toko.backend.hapus(`mapel/${idMapel}/sumatif/${s.id}`).catch(gagalSimpan);
   for (const n of (toko.isi[idMapel] ? toko.isi[idMapel].nilai : [])) toko.backend.hapus(`mapel/${idMapel}/nilai/${n.id}`).catch(gagalSimpan);
   toko.mapel = toko.mapel.filter(m => m.id !== idMapel);
   aturLanggananMapel();
@@ -858,15 +874,22 @@ function hapusPengguna(uid) {
 // khusus admin, dipanggil setelah mapel dihapus: grup mapel yang udah nggak punya mapel
 // (beserta UAS & usulannya) dan kelas yang udah nggak punya mapel maupun siswa ikut dihapus.
 // Sengaja nggak lewat sinkron otomatis, biar ganti nama mapel nggak ngehapus riwayat UAS.
-function hapusSisaKosong() {
+async function hapusSisaKosong() {
   const b = toko.backend;
   const grupAda = new Set(toko.mapel.map(idGrup));
-  // grup yang dilewati (isinya belum selesai dimuat, atau ada UAS yang sudah dikunci) dibiarkan utuh
+  // grup yang dilewati (gagal diambil, atau ada UAS yang sudah dikunci di semester mana pun) dibiarkan utuh
   const dilewati = new Set();
   for (const g of toko.grup.filter(g => !grupAda.has(g.id))) {
-    if (!isiGrupSiap(g.id) || (toko.uas[g.id] || []).some(u => u.status === "dikunci")) { dilewati.add(g.id); continue; }
-    for (const u of (toko.uas[g.id] || [])) b.hapus(`grup/${g.id}/uas/${u.id}`).catch(gagalSimpan);
-    for (const u of (toko.usulan[g.id] || [])) b.hapus(`grup/${g.id}/usulan/${u.id}`).catch(gagalSimpan);
+    let uas, usulan;
+    try {
+      [uas, usulan] = await Promise.all([b.ambilKoleksi(`grup/${g.id}/uas`, []), b.ambilKoleksi(`grup/${g.id}/usulan`, [])]);
+    } catch (err) {
+      console.warn("Gagal ambil UAS grup, dilewati:", err);
+      dilewati.add(g.id); continue;
+    }
+    if (uas.map(amankanDok).some(u => u.status === "dikunci")) { dilewati.add(g.id); continue; }
+    for (const u of uas) b.hapus(`grup/${g.id}/uas/${u.id}`).catch(gagalSimpan);
+    for (const u of usulan) b.hapus(`grup/${g.id}/usulan/${u.id}`).catch(gagalSimpan);
     b.hapus(`grup/${g.id}`).catch(gagalSimpan);
   }
   toko.grup = toko.grup.filter(g => grupAda.has(g.id) || dilewati.has(g.id));
