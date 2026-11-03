@@ -462,18 +462,21 @@ function formMapel() {
   if (lama) {
     document.getElementById("hapus").onclick = async () => {
       if (!isiMapelSiap(lama.id)) { kabar("Data masih dimuat, coba lagi sebentar."); return; }
-      const modul = modulMapel(lama.id);
+      // ambil isi lengkap (semua semester) dari server; tanpa sinyal batal, jangan hapus setengah-setengah
+      const isi = await ambilIsiMapel(lama.id);
+      if (!isi) { kabar("Gagal ngambil isi mapel dari server (sinyal putus atau jatah harian habis). Mapel belum dihapus, coba lagi nanti."); return; }
+      const modul = isi.modul;
       const nSoal = modul.reduce((x, y) => x + jumlahSoal(y), 0);
       const yakin = await tanyaYakin(
         `Hapus mapel ${namaMapel(lama)}?\n\n` +
-        `${modul.length} modul, ${nSoal} soal, dan ${sumatifMapel(lama.id).length} ujian sumatif dari SEMUA pengampu ikut terhapus dan TIDAK bisa dikembalikan.`,
+        `${modul.length} modul, ${nSoal} soal, dan ${isi.sumatif.length} ujian sumatif (semua semester) dari SEMUA pengampu ikut terhapus dan TIDAK bisa dikembalikan.`,
         { bahaya: true, ya: "Hapus mapel" }
       );
       if (!yakin) return;
       if (modul.length && (await minta(`Ketik HAPUS untuk memastikan.`, "", { bahaya: true, ya: "Hapus" })) !== "HAPUS") return;
       // dialog tadi bisa lama; kalau datanya ternyata belum siap, jangan lanjut
-      if (!hapusMapelData(lama.id)) { kabar("Data masih dimuat, coba lagi sebentar."); return; }
-      hapusSisaKosong();
+      if (!hapusMapelData(lama.id, isi)) { kabar("Data masih dimuat, coba lagi sebentar."); return; }
+      await hapusSisaKosong();
       pergi("kelolaMapel", { mapelId: null });
     };
   }
