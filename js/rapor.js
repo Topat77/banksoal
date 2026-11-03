@@ -12,10 +12,15 @@ function mapelKelas(jenjang, kelas) {
 // semua nilai satu santri di satu semester
 // kelasnya kelas santri DI TAHUN rapor itu (dari riwayatKelas), bukan kelas sekarang
 function nilaiRapor(santri, sem) {
-  const k = kelasSantriDi(santri, sem.tahun);
+  const k = kelasSantriDi(santri, sem.tahun, sem.semester);
   const baris = mapelKelas(k.jenjang, k.kelas).map(m => {
     const n = hitungNilai(lembarNilai(m.id, sem), santri.id, m);
-    return { mapel: m, jenis: jenisMapel(m), harian: n.harian, uts: n.per.uts, uas: n.per.uas, akhir: n.akhir, hadir: n.hadir };
+    return {
+      mapel: m, jenis: jenisMapel(m),
+      tugas: n.per.tugas, uh: n.per.uh, uts: n.per.uts, uas: n.per.uas,
+      keaktifan: n.per.keaktifan, kehadiran: n.per.kehadiran,
+      akhir: n.akhir, hadir: n.hadir
+    };
   });
   const umum = baris.filter(b => b.jenis === "umum");
   const diniah = baris.filter(b => b.jenis === "diniah");
@@ -65,12 +70,20 @@ function layarRapor() {
   judul.textContent = "Rapor";
   jejak.textContent = kelas ? `${kelas}, ${jenjang} · ${namaSemester(sem)}` : jenjangAktif();
 
-  let h = htmlTabJenjang() + `<div class="pilih-semester" role="group" aria-label="Kelas">`;
-  for (const x of kelasAda) {
-    const k = `${x.jenjang}|${x.kelas}`;
-    h += `<button class="chip ${k === kunciKelas ? "aktif" : ""}" data-kelas="${aman(k)}" aria-pressed="${k === kunciKelas}">${aman(x.kelas)}</button>`;
+  // kelasnya dipilih di menu Siswa (kartu kelas). Pilihan kelas cuma muncul kalau di tahun itu
+  // ada kelas yang sekarang sudah tidak ada (misal kelas 9 yang siswanya sudah lulus).
+  const sekarang = new Set(daftarKelas().map(x => `${x.jenjang}|${x.kelas}`));
+  const kelasLama = kelasAda.filter(x => !sekarang.has(`${x.jenjang}|${x.kelas}`));
+  let h = "";
+  if (kelasLama.length) {
+    h += `<p class="info">Kelas tahun ${aman(sem.tahun)} yang sekarang sudah tidak ada:</p><div class="pilih-semester" role="group" aria-label="Kelas">`;
+    for (const x of kelasAda.filter(x => kelasLama.includes(x) || `${x.jenjang}|${x.kelas}` === kunciKelas)) {
+      const k = `${x.jenjang}|${x.kelas}`;
+      h += `<button class="chip ${k === kunciKelas ? "aktif" : ""}" data-kelas="${aman(k)}" aria-pressed="${k === kunciKelas}">${aman(x.kelas)}</button>`;
+    }
+    h += `</div>`;
   }
-  h += `</div><div class="pilih-semester" role="group" aria-label="Semester">`;
+  h += `<div class="pilih-semester" role="group" aria-label="Semester">`;
   for (const x of semAda) {
     const k = kunciSemester(x);
     h += `<button class="chip ${k === kunciSem ? "aktif" : ""}" data-sem="${aman(k)}" aria-pressed="${k === kunciSem}">${aman(namaSemester(x))}</button>`;
@@ -81,9 +94,10 @@ function layarRapor() {
     isi.innerHTML = h + `<p class="kosong">Belum ada kelas ${aman(jenjangAktif())}.</p>`;
     return pasangPilihRapor();
   }
-  const santri = santriKelasDi(jenjang, kelas, sem.tahun);
+  const santri = santriKelasDi(jenjang, kelas, sem.tahun, sem.semester);
   const mapel = mapelKelas(jenjang, kelas);
-  h += htmlPilihWali(jenjang, kelas, sem.tahun);
+  // wali tahun ajaran sekarang dipilih di menu Siswa; tahun lama dipilih di sini (buat rapor lama)
+  h += sem.tahun === semesterSekarang().tahun ? htmlNamaWali(jenjang, kelas, sem.tahun) : htmlPilihWali(jenjang, kelas, sem.tahun);
   h += `<p class="info">${mapel.length} mapel di kelas ini: ${mapel.map(m => `${aman(m.nama)} (${namaJenis(jenisMapel(m))})`).join(", ") || "belum ada"}. Bentuk rapor masih sementara, nanti disesuaikan dengan format resmi pondok.</p>`;
 
   if (santri.length === 0) {
@@ -94,7 +108,7 @@ function layarRapor() {
       const r = nilaiRapor(s, sem);
       h += htmlBaris({
         attr: `data-santri="${aman(s.id)}"`,
-        nomor: aman(noAbsen(kelasSantriDi(s, sem.tahun), i + 1)),
+        nomor: aman(noAbsen(kelasSantriDi(s, sem.tahun, sem.semester), i + 1)),
         judulBaris: aman(s.nama),
         sub: r.kosong ? `${r.kosong} mapel belum ada nilai` : "Semua mapel sudah dinilai",
         kanan: `Rata-rata ${angkaRapi(r.rataSemua)}`,
@@ -119,23 +133,28 @@ function pasangPilihRapor() {
 }
 
 // ====== LEMBAR RAPOR ======
+// kolom nilai di rapor: rata-rata tiap kelompok (Tugas & UH boleh lebih dari satu kolom di lembar nilai)
+const KOLOM_RAPOR = [
+  { k: "tugas", judul: "Tugas" }, { k: "uh", judul: "UH" }, { k: "uts", judul: "UTS" }, { k: "uas", judul: "UAS" },
+  { k: "keaktifan", judul: "Keak&shy;tifan", lebar: true }, { k: "kehadiran", judul: "Keha&shy;diran", lebar: true }
+];
 function htmlTabelRapor(judulBagian, baris, mulai) {
   if (baris.length === 0) return "";
   let h = `<p class="judul-bagian">${judulBagian}</p>
     <table class="tabel-rapor" width="100%">
-      <thead><tr><th width="28">No</th><th>Mata pelajaran</th><th width="52">Harian</th><th width="46">UTS</th><th width="46">UAS</th><th width="58">Nilai akhir</th><th width="38">H</th><th width="38">S</th><th width="38">I</th></tr></thead><tbody>`;
+      <colgroup><col class="kol-no"><col>${KOLOM_RAPOR.map(x => `<col class="kol-angka${x.lebar ? " lebar" : ""}">`).join("")}<col class="kol-akhir-rapor"></colgroup>
+      <thead><tr><th>No</th><th>Mata pelajaran</th>${KOLOM_RAPOR.map(x => `<th>${x.judul}</th>`).join("")}<th>Nilai akhir</th></tr></thead><tbody>`;
   baris.forEach((b, i) => {
     h += `<tr><td class="tengah">${mulai + i}</td><td>${spanArah(b.mapel.nama)}</td>
-      <td class="tengah">${angkaRapi(b.harian)}</td><td class="tengah">${angkaRapi(b.uts)}</td><td class="tengah">${angkaRapi(b.uas)}</td>
-      <td class="tengah"><b>${angkaRapi(b.akhir)}</b></td>
-      <td class="tengah">${b.hadir ? b.hadir.hadir : "-"}</td><td class="tengah">${b.hadir ? b.hadir.sakit : "-"}</td><td class="tengah">${b.hadir ? b.hadir.izin : "-"}</td></tr>`;
+      ${KOLOM_RAPOR.map(x => `<td class="tengah">${angkaRapi(b[x.k])}</td>`).join("")}
+      <td class="tengah"><b>${angkaRapi(b.akhir)}</b></td></tr>`;
   });
   return h + `</tbody></table>`;
 }
 
 function htmlLembarRapor(santri, sem) {
   const r = nilaiRapor(santri, sem);
-  const k = kelasSantriDi(santri, sem.tahun);
+  const k = kelasSantriDi(santri, sem.tahun, sem.semester);
   const wali = waliKelas(sem.tahun, idKelas(k.jenjang, k.kelas));
   const tanggal = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
   let h = `<div class="kop${pakaiKopResmi() ? " ada-resmi" : ""}">
@@ -154,7 +173,7 @@ function htmlLembarRapor(santri, sem) {
       ${r.diniah.length ? `<tr><td>Rata-rata mapel diniah</td><td class="tengah">${angkaRapi(r.rataDiniah)}</td></tr>` : ""}
       <tr><td><b>Rata-rata seluruh mapel</b></td><td class="tengah"><b>${angkaRapi(r.rataSemua)}</b></td></tr>
     </table>
-    <p class="petunjuk kecil">H = hadir, S = sakit, I = izin (jumlah pertemuan di tiap mapel).</p>
+    <p class="petunjuk kecil">Tugas & UH = rata-rata semua tugas / ulangan harian. Kehadiran = hadir ÷ (hadir + sakit + izin) × 100. Nilai akhir dihitung pakai bobot penilaian dari TU; "-" = belum ada nilainya.</p>
     <table class="ttd-rapor" width="100%"><tr>
       <td>Mengetahui,<br>Kepala PKBM<br><br><br><br>(..............................)</td>
       <td>Tulungagung, ${aman(tanggal)}<br>Wali Kelas<br><br><br><br>${wali
@@ -172,7 +191,7 @@ function layarRaporCetak() {
   }
   const [jenjang, kelas] = (posisi.kelasRapor || "").split("|");
   const sem = dariKunciSemester(posisi.semRapor || kunciSemester(semesterSekarang()));
-  const semua = santriKelasDi(jenjang, kelas, sem.tahun);
+  const semua = santriKelasDi(jenjang, kelas, sem.tahun, sem.semester);
   const daftar = posisi.raporSantri ? semua.filter(s => s.id === posisi.raporSantri) : semua;
   if (daftar.length === 0) throw new DataHilang();
 
@@ -196,20 +215,38 @@ function layarRaporCetak() {
 function htmlPilihWali(jenjang, kelas, tahun) {
   const id = idKelas(jenjang, kelas);
   const w = waliKelas(tahun, id);
-  const guru = toko.pengguna.filter(p => p.peran === "ustadz").sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
-  // wali lama yang akunnya udah nonaktif / dihapus tetap kelihatan
-  const lama = w && !guru.some(p => p.id === w.uid) ? `<option value="${aman(w.uid)}" selected>${aman(w.nama)} (akun nggak aktif)</option>` : "";
-  return `<label class="pilih-wali">Wali kelas ${aman(kelas)} · ${aman(tahun)}
+  // kelas putra (rombel A): ustadzah tidak boleh jadi wali kelas
+  const putra = kelasPutra(kelas);
+  const guru = toko.pengguna.filter(p => p.peran === "ustadz" && !(putra && sapaanPengguna(p) === "ustadzah"))
+    .sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
+  const akunLama = w && toko.pengguna.find(p => p.id === w.uid);
+  const salah = w && putra && akunLama && sapaanPengguna(akunLama) === "ustadzah";
+  // wali lama yang akunnya udah nonaktif / dihapus / ustadzah di kelas putra tetap kelihatan
+  const lama = w && !guru.some(p => p.id === w.uid)
+    ? `<option value="${aman(w.uid)}" selected>${aman(w.nama)} (${salah ? "ustadzah, harus diganti" : "akun nggak aktif"})</option>` : "";
+  return `${salah ? `<p class="pemberitahuan-kecil">Wali kelas ${aman(kelas)} tercatat ustadzah. Kelas putra harus diwalikan ustadz, silakan ganti.</p>` : ""}
+    <label class="pilih-wali">Wali kelas ${aman(kelas)} · ${aman(tahun)}${putra ? ` <small>(kelas putra: hanya ustadz)</small>` : ""}
       <select data-wali="${aman(id)}" data-wali-tahun="${aman(tahun)}">
         <option value="">Belum dipilih</option>${lama}
         ${guru.map(p => `<option value="${aman(p.id)}" ${w && w.uid === p.id ? "selected" : ""}>${aman(p.nama || p.email || "")}</option>`).join("")}
       </select>
     </label>`;
 }
+// cuma nampilin nama wali (pilihannya ada di kartu kelas, menu Siswa)
+function htmlNamaWali(jenjang, kelas, tahun) {
+  const w = waliKelas(tahun, idKelas(jenjang, kelas));
+  return `<p class="info">Wali kelas ${aman(kelas)} · ${aman(tahun)}: <b>${w ? aman(w.nama) : "belum dipilih"}</b>. Diatur di menu Siswa.</p>`;
+}
 function pasangPilihWali() {
   isi.querySelectorAll("[data-wali]").forEach(sel => sel.onchange = () => {
     const akun = toko.pengguna.find(p => p.id === sel.value && p.peran === "ustadz");
     if (sel.value && !akun) return;   // wali lama yang nggak aktif dipilih lagi: biarin
+    const id = sel.dataset.wali;
+    const kelas = daftarKelas().find(k => idKelas(k.jenjang, k.kelas) === id);
+    if (akun && kelas && kelasPutra(kelas.kelas) && sapaanPengguna(akun) === "ustadzah") {
+      kabar("Ustadzah tidak boleh menjadi wali kelas putra.");
+      return tampilkan(true);
+    }
     simpanWali(sel.dataset.waliTahun, sel.dataset.wali, akun || null);
   });
 }

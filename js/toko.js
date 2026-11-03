@@ -936,6 +936,24 @@ function hapusSantri(id) {
   toko.backend.hapus(`santri/${id}`).catch(gagalSimpan);
   berubah();
 }
+// khusus admin: siapin lembar nilai KOSONG (kolom bawaan, tanpa angka) buat satu mapel & semester.
+// Ditulis cuma kalau di server belum ada (butuh internet), jadi isian guru nggak ketimpa.
+// Hasilnya false kalau ternyata lembarnya udah ada.
+async function siapkanLembarNilai(idMapel, lembar) {
+  const baru = { ...salin(lembar), nilai: {}, hadir: {}, diubah: Date.now(), diubahOleh: uidSaya(), namaPengubah: namaSaya() };
+  const jadi = await toko.backend.buatKalauBelumAda(`mapel/${idMapel}/nilai/${baru.id}`, tanpaId(baru));
+  const w = toko.isi[idMapel];
+  if (jadi && w) pasangDiDaftar(w.nilai, baru);
+  berubah();
+  return jadi;
+}
+// khusus admin: hapus satu lembar nilai (semua nilai & kehadiran semester itu ikut hilang)
+function hapusLembarNilai(idMapel, idLembar) {
+  const w = toko.isi[idMapel];
+  if (w) w.nilai = (w.nilai || []).filter(x => x.id !== idLembar);
+  toko.backend.hapus(`mapel/${idMapel}/nilai/${idLembar}`).catch(gagalSimpan);
+  berubah();
+}
 // simpan sebagian lembar nilai: cuma sel yang berubah yang dikirim, biar isian dari HP lain
 // (atau pengampu lain) nggak ketimpa. perubahan: [[jalur], nilai], nilai undefined = dihapus.
 // Lembar yang belum pernah tersimpan juga dikirim sebagian: semester & tahun diisi, kolomnya

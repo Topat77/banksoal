@@ -11,7 +11,22 @@
 // =====================================================
 
 const TINGKAT_AKHIR = { "Paket B": 9, "Paket C": 12 };
-const HASIL_NAIK = { naik: "Naik kelas", tinggal: "Tinggal kelas", lulus: "Lulus", pindah: "Pindah sekolah" };
+const HASIL_NAIK = { naik: "Naik kelas", tinggal: "Tinggal kelas", lulus: "Lulus", lanjut: "Lulus, lanjut ke kelas 10", pindah: "Pindah sekolah" };
+// jenjang tujuan naik kelas: I'dad naik ke Paket C; lulusan kelas 9 Paket B yang lanjut juga ke Paket C
+function jenjangTujuan(asalJenjang, hasil) {
+  return hasil === "lanjut" || asalJenjang === JENJANG_IDAD ? "Paket C" : asalJenjang;
+}
+// kelas tujuan dipilih per siswa (nggak ditebak): naik dari I'dad, dan lulusan kelas 9 yang lanjut
+function tujuanDipilihPerSiswa(asalJenjang, asalKelas) {
+  return asalJenjang === JENJANG_IDAD || (asalJenjang === "Paket B" && tingkatAkhir(asalJenjang, asalKelas));
+}
+// pilihan kelas tujuan buat siswa itu: kelas 10 Paket C (I'dad / lanjut) atau tingkat berikutnya, huruf rombel sama (putra ke A, putri ke B)
+function pilihanKelasTujuan(asalJenjang, asalKelas) {
+  const jenjang = jenjangTujuan(asalJenjang, tujuanDipilihPerSiswa(asalJenjang, asalKelas) && asalJenjang !== JENJANG_IDAD ? "lanjut" : "naik");
+  const tingkat = tujuanDipilihPerSiswa(asalJenjang, asalKelas) ? "10" : String(Number(tingkatKelas(asalKelas)) + 1);
+  const huruf = hurufRombel(asalKelas);
+  return daftarKelas().filter(k => k.jenjang === jenjang && tingkatKelas(k.kelas) === tingkat && (!huruf || hurufRombel(k.kelas) === huruf)).map(k => k.kelas);
+}
 
 function tingkatAkhir(jenjang, kelas) {
   const t = Number(tingkatKelas(kelas));
@@ -37,18 +52,42 @@ function santriKeluar(s) {
   return s.status === "lulus" || s.status === "pindah";
 }
 // kelas santri di satu tahun ajaran: dari riwayat kalau ada, kalau nggak ya kelas sekarang
-function kelasSantriDi(s, tahun) {
+// semester (opsional): "Ganjil" → kelas waktu Ganjil, kalau siswanya pindah kelas di semester Genap tahun itu
+function kelasSantriDi(s, tahun, semester) {
+  if (semester === "Ganjil") {
+    const p = pindahKelasSantri(s).filter(x => x.tahun === tahun && x.semester === "Genap").sort((a, c) => a.tanggal - c.tanggal)[0];
+    if (p) return { jenjang: p.jenjang, kelas: p.kelas, absen: p.absen };
+  }
   const r = riwayatTahun(s, tahun);
   return r && typeof r.jenjang === "string" && typeof r.kelas === "string"
     ? { jenjang: r.jenjang, kelas: r.kelas, absen: r.absen }
     : { jenjang: s.jenjang, kelas: s.kelas, absen: s.absen };
 }
+// ====== PINDAH KELAS (tingkat sama, putra/putri sama; kapan aja, khusus TU) ======
+// Tiap pindah dicatat: { tahun, semester, jenjang, kelas, absen } = kelas SEBELUM pindah + waktu pindahnya.
+// Nilai yang udah diisi tetap di kelas lama; semester sebelum pindah tetap pakai kelas lama (lembar nilai & rapor).
+function pindahKelasSantri(s) {
+  return Array.isArray(s && s.pindahKelas)
+    ? s.pindahKelas.filter(x => x && typeof x === "object" && typeof x.tahun === "string" && typeof x.kelas === "string" && typeof x.jenjang === "string")
+    : [];
+}
+function pilihanPindahKelas(s) {
+  return daftarKelas().filter(k => k.jenjang === s.jenjang && k.kelas !== s.kelas &&
+    tingkatKelas(k.kelas) === tingkatKelas(s.kelas) && hurufRombel(k.kelas) === hurufRombel(s.kelas)).map(k => k.kelas);
+}
+function pindahkanKelas(s, kelasTujuan, sem) {
+  const baru = salin(s);
+  baru.pindahKelas = [...pindahKelasSantri(s), { tahun: sem.tahun, semester: sem.semester, jenjang: s.jenjang, kelas: s.kelas, absen: s.absen ?? "", tanggal: Date.now() }];
+  baru.kelas = kelasTujuan;
+  delete baru.absen;   // nomor absen di kelas baru diisi lagi
+  return baru;
+}
 // santri yang ada di satu kelas pada tahun itu (yang udah lulus / pindah ikut, asal tercatat di tahun itu)
-function santriKelasDi(jenjang, kelas, tahun) {
+function santriKelasDi(jenjang, kelas, tahun, semester) {
   const nomor = (x) => x.absen === undefined || x.absen === null || x.absen === "" ? Infinity : Number(x.absen);
   return toko.santri
     .filter(s => s.aktif !== false || riwayatTahun(s, tahun))
-    .map(s => ({ s, k: kelasSantriDi(s, tahun) }))
+    .map(s => ({ s, k: kelasSantriDi(s, tahun, semester) }))
     .filter(x => x.k.jenjang === jenjang && x.k.kelas === kelas)
     .sort((a, c) => (nomor(a.k) - nomor(c.k)) || (a.s.nama || "").localeCompare(c.s.nama || "", "id"))
     .map(x => x.s);
@@ -73,10 +112,11 @@ function terapkanNaikKelas(s, tahun, hasil, kelasTujuan) {
   if (sudahDiproses(s, tahun) || !HASIL_NAIK[hasil]) return null;
   const baru = salin(s);
   baru.riwayatKelas = [...riwayatSantri(s), { tahun, jenjang: s.jenjang, kelas: s.kelas, absen: s.absen ?? "", hasil }];
-  if (hasil === "naik") {
+  if (hasil === "naik" || hasil === "lanjut") {
     const k = String(kelasTujuan || "").trim();
     if (!k) return null;
     baru.kelas = k;
+    baru.jenjang = jenjangTujuan(s.jenjang, hasil);   // I'dad / lanjut → Paket C
   } else if (hasil === "lulus" || hasil === "pindah") {
     baru.status = hasil;
     baru.aktif = false;
@@ -136,8 +176,8 @@ function keputusanTahun(s, tahun) {
   const lebihBaru = riwayatSantri(s).filter(x => x.tahun > tahun).map(x => x.tahun).sort();
   if (lebihBaru.length) return { fase: "terkunci", hasil: r ? r.hasil : undefined, sesudah: lebihBaru[0] };
   if (!bisaDiputuskan(s, tahun)) return { fase: "dilewati" };
-  if (r && (r.hasil === "naik" || r.hasil === "tinggal" || r.hasil === "lulus")) {
-    return r.hasil === "naik" ? { fase: "naik", hasil: "naik", tujuan: s.kelas } : { fase: r.hasil, hasil: r.hasil };
+  if (r && (r.hasil === "naik" || r.hasil === "lanjut" || r.hasil === "tinggal" || r.hasil === "lulus")) {
+    return r.hasil === "naik" || r.hasil === "lanjut" ? { fase: r.hasil, hasil: r.hasil, tujuan: s.kelas } : { fase: r.hasil, hasil: r.hasil };
   }
   return r ? { fase: "dilewati" } : { fase: "belum" };
 }
@@ -153,23 +193,25 @@ function bisaDiputuskan(s, tahun) {
 // santri baru sesudah keputusan `hasil` ("naik" | "tinggal" | "lulus", atau "batal" = balik ke belum diputuskan) di akhir `tahun`. null = ditolak.
 // Kalau udah ada keputusan tahun itu, diganti (riwayat tetap satu entri). Hasil sama = santri yang sama (nggak perlu nulis).
 function ubahKeputusan(s, tahun, hasil, kelasTujuan) {
-  if (!["naik", "tinggal", "lulus", "batal"].includes(hasil)) return null;
+  if (!["naik", "lanjut", "tinggal", "lulus", "batal"].includes(hasil)) return null;
   const k = keputusanTahun(s, tahun);
   if (k.fase === "terkunci" || k.fase === "dilewati") return null;
   if (hasil === "batal") return k.fase === "belum" ? null : batalkanNaikKelas(s, tahun);   // balik ke belum diputuskan (buat buka kunci tahun sebelumnya)
   const asal = kelasSantriDi(s, tahun);
   const akhir = tingkatAkhir(asal.jenjang, asal.kelas);
   if ((hasil === "lulus" && !akhir) || (hasil === "naik" && akhir)) return null;
-  const tujuan = hasil === "naik" ? String(kelasTujuan || "").trim().replace(/\s+/g, " ") : "";
-  if (hasil === "naik" && !tujuan) return null;
-  if (k.fase === hasil && (hasil !== "naik" || tujuan === s.kelas)) return s;
+  if (hasil === "lanjut" && !(akhir && asal.jenjang === "Paket B")) return null;   // lanjut ke kelas 10: cuma lulusan kelas 9
+  const pindahKelas = hasil === "naik" || hasil === "lanjut";
+  const tujuan = pindahKelas ? String(kelasTujuan || "").trim().replace(/\s+/g, " ") : "";
+  if (pindahKelas && !tujuan) return null;
+  if (k.fase === hasil && (!pindahKelas || (tujuan === s.kelas && jenjangTujuan(asal.jenjang, hasil) === s.jenjang))) return s;
   const dasar = k.fase === "belum" ? s : batalkanNaikKelas(s, tahun);
   return dasar ? terapkanNaikKelas(dasar, tahun, hasil, tujuan) : null;
 }
 // isian kelas tujuan buat satu kelas: kelas yang paling banyak dituju santri kelas ini yang udah naik di `tahun`,
 // kalau belum ada ya tebakan (7A1 -> 8A1). Tingkat akhir: kosong (nggak ada kelas tujuan).
 function tujuanTebakan(daftarSantri, jenjang, kelas, tahun) {
-  if (tingkatAkhir(jenjang, kelas)) return "";
+  if (tingkatAkhir(jenjang, kelas) || tujuanDipilihPerSiswa(jenjang, kelas)) return "";
   const hitung = new Map();
   for (const s of daftarSantri) {
     const a = kelasSantriDi(s, tahun);

@@ -24,7 +24,9 @@ Gak ada build step / npm. Semua file JS dimuat pakai `<script>` biasa dengan uru
 | `js/mapel.js`, `saya.js`, `cari.js` | halaman satu mapel + pilih semester, layar Saya, cari soal |
 | `js/menupilih.js` | tampilan menu pilihan pengganti `<select>` bawaan (otomatis buat semua select di layar) |
 | `js/beranda.js`, `modul.js`, `sumatif.js`, `uas.js`, `ai.js`, `cetak.js`, `docx.js`, `kop.js`, `kurikulum.js`, `nilai.js`, `rapor.js` | layar-layar fitur |
-| `js/naikkelas.js` | riwayat kelas santri (`riwayatKelas`, `kelasSantriDi()`), status lulus/pindah, keputusan naik kelas per santri (`ubahKeputusan()`; panelnya di lembar nilai Genap, khusus TU, `js/nilai.js`) |
+| `js/naikkelas.js` | riwayat kelas santri (`riwayatKelas`, `kelasSantriDi(s, tahun, semester)`), pindah kelas di tengah tahun (`pindahKelas`, `pindahkanKelas()`; semester sebelum pindah tetap kelas lama), naik lintas jenjang (I'dad → kelas 10 Paket C, kelas 9 "lulus, lanjut" → kelas 10; kelas tujuannya dipilih per siswa), status lulus/pindah, keputusan naik kelas per santri (`ubahKeputusan()`; panelnya di Daftar siswa, khusus TU, diisi setelah rapat pleno; tombol "Naik kelas" di kartu kelas menu Siswa; `js/nilai.js`) |
+| `js/admin.js` | menu TU (Beranda · Mapel · Guru · Siswa · Saya): kotak per nama mapel (`layarMapelTU`) → kelas-kelasnya + pantauan per guru (`layarMapelNamaTU`), pantau per guru (`layarPantauGuru`), kelas & siswa Putra (A) / Putri (B) (`layarKelasSiswa`). Bobot, UAS, ubah mapel, Daftar siswa & Rapor (satu kelas) dibuka dari dalamnya; tombol ‹ ikut `INDUK_TU` |
+| `js/menuguru.js` | menu guru (Beranda · Mapel · Siswa · Saya): kotak mapel yang diampu + tombol AI & Cari (`layarMapelGuru`), kelas yang diajar + tombol isi nilai (`layarSiswaGuru`). `indukLayarMenu()` / `kelompokLayar()` milih menu TU atau guru |
 | `js/cadangan.js` | unduh cadangan data (.json) + pengingatnya |
 | `js/alat.js`, `js/dialog.js` | alat bantu umum (`aman`, `klik`, semester, tema, simpan lokal, ...) & dialog pengganti `confirm/alert/prompt` |
 | `js/datasoal.js` | bentuk data: `rapikanSoal`, `amankanDok`, `ukuranDok`, `pasangDiJalur`, `tambahKeDaftar` / `buangDariDaftar` |
@@ -43,6 +45,8 @@ Peran akun:
 
 Firestore: `pengguna`, `pengaturan`, `kelas`, `santri`, `mapel/{id}/{modul,nilai,sumatif}`, `grup/{id}/{uas,usulan}`.
 
+- **Jenjang:** Paket B (7–9) → **I'dad** (`JENJANG_IDAD`, `grup.js`; kelas "I'dad A1", siswa baru dari luar, 1 tahun) → Paket C (10–12). Putra/putri dari huruf rombel (`hurufRombel()`: A putra, B putri).
+
 ## Yang gampang kelupaan
 - **Nambah file JS baru:** daftarin di `index.html` (urutannya penting), di `fileKurang()` (`js/mulai.js`), dan di `INTI` (`sw.js`).
 - **Tiap ada file aplikasi yang berubah** (HTML, CSS, JS, ikon, manifest): naikin `VERSI` di `sw.js` (misal `banksoal-v14` → `banksoal-v15`) biar HP yang udah pasang ikut update.
@@ -52,9 +56,11 @@ Firestore: `pengguna`, `pengaturan`, `kelas`, `santri`, `mapel/{id}/{modul,nilai
 - **Soal baru / diedit / disalin:** lewatin `rapikanSoal()` (`js/datasoal.js`) sebelum disimpan. Rules nggak bisa ngecek isi tiap soal di dalam daftar, jadi bentuknya dijaga di situ.
 - **Data modul / ujian dari database:** lewatin `amankanDok()` (`js/datasoal.js`) sebelum dipakai layar. Item rusak di daftar (null, angka) bisa aja ada, dan rules nggak bisa nolak.
 - **Simpan modul / ujian / UAS / usulan:** `simpanModul()` dkk. ngembaliin `null` kalau dokumennya kegedean (`ukuranDok()`, Firestore maks. 1 MiB). Kalau habis nyimpan langsung pindah layar, cek dulu hasilnya biar isian guru nggak hilang.
+- **Lembar nilai (izin):** guru pengampu ngisi angka. Admin cuma lihat, nyiapin lembar KOSONG (`siapkanLembarNilai()`, rules `lembarKosong()`), dan hapus lembar kapan aja. Lembar nilai nggak ikut dipulihkan dari cadangan. Kolom UTS/UAS/Keaktifan cuma sekali (`KELOMPOK_SEKALI`), Tugas & UH boleh berkali-kali. Rapor: Tugas, UH, UTS, UAS, Keaktifan, Kehadiran, Nilai akhir.
 - **Lembar nilai:** simpan pakai `simpanNilaiSebagian()` (cuma sel yang berubah), jangan kirim lembar utuh, biar isian dari perangkat lain nggak ketimpa. Nambah/buang item daftar pakai `tambahKeDaftar()` / `buangDariDaftar()` (jadi `arrayUnion` / `arrayRemove`).
 - **Semester yang dimuat:** modul, sumatif, UAS & usulan cuma ada di `toko` buat semester di `semesterDimuat` (`toko.js`). Layar yang nampilin semester lain wajib manggil `pastikanSemester(sem)` (`tampilkan()` udah otomatis buat `semAktif()` & semester UAS), dan nunggu `isiMapelSiap()` / `isiGrupSiap()` sebelum nyimpulin "belum ada". Butuh data lengkap semua semester (kayak cadangan)? Pakai `ambilKoleksi()` (ambil sekali dari server), bukan langganan.
 - **Kop cetak:** lembar soal (formatif, sumatif, UAS) pakai `KOP_ASESMEN` (`js/kop.js`, dari file `KOP_ASESMEN_*.docx` sekolah), kertas F4, footer + nomor halaman. Judulnya dari `judulAsesmen()` (`js/cetak.js`): formatif / lingkup materi / tengah semester / akhir semester (UAS). Rapor tetap pakai `KOP_RESMI`.
+- **Kemudahan guru:** beranda guru punya kartu "Hari ini" (`tugasHariIni()`) & progres per mapel (`progresMapel()` di `js/beranda.js`, juga dipakai tombol "Ingatkan via WA" di `layarMapelNamaTU`). Lembar nilai bisa diisi "Satu kolom" (bawaan di HP) atau "Tabel lengkap". Ukuran tulisan Normal/Besar di layar Saya (`data-huruf` di `<html>`). "Pakai modul lama" (`layarModulLama`) nyari modul sendiri di kelas ini semester lain + kelas lain.
 - **CSP** ada di `<meta>` `index.html`. Pakai layanan / domain baru → tambahin di situ. Script tema inline di `<head>` diizinkan lewat hash: kalau isinya diubah, hash di CSP juga harus diganti.
 
 ## Nyoba di lokal

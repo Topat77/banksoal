@@ -31,7 +31,7 @@ function layarAkun() {
               <option value="ustadzah" ${sapaanPengguna(p) === "ustadzah" ? "selected" : ""}>Ustadzah</option>
             </select>
           </label>`;
-  let h = `<h2 class="subjudul">Menunggu persetujuan <small>${menunggu.length} akun</small></h2>`;
+  let h = htmlSegmenGuru("akun") + `<h2 class="subjudul">Menunggu persetujuan <small>${menunggu.length} akun</small></h2>`;
   if (menunggu.length === 0) {
     h += `<p class="info">Nggak ada yang menunggu. Akun baru muncul di sini setelah ustadz/ustadzah masuk pakai akun Google-nya.</p>`;
   } else {
@@ -90,6 +90,7 @@ function layarAkun() {
     h += `</div>`;
   }
   isi.innerHTML = h;
+  pasangSegmenGuru();
 
   const cari = document.getElementById("cariGuru");
   cari.oninput = () => {
@@ -116,9 +117,9 @@ function layarAkun() {
     sel.onchange = async () => {
       const p = toko.pengguna.find(x => x.id === sel.dataset.sapaan);
       if (!p) return;
-      const kelasA = toko.mapel.filter(m => kelasPutra(m.kelas) && (m.pengampu || []).includes(p.id));
+      const kelasA = [...toko.mapel.filter(m => kelasPutra(m.kelas) && (m.pengampu || []).includes(p.id)).map(namaMapel), ...waliKelasPutra(p.id).map(k => `wali ${k}`)];
       if (sel.value === "ustadzah" && kelasA.length &&
-          !(await tanyaYakin(`Peringatan: ${p.nama} masih tercatat ngajar di kelas putra (${kelasA.map(namaMapel).join(", ")}).\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu mapel tersebut.`, { ya: "Tetap simpan" }))) {
+          !(await tanyaYakin(`Peringatan: ${p.nama} masih tercatat di kelas putra (${kelasA.join(", ")}).\n\nUstadzah tidak boleh mengajar atau menjadi wali kelas putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu / wali kelas tersebut.`, { ya: "Tetap simpan" }))) {
         sel.value = sapaanPengguna(p) || "";
         return;
       }
@@ -211,9 +212,9 @@ function formGuru() {
     if (nip && !/^[0-9 ]+$/.test(nip)) return kabar("NIP cuma boleh berisi angka (dan spasi).");
     const kembar = nip && toko.pengguna.find(x => x.id !== p.id && (x.nip || "").replace(/\s/g, "") === nip.replace(/\s/g, ""));
     if (kembar && !(await tanyaYakin(`NIP ini sudah dipakai ${kembar.nama}. Tetap simpan?`, { ya: "Tetap simpan" }))) return;
-    const kelasA = ampu.filter(m => kelasPutra(m.kelas));
+    const kelasA = [...ampu.filter(m => kelasPutra(m.kelas)).map(namaMapel), ...waliKelasPutra(p.id).map(k => `wali ${k}`)];
     if (sapaan === "ustadzah" && kelasA.length &&
-        !(await tanyaYakin(`Peringatan: ${nama} masih tercatat ngajar di kelas putra (${kelasA.map(namaMapel).join(", ")}).\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu mapel tersebut.`, { ya: "Tetap simpan" }))) return;
+        !(await tanyaYakin(`Peringatan: ${nama} masih tercatat di kelas putra (${kelasA.join(", ")}).\n\nUstadzah tidak boleh mengajar atau menjadi wali kelas putra. Tetap simpan sebagai ustadzah? Jangan lupa ganti pengampu / wali kelas tersebut.`, { ya: "Tetap simpan" }))) return;
     if (peran !== p.peran && !(await tanyaYakin(`Jadikan ${nama} sebagai ${peran === "kurikulum" ? "admin (TU)" : "guru"}?${peran === "kurikulum" ? "\n\nAdmin bisa menyetujui akun, mengatur mapel, daftar siswa, bobot nilai, dan rapor." : ""}`, { ya: "Ya, ubah" }))) return;
     const terbaru = toko.pengguna.find(x => x.id === p.id) || p;
     const { id, ...data } = terbaru;
@@ -240,17 +241,28 @@ function formGuru() {
 const KELAS_SD  = ["Kelas 1", "Kelas 2", "Kelas 3", "Kelas 4", "Kelas 5", "Kelas 6"];
 const KELAS_SMP = ["Kelas 7", "Kelas 8", "Kelas 9"];
 const KELAS_SMA = ["Kelas 10", "Kelas 11", "Kelas 12"];
+// I'dad (JENJANG_IDAD, di grup.js): kelas persiapan 1 tahun sebelum Paket C, naiknya ke kelas 10 Paket C
+const KELAS_IDAD = ["I'dad"];
+// urutan kunci = urutan jenjang di layar (Paket B → I'dad → Paket C)
 const KELAS_PER_JENJANG = {
-  "Paket A": KELAS_SD, "Paket B": KELAS_SMP, "Paket C": KELAS_SMA,
+  "Paket A": KELAS_SD, "Paket B": KELAS_SMP, [JENJANG_IDAD]: KELAS_IDAD, "Paket C": KELAS_SMA,
   "SD": KELAS_SD, "SMP": KELAS_SMP, "SMA": KELAS_SMA
 };
 // jenjang yang ada di PKBM Imam Syafi'i
-const JENJANG_PKBM = ["Paket B", "Paket C"];
+const JENJANG_PKBM = ["Paket B", JENJANG_IDAD, "Paket C"];
 
-// rombel A = putra, B = putri (misal 7A2 putra, 7B2 putri).
+// rombel A = putra, B = putri (misal 7A2 putra, 7B2 putri, I'dad A1 putra).
 // Ustadz boleh ngajar kelas putri, tapi ustadzah nggak boleh ngajar kelas putra.
 function kelasPutra(kelas) {
-  return /^\s*\d+\s*A/i.test(kelas || "");
+  return hurufRombel(kelas) === "A";
+}
+function kelasPutri(kelas) {
+  return hurufRombel(kelas) === "B";
+}
+// kelas putra (tahun ajaran sekarang) yang wali kelasnya akun ini
+function waliKelasPutra(uid) {
+  const tahun = semesterSekarang().tahun;
+  return daftarKelas().filter(k => kelasPutra(k.kelas) && (waliKelas(tahun, idKelas(k.jenjang, k.kelas)) || {}).uid === uid).map(k => k.kelas);
 }
 // pengampu yang nggak sesuai aturan di satu mapel: ustadzah di kelas putra
 function pengampuTakSesuai(mp) {
@@ -288,49 +300,6 @@ function htmlTabJenjang() {
 function pasangTabJenjang(ke, tambahan = {}) {
   isi.querySelectorAll(".tab-jenjang [data-jenjang]").forEach(b => {
     b.onclick = () => { pilihJenjang(b.dataset.jenjang); pergi(ke, tambahan); };
-  });
-}
-
-function layarKelolaMapel() {
-  wajibKurikulum();
-  judul.textContent = "Mapel & pengampu";
-  jejak.textContent = toko.lembaga.nama || KONFIG.namaLembaga || "";
-  if (!dataDasarSiap()) return tampilMemuat("Mapel & pengampu");
-
-  const jenjang = jenjangAktif();
-  const daftar = toko.mapel.filter(m => m.jenjang === jenjang)
-    .sort((a, b) => bandingKelas(a, b) || a.nama.localeCompare(b.nama, "id"));
-  jejak.textContent = jenjang;
-  let h = htmlTabJenjang() + `<p class="info">Mapel dibuat di sini, lalu tentukan ustadz/ustadzah pengampunya. Satu mapel boleh diampu lebih dari satu orang.</p>`;
-  const salah = daftar.filter(m => pengampuTakSesuai(m).length);
-  if (salah.length) {
-    h += `<div class="pemberitahuan-kecil"><b>Perlu dicek:</b> ada ustadzah yang tercatat ngajar di kelas putra (${aman(salah.map(namaMapel).join(", "))}). Ustadzah nggak boleh ngajar siswa putra.</div>`;
-  }
-  if (daftar.length === 0) {
-    h += `<p class="kosong">Belum ada mapel ${aman(jenjang)}.</p>`;
-  }
-  for (const k of kelompokJenis(daftar)) {
-    h += `<h2 class="subjudul">Mapel ${namaJenis(k.jenis).toLowerCase()} <small>${k.mapel.length} mapel</small></h2><div class="daftar">`;
-    for (const m of k.mapel) {
-      const nama = (m.pengampu || []).map(u => namaPengguna(u) || (m.namaPengampu || {})[u]).filter(Boolean);
-      const takSesuai = pengampuTakSesuai(m);
-      h += htmlBaris({
-        attr: `data-mapel="${aman(m.id)}"`,
-        judulBaris: aman(m.nama),
-        sub: `${aman(m.kelas)} · ${nama.length ? aman(nama.join(", ")) : "<em>belum ada pengampu</em>"}`,
-        tanda: takSesuai.length ? "Ustadzah di kelas putra" : nama.length ? "" : "Belum ada pengampu",
-        tandaJenis: takSesuai.length ? "tanda-ragu" : "tanda-tutup"
-      });
-    }
-    h += `</div>`;
-  }
-  h += `<button class="tombol-utama" id="tambah">+ Tambah mapel ${aman(jenjang)}</button>`;
-  isi.innerHTML = h;
-  pasangTabJenjang("kelolaMapel", { dariMapel: false });
-
-  document.getElementById("tambah").onclick = () => pergi("formMapel", { mapelEditId: null, dariMapel: false });
-  isi.querySelectorAll(".baris[data-mapel]").forEach(b => {
-    b.onclick = () => pergi("formMapel", { mapelEditId: b.dataset.mapel, dariMapel: false });
   });
 }
 
@@ -392,10 +361,11 @@ function formMapel() {
   function aturSaranKelas(gantiJenjang) {
     const j = isianJenjang.value;
     const dipakai = daftarKelas().filter(x => x.jenjang === j).map(x => x.kelas);
-    const pola = (KELAS_PER_JENJANG[j] || []).flatMap(k => {
-      const n = k.replace(/\D/g, "");
-      return [`${n}A1`, `${n}A2`, `${n}B1`, `${n}B2`];
-    });
+    const pola = j === JENJANG_IDAD ? ["I'dad A1", "I'dad A2", "I'dad B1", "I'dad B2"]
+      : (KELAS_PER_JENJANG[j] || []).flatMap(k => {
+        const n = k.replace(/\D/g, "");
+        return [`${n}A1`, `${n}A2`, `${n}B1`, `${n}B2`];
+      });
     const saran = [...new Set([...dipakai, ...pola])].sort((a, b) => a.localeCompare(b, "id", { numeric: true }));
     document.getElementById("saranKelas").innerHTML = saran.map(k => `<option value="${aman(k)}">`).join("");
     pilihKelas.placeholder = pola[0] || "Nama kelas";
@@ -416,7 +386,7 @@ function formMapel() {
     form.querySelector(`[name=jenis][value="${CSS.escape(j)}"]`).checked = true;
   });
 
-  // ustadzah yang dicentang di kelas putra (rombel A) → peringatan
+  // ustadzah yang dicentang di kelas putra (rombel A) → tidak bisa disimpan
   const peringatan = document.getElementById("peringatanPengampu");
   function ustadzahDiKelasPutra() {
     if (!kelasPutra(pilihKelas.value)) return [];
@@ -427,7 +397,7 @@ function formMapel() {
   function cekPengampu() {
     const salah = ustadzahDiKelasPutra();
     peringatan.hidden = !salah.length;
-    peringatan.innerHTML = salah.length ? `<b>Peringatan:</b> ${aman(pilihKelas.value)} kelas putra (rombel A), sedangkan ${aman(salah.join(", "))} ustadzah. Ustadzah nggak boleh ngajar siswa putra.` : "";
+    peringatan.innerHTML = salah.length ? `<b>Tidak bisa disimpan:</b> ${aman(pilihKelas.value)} kelas putra (rombel A), sedangkan ${aman(salah.join(", "))} ustadzah. Ustadzah tidak boleh mengajar siswa putra. Hapus centangnya dulu.` : "";
   }
   form.querySelectorAll('[name="pengampu"]').forEach(c => c.onchange = cekPengampu);
   pilihKelas.oninput = cekPengampu;
@@ -446,7 +416,7 @@ function formMapel() {
       x.nama.toLowerCase() === nama.toLowerCase() && x.jenjang === f.get("jenjang") && x.kelas === kelas);
     if (kembar && !(await tanyaYakin(`Mapel ${nama} ${kelas} (${f.get("jenjang")}) sudah ada. Tetap bikin satu lagi?`, { ya: "Tetap bikin" }))) return;
     const salah = ustadzahDiKelasPutra();
-    if (salah.length && !(await tanyaYakin(`Peringatan: ${kelas} kelas putra, tapi ${salah.join(", ")} ustadzah.\n\nUstadzah nggak boleh ngajar siswa putra. Tetap simpan?`, { ya: "Tetap simpan" }))) return;
+    if (salah.length) return kabar(`${kelas} kelas putra, sedangkan ${salah.join(", ")} ustadzah. Ustadzah tidak boleh mengajar siswa putra, jadi hapus centangnya dulu.`);
 
     const baru = simpanMapelData({
       ...(lama || {}),
@@ -456,7 +426,8 @@ function formMapel() {
     });
     pilihJenjang(baru.jenjang);   // daftar mapel langsung nunjukin jenjang mapel yang barusan disimpan
     if (posisi.dariMapel) pergi("mapel", { mapelId: baru.id });
-    else pergi("kelolaMapel");
+    else if (posisi.dariMapelTU && toko.mapel.some(m => m.jenjang === baru.jenjang && m.nama === posisi.namaMapelTU)) pergi("mapelNamaTU");
+    else pergi("mapelTU");
   };
 
   if (lama) {
@@ -477,124 +448,8 @@ function formMapel() {
       // dialog tadi bisa lama; kalau datanya ternyata belum siap, jangan lanjut
       if (!hapusMapelData(lama.id, isi)) { kabar("Data masih dimuat, coba lagi sebentar."); return; }
       await hapusSisaKosong();
-      pergi("kelolaMapel", { mapelId: null });
+      pergi("mapelTU", { mapelId: null });
     };
   }
 }
 
-// =====================================================
-//  PANTAUAN: siapa sudah ngisi apa
-// =====================================================
-function layarPantauan() {
-  wajibKurikulum();
-  judul.textContent = "Pantauan";
-  const semuaSem = new Map();
-  const tambah = (x) => semuaSem.set(kunciSemester(x), x);
-  tambah(semesterSekarang());
-  semesterDimuat.forEach(tambah);
-  for (const mp of toko.mapel) {
-    ((toko.isi[mp.id] || {}).nilai || []).forEach(tambah);   // semester lama: dari lembar nilai
-    modulMapel(mp.id).forEach(tambah);
-    sumatifMapel(mp.id).forEach(tambah);
-  }
-  const kunci = posisi.semPantau && semuaSem.has(posisi.semPantau) ? posisi.semPantau : kunciSemester(semesterSekarang());
-  const sem = dariKunciSemester(kunci);
-  pastikanSemester(sem);
-  const jenjang = jenjangAktif();
-  const mapelJenjang = toko.mapel.filter(m => m.jenjang === jenjang)
-    .sort((a, b) => bandingKelas(a, b) || a.nama.localeCompare(b.nama, "id"));
-  jejak.textContent = `${jenjang} · ${namaSemester(sem)}`;
-
-  // siapa saja yang muncul di pantauan jenjang ini, dikelompokkan ustadz / ustadzah
-  const isiPantau = mapelJenjang.filter(mp => isiMapelSiap(mp.id)).map(mp => {
-    const modul = modulMapel(mp.id).filter(x => samaSemester(x, sem));
-    const sumatif = sumatifMapel(mp.id).filter(x => samaSemester(x, sem));
-    // baris: semua pengampu + siapa pun yang punya modul di mapel ini
-    const orang = [...new Set([...(mp.pengampu || []), ...modul.map(m => m.pemilik), ...sumatif.map(s => s.pemilik)])];
-    return { mp, modul, sumatif, orang };
-  });
-  const sapaanUid = (uid, mp, modul) => {
-    const p = toko.pengguna.find(x => x.id === uid);
-    const nama = (p && p.nama) || (mp.namaPengampu || {})[uid] || ((modul.find(m => m.pemilik === uid) || {}).namaPemilik) || "";
-    return sapaanPengguna({ ...(p || {}), nama }) || "belum";
-  };
-  const hitung = { ustadz: new Set(), ustadzah: new Set(), belum: new Set() };
-  for (const x of isiPantau) for (const uid of x.orang) hitung[sapaanUid(uid, x.mp, x.modul)].add(uid);
-  const KELOMPOK = [["ustadz", "Ustadz"], ["ustadzah", "Ustadzah"], ["belum", "Belum diatur"]];
-  let kelompok = posisi.kelompokPantau || "ustadz";
-  if (hitung[kelompok].size === 0) kelompok = KELOMPOK.map(k => k[0]).find(k => hitung[k].size) || "ustadz";
-
-  let h = htmlTabJenjang();
-  h += `<div class="pilih-kelompok" role="group" aria-label="Ustadz atau ustadzah">`;
-  for (const [k, label] of KELOMPOK) {
-    if (k === "belum" && hitung.belum.size === 0) continue;
-    h += `<button class="${k === kelompok ? "aktif" : ""}" data-kelompok="${k}" aria-pressed="${k === kelompok}">${label} <small>${hitung[k].size}</small></button>`;
-  }
-  h += `</div>`;
-  if (kelompok === "belum") h += `<p class="info">Atur sapaannya di halaman Guru biar masuk ke kelompok Ustadz atau Ustadzah.</p>`;
-  h += `<div class="pilih-semester" role="group" aria-label="Semester">`;
-  for (const x of [...semuaSem.values()].sort(bandingSemester)) {
-    const k = kunciSemester(x);
-    h += `<button class="chip ${k === kunci ? "aktif" : ""}" data-sem="${aman(k)}" aria-pressed="${k === kunci}">${aman(namaSemester(x))}</button>`;
-  }
-  h += `</div>`;
-
-  if (mapelJenjang.length === 0) {
-    h += `<p class="kosong">Belum ada mapel ${aman(jenjang)}. Tambahkan dulu di halaman Mapel &amp; pengampu.</p>`;
-  }
-
-  const belumSiap = isiPantau.length < mapelJenjang.length;
-  let adaKartu = false;
-  for (const { mp, modul, sumatif, orang: semua } of isiPantau) {
-    const orang = semua.filter(uid => sapaanUid(uid, mp, modul) === kelompok);
-    // mapel tanpa pengampu tetap tampil (biar ketahuan), mapel yang diampu kelompok lain disembunyikan
-    if (orang.length === 0 && semua.length > 0) continue;
-    adaKartu = true;
-
-    h += `
-      <section class="kartu-pantau">
-        <button class="kartu-pantau-judul" data-mapel="${aman(mp.id)}">
-          <span><strong>${aman(mp.nama)}</strong><small>${aman(mp.kelas)}</small></span>
-          <span class="baris-panah" aria-hidden="true">›</span>
-        </button>`;
-    if (orang.length === 0) {
-      h += `<p class="info">Belum ada pengampu.</p>`;
-    } else {
-      h += `<table class="tabel-pantau">
-        <thead><tr><th>Pengampu</th><th>Modul</th><th>Pertemuan</th><th>Soal</th><th>Sumatif</th><th>Terakhir diisi</th></tr></thead><tbody>`;
-      for (const uid of orang) {
-        const mm = modul.filter(m => m.pemilik === uid);
-        const ss = sumatif.filter(s => s.pemilik === uid);
-        const pertemuan = mm.reduce((x, m) => x + (m.pertemuan || []).length, 0);
-        const tanpaTarget = mm.reduce((x, m) => x + (m.pertemuan || []).filter(p => !p.target).length, 0);
-        const soal = mm.reduce((x, m) => x + jumlahSoal(m), 0);
-        const terakhir = Math.max(0, ...mm.map(m => m.diubah || 0), ...ss.map(s => s.diubah || 0));
-        const nama = namaPengguna(uid) || (mp.namaPengampu || {})[uid] || (mm[0] && mm[0].namaPemilik) || "Tanpa nama";
-        const bukanPengampu = !(mp.pengampu || []).includes(uid);
-        h += `
-          <tr class="${mm.length === 0 ? "kurang" : ""}">
-            <td data-label="Pengampu"><b>${aman(nama)}</b>${bukanPengampu ? ` <small>(sudah bukan pengampu)</small>` : ""}</td>
-            <td data-label="Modul">${mm.length || `<span class="merah">Belum ada</span>`}</td>
-            <td data-label="Pertemuan">${pertemuan}${tanpaTarget ? ` <small>(${tanpaTarget} tanpa target)</small>` : ""}</td>
-            <td data-label="Soal">${soal}</td>
-            <td data-label="Sumatif">${ss.length}</td>
-            <td data-label="Terakhir diisi">${terakhir ? aman(waktuRapi(terakhir)) : "-"}</td>
-          </tr>`;
-      }
-      h += `</tbody></table>`;
-    }
-    h += `</section>`;
-  }
-  if (!adaKartu && isiPantau.length > 0) {
-    h += `<p class="kosong">Belum ada ${kelompok === "ustadzah" ? "ustadzah" : kelompok === "ustadz" ? "ustadz" : "pengampu tanpa sapaan"} yang ngampu mapel ${aman(jenjang)}.</p>`;
-  }
-  if (belumSiap) h += `<p class="info">Sebagian data masih dimuat...</p>`;
-  isi.innerHTML = h;
-
-  pasangTabJenjang("pantauan");
-  isi.querySelectorAll("[data-kelompok]").forEach(b => b.onclick = () => pergi("pantauan", { kelompokPantau: b.dataset.kelompok }));
-  isi.querySelectorAll(".chip[data-sem]").forEach(b => b.onclick = () => pergi("pantauan", { semPantau: b.dataset.sem }));
-  isi.querySelectorAll("[data-mapel]").forEach(b => {
-    b.onclick = () => pergi("mapel", { mapelId: b.dataset.mapel, semester: kunci, tab: "modul" });
-  });
-}

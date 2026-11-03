@@ -19,6 +19,9 @@ const KELOMPOK_NILAI = [
   { k: "kehadiran", nama: "Kehadiran", label: "Kehadiran" }
 ];
 
+// kelompok yang kolomnya cuma boleh satu (Tugas & UH boleh berkali-kali)
+const KELOMPOK_SEKALI = ["uts", "uas", "keaktifan"];
+
 // bobot bawaan, dipakai selama admin belum ngatur sendiri
 const BOBOT_BAWAAN = {
   umum:   { tugas: 20, uh: 30, uts: 20, uas: 30, keaktifan: 0, kehadiran: 0 },
@@ -164,15 +167,19 @@ function layarSantri() {
   posisi.kelasSantri = kunci;
 
   judul.textContent = "Daftar siswa";
-  jejak.textContent = kelas ? `${kelas}, ${jenjang}` : (boleh ? jenjangAktif() : "");
+  jejak.textContent = kelas ? labelKelas(jenjang, kelas) : (boleh ? jenjangAktif() : "");
   tombolKembali.hidden = !posisi.dariNilai;
 
-  let h = (boleh ? htmlTabJenjang() : "") + `<div class="pilih-semester" role="group" aria-label="Kelas">`;
-  for (const x of semua) {
-    const k = `${x.jenjang}|${x.kelas}`;
-    h += `<button class="chip ${k === kunci ? "aktif" : ""}" data-kelas="${aman(k)}" aria-pressed="${k === kunci}">${aman(x.kelas)}${boleh ? "" : ` · ${aman(x.jenjang)}`}</button>`;
+  // admin: kelasnya sudah dipilih di menu Siswa (kartu kelas), jadi tanpa pilihan paket & kelas lagi
+  let h = "";
+  if (!boleh) {
+    h += `<div class="pilih-semester" role="group" aria-label="Kelas">`;
+    for (const x of semua) {
+      const k = `${x.jenjang}|${x.kelas}`;
+      h += `<button class="chip ${k === kunci ? "aktif" : ""}" data-kelas="${aman(k)}" aria-pressed="${k === kunci}">${aman(x.kelas)} · ${aman(x.jenjang)}</button>`;
+    }
+    h += `</div>`;
   }
-  h += `</div>`;
 
   if (!kelas) {
     h += boleh
@@ -188,7 +195,7 @@ function layarSantri() {
   // ---------- ustadz: cuma lihat ----------
   if (!boleh) {
     h += `
-      <h2 class="subjudul">Siswa ${aman(kelas)} ${aman(jenjang)} <small>${daftar.length} siswa</small></h2>
+      <h2 class="subjudul">Siswa ${aman(labelKelas(jenjang, kelas))} <small>${daftar.length} siswa</small></h2>
       <p class="info">Daftar siswa diisi admin (TU). Kalau ada nama atau NIS yang salah, kabari admin ya.</p>`;
     if (daftar.length === 0) {
       h += `<p class="kosong">Daftar siswa kelas ini belum diisi admin (TU).</p>`;
@@ -216,8 +223,8 @@ function layarSantri() {
     </tr>`;
 
   h += `
-    <h2 class="subjudul">Siswa ${aman(kelas)} ${aman(jenjang)} <small id="jumlahSantri">${daftar.length} siswa</small></h2>
-    ${htmlPilihWali(jenjang, kelas, semesterSekarang().tahun)}
+    <h2 class="subjudul">Siswa ${aman(labelKelas(jenjang, kelas))} <small id="jumlahSantri">${daftar.length} siswa</small></h2>
+    ${htmlNamaWali(jenjang, kelas, semesterSekarang().tahun)}
     <p class="info">Ketik langsung di tabel, tersimpan otomatis. Bisa juga salin 3 kolom dari Excel (No. Absen, NIS, Nama) lalu tempel di kotak pertama.</p>
     <div class="wadah-tabel-santri">
       <table class="tabel-santri">
@@ -246,15 +253,27 @@ function layarSantri() {
           <div class="baris-tombol"><button class="tombol-kedua" data-aktifkan="${aman(s.id)}">Aktifkan lagi</button></div>
         </div>`).join("")}</div>`;
   }
-  h += `<p class="info">Naik kelas dicatat dari lembar nilai semester Genap (menu mapel → Nilai → Keputusan naik kelas).</p>`;
+  // keputusan naik kelas (khusus TU, diisi setelah rapat pleno): tahun ajaran yang sedang / baru selesai
+  const semNaik = semesterNaikKelas();
+  const santriNaik = santriKelasDi(jenjang, kelas, semNaik.tahun);
+  const panelNaik = santriNaik.length ? htmlPanelKeputusan({ jenjang, kelas }, semNaik, santriNaik) : "";
+  // semester Ganjil: panel tahun lalu ditutup dulu (cuma buat kalau rapat plenonya molor / keputusannya belum diisi)
+  h += semNaik.tahun === semesterSekarang().tahun ? panelNaik : panelNaik && `
+    <details class="naik-tahun-lalu" ${posisi.keNaikKelas ? "open" : ""}>
+      <summary>Keputusan naik kelas ${aman(semNaik.tahun)} (tahun lalu)</summary>
+      <p class="pemberitahuan-kecil">Dipakai kalau keputusan tahun lalu belum diisi. Hati-hati: siswa baru tahun ini yang belum punya riwayat ikut tampil di daftar ini.</p>
+      ${panelNaik}
+    </details>`;
   isi.innerHTML = h;
   pasangTab();
+  pasangKeputusan({ jenjang, kelas }, semNaik, santriNaik);
+  if (posisi.keNaikKelas) {
+    posisi.keNaikKelas = false;
+    const panel = document.getElementById("panelKeputusan");
+    if (panel) panel.scrollIntoView({ block: "start" });
+  }
 
-wali-kelas
-  pasangPilihWali();
-  klik("keNaikKelas", () => pergi("naikKelas", { tahunNaik: null }));
 
- main
   isi.querySelectorAll("[data-aktifkan]").forEach(b => b.onclick = async () => {
     const s = toko.santri.find(y => y.id === b.dataset.aktifkan);
     if (!s || !(await tanyaYakin(`Aktifkan lagi ${s.nama} di kelas ${s.kelas}?`, { ya: "Aktifkan" }))) return;
@@ -376,6 +395,11 @@ wali-kelas
     if (!b) return;
     const x = toko.santri.find(y => y.id === b.dataset.hapusSantri);
     if (!x) return;
+    // pindah kelas (tingkat sama, putra/putri sama) atau keluar dari PKBM
+    const mau = await tanyaPilih(`${x.nama} mau diapakan?\n\nPindah kelas: pindah ke kelas lain di tingkat yang sama (misal ${kelas} ke kelas paralelnya). Nilai yang sudah diisi tetap tersimpan di kelas ini.`,
+      { ya: "Pindah kelas", lain: "Keluar / hapus" });
+    if (mau === true) return tampilPilihPindah(x);
+    if (mau !== "lain") return;
     const pilih = await tanyaPilih(`${x.nama} keluar dari kelas ini?\n\nPindah sekolah: datanya tetap disimpan, rapor & nilai lamanya masih bisa dibuka.\n\nHapus: cuma buat salah ketik. Datanya hilang permanen, nilai yang sudah diisi untuk siswa ini nggak kepakai lagi.`,
       { ya: "Tandai pindah", lain: "Hapus", lainBahaya: true });
     if (pilih === true) {
@@ -389,6 +413,32 @@ wali-kelas
     cekAbsen();
     pastikanBarisKosong();
   };
+  // pilihan kelas tujuan pindah kelas, muncul di atas tabel
+  function tampilPilihPindah(x) {
+    const pilihan = pilihanPindahKelas(x);
+    const lama = document.getElementById("panelPindah");
+    if (lama) lama.remove();
+    if (!pilihan.length) return kabar(`Belum ada kelas lain di tingkat yang sama untuk ${x.nama} (${hurufRombel(x.kelas) === "A" ? "putra" : hurufRombel(x.kelas) === "B" ? "putri" : "rombel sama"}). Kelas muncul setelah mapelnya dibuat di menu Mapel.`);
+    const panel = document.createElement("div");
+    panel.id = "panelPindah";
+    panel.className = "pemberitahuan panel-pindah";
+    panel.innerHTML = `<p><b>Pindahkan ${aman(x.nama)}</b> dari ${aman(x.kelas)} ke:</p>
+      <div class="baris-tombol">${pilihan.map(k => `<button class="tombol-kedua" data-pindah-ke="${aman(k)}">${aman(k)}</button>`).join("")}
+        <button class="tombol-teks" data-pindah-batal>Batal</button></div>`;
+    document.querySelector(".wadah-tabel-santri").before(panel);
+    panel.scrollIntoView({ block: "center" });
+    panel.onclick = async (e) => {
+      if (e.target.closest("[data-pindah-batal]")) return panel.remove();
+      const t = e.target.closest("[data-pindah-ke]");
+      if (!t) return;
+      const sem = semesterSekarang();
+      if (!(await tanyaYakin(`Pindahkan ${x.nama} ke ${t.dataset.pindahKe}?\n\nMulai ${namaSemester(sem)} ${x.nama} ikut kelas ${t.dataset.pindahKe}. Nilai yang sudah diisi di ${x.kelas} tetap tersimpan di sana.${sem.semester === "Genap" ? ` Lembar nilai & rapor Ganjil tetap pakai ${x.kelas}.` : ""}`, { ya: "Pindahkan" }))) return;
+      const kini = toko.santri.find(y => y.id === x.id) || x;
+      simpanSantri(pindahkanKelas(kini, t.dataset.pindahKe, sem));
+      kabar(`${x.nama} sudah dipindah ke ${t.dataset.pindahKe}. Isi nomor absennya di daftar siswa ${t.dataset.pindahKe}.`);
+      layarSantri();
+    };
+  }
   document.getElementById("tambahBaris").onclick = () => {
     badan.insertAdjacentHTML("beforeend", htmlBarisSantri(null).repeat(5));
     pasangBaris();
@@ -415,7 +465,7 @@ window.addEventListener("pagehide", kirimNilaiTertunda);
 // siswa yang ada di kelas mapel ini PADA TAHUN lembar itu (bukan kelas sekarang), jadi lembar tahun lalu
 // tetap nampilin siswa kelas itu walau sekarang udah naik kelas. Tahun berjalan tanpa riwayat = sama kayak santriKelas().
 function santriLembar(mp, sem) {
-  return santriKelasDi(mp.jenjang, mp.kelas, sem.tahun);
+  return santriKelasDi(mp.jenjang, mp.kelas, sem.tahun, sem.semester);   // pindah kelas waktu Genap: Ganjil tetap di kelas lama
 }
 // jumlah siswa yang punya nilai di lembar tapi nggak kebaca (guru cuma bisa baca siswa kelasnya yang sekarang)
 function jumlahNilaiTakTerbaca(lembar, santri) {
@@ -438,13 +488,22 @@ function tandaKeluarSantri(s) {
   return santriKeluar(s) ? ` <span class="tanda tanda-tutup">${aman(HASIL_NAIK[s.status])}</span>` : "";
 }
 
-// =====================================================
-//  KEPUTUSAN NAIK KELAS (panel di bawah lembar nilai, khusus TU, semester Genap)
+// ==============================================
+
+//  KEPUTUSAN NAIK KELAS (panel di bawah Daftar siswa, khusus TU, semester Genap, setelah rapat pleno)
 //  Tiap pencet tombol: dialog konfirmasi, lalu 1 tulis simpanSantri (batal = nggak nulis apa pun).
 //  Baris cuma digambar ulang sendiri (isi <li>), lembar nilai & scroll nggak disentuh.
 // =====================================================
 let panelKeputusan = null;   // { tahun, jenjang, kelas, akhir, status: Map(id -> status), sibuk: Set(id), disentuh }
 
+// semester Genap yang keputusannya diisi sekarang: tahun ajaran ini kalau sudah Genap,
+// kalau masih Ganjil ya tahun ajaran yang baru selesai (rapat pleno biasanya sesudah tahun berganti)
+function semesterNaikKelas() {
+  const kini = semesterSekarang();
+  if (kini.semester === "Genap") return { tahun: kini.tahun, semester: "Genap" };
+  const m = String(kini.tahun).match(/^(\d{4})\/(\d{4})$/);
+  return { tahun: m ? `${Number(m[1]) - 1}/${Number(m[2]) - 1}` : kini.tahun, semester: "Genap" };
+}
 function panelKeputusanBoleh(sem) {
   return sayaKurikulum() && sem.semester === "Genap" && sem.tahun <= semesterSekarang().tahun;
 }
@@ -453,6 +512,7 @@ function rapikanTujuan(teks) {
 }
 function labelHasilKeputusan(hasil, akhir, tujuan) {
   if (hasil === "naik") return tujuan ? `Naik ke ${tujuan}` : "Naik kelas";
+  if (hasil === "lanjut") return tujuan ? `Lulus, lanjut ke ${tujuan}` : "Lulus, lanjut ke kelas 10";
   if (hasil === "tinggal") return akhir ? "Tidak lulus" : "Tidak naik";
   if (hasil === "lulus") return "Lulus";
   return "Belum diputuskan";
@@ -473,11 +533,21 @@ function htmlIsiBarisKeputusan(s, no, tahun, status) {
     label = s.status === "pindah" ? "Pindah sekolah" : s.status === "lulus" ? "Lulus" : "Nonaktif";
     ket = "Nggak diproses dari sini.";
   } else {
-    label = labelHasilKeputusan(hasil, akhir, k.fase === "naik" ? k.tujuan : "");
-    if (k.fase === "terkunci") ket = `Terkunci: sudah diproses di ${k.sesudah}. Batalin keputusan tahun itu dulu (buka lembar Genap ${k.sesudah}).`;
-    const pilihan = akhir ? [["lulus", "Lulus"], ["tinggal", "Tidak lulus"]] : [["naik", "Naik kelas"], ["tinggal", "Tidak naik"]];
+    label = labelHasilKeputusan(hasil, akhir, k.fase === "naik" || k.fase === "lanjut" ? k.tujuan : "");
+    if (k.fase === "terkunci") ket = `Terkunci: sudah diproses di ${k.sesudah}. Batalin keputusan tahun ${k.sesudah} dulu.`;
+    // kelas 9 Paket B: lulus (keluar), lulus & lanjut ke kelas 10 di sini, atau tidak lulus
+    const lanjut = akhir && a.jenjang === "Paket B";
+    const pilihan = akhir ? [["lulus", "Lulus"], ...(lanjut ? [["lanjut", "Lulus, lanjut ke kelas 10"]] : []), ["tinggal", "Tidak lulus"]] : [["naik", "Naik kelas"], ["tinggal", "Tidak naik"]];
     const mati = k.fase === "terkunci" || status === "menyimpan";
-    tombol = `<div class="keputusan-tombol">${pilihan.map(([h, t]) =>
+    // I'dad & lulusan kelas 9 yang lanjut: kelas tujuan dipilih per siswa (nggak ditebak)
+    const pilihKelas = tujuanDipilihPerSiswa(a.jenjang, a.kelas) ? pilihanKelasTujuan(a.jenjang, a.kelas) : null;
+    const kini = k.fase === "naik" || k.fase === "lanjut" ? k.tujuan : "";
+    const htmlPilih = pilihKelas ? `<label class="isian-tujuan-siswa">${a.jenjang === JENJANG_IDAD ? "Naik" : "Lanjut"} ke kelas
+        <select data-tujuan-siswa${mati ? " disabled" : ""}>
+          <option value="">Pilih kelas 10…</option>
+          ${pilihKelas.map(x => `<option value="${aman(x)}" ${x === kini ? "selected" : ""}>${aman(x)} (Paket C)</option>`).join("")}
+        </select></label>${pilihKelas.length ? "" : `<small class="keputusan-ket">Belum ada kelas 10${hurufRombel(a.kelas) ? " " + (hurufRombel(a.kelas) === "A" ? "putra" : "putri") : ""} di Paket C. Buat mapelnya dulu di menu Mapel.</small>`}` : "";
+    tombol = htmlPilih + `<div class="keputusan-tombol">${pilihan.map(([h, t]) =>
       `<button class="tombol-kecil" data-hasil="${h}" aria-pressed="${hasil === h}" aria-label="${aman(t)} ${aman(s.nama)}"${mati ? " disabled" : ""}>${t}</button>`).join("")}${k.fase === "belum" || k.fase === "terkunci" ? "" : `<button class="tombol-kecil keputusan-batal" data-hasil="batal" aria-label="Batalin keputusan ${aman(s.nama)}"${mati ? " disabled" : ""}>Batalin</button>`}</div>`;
   }
   // status pendek (menyimpan / tersimpan) ditaruh sebaris dengan label, biar waktu hilang tombolnya nggak geser
@@ -492,22 +562,36 @@ function htmlIsiBarisKeputusan(s, no, tahun, status) {
 function htmlPanelKeputusan(mp, sem, santri) {
   if (!panelKeputusanBoleh(sem) || !santri.length) return "";
   const akhir = tingkatAkhir(mp.jenjang, mp.kelas);
+  const perSiswa = tujuanDipilihPerSiswa(mp.jenjang, mp.kelas);
   const tujuan = tujuanTebakan(toko.santri, mp.jenjang, mp.kelas, sem.tahun);
+  const urutan = pengingatUrutanNaik(mp.jenjang, mp.kelas, sem.tahun);
   return `<section class="panel-keputusan" id="panelKeputusan" aria-labelledby="judulKeputusan">
     <h2 class="subjudul" id="judulKeputusan">Keputusan naik kelas <small>${aman(sem.tahun)} → ${aman(tahunBerikut(sem.tahun))}</small></h2>
-    <p class="info">Pencet tombol di tiap siswa, nanti ada konfirmasi dulu. Keputusan bisa diganti selama tahun ajaran berikutnya belum diproses.${akhir ? " Kelas tingkat akhir: pilihannya lulus atau tidak lulus." : " Mengubah kelas tujuan nggak memindahkan siswa yang sudah terlanjur naik; pencet \"Naik kelas\" lagi di siswanya."}</p>
-    ${akhir ? "" : `<label class="isian-tujuan">Naik ke kelas <input id="tujuanKelas" value="${aman(tujuan)}" maxlength="20" autocomplete="off"></label>
+    <p class="info"><b>Diisi TU setelah rapat pleno.</b> Pencet tombol di tiap siswa, nanti ada konfirmasi dulu. Keputusan bisa diganti selama tahun ajaran berikutnya belum diproses.${akhir ? ` Kelas tingkat akhir: pilihannya lulus${mp.jenjang === "Paket B" ? ", lulus lalu lanjut ke kelas 10 di sini," : ""} atau tidak lulus.` : perSiswa ? "" : " Mengubah kelas tujuan nggak memindahkan siswa yang sudah terlanjur naik; pencet \"Naik kelas\" lagi di siswanya."}</p>
+    ${urutan ? `<p class="pemberitahuan-kecil">${urutan}</p>` : ""}
+    ${perSiswa ? `<p class="info">Pilih kelas 10 (Paket C) untuk tiap siswa, lalu pencet tombolnya.</p>` : akhir ? "" : `<label class="isian-tujuan">Naik ke kelas <input id="tujuanKelas" value="${aman(tujuan)}" maxlength="20" autocomplete="off"></label>
     <p class="info" id="infoTujuan" role="status"></p>`}
     <ul class="daftar-keputusan">${santri.map((s, i) =>
       `<li class="baris-keputusan" data-keputusan="${aman(s.id)}" data-no="${aman(noAbsen(kelasSantriDi(s, sem.tahun), i + 1))}">${htmlIsiBarisKeputusan(s, noAbsen(kelasSantriDi(s, sem.tahun), i + 1), sem.tahun, null)}</li>`).join("")}</ul>
   </section>`;
+}
+// kelas tujuan (tingkat di atasnya / kelas 10 buat I'dad & lulusan kelas 9) yang siswanya belum diproses:
+// kalau diproses belakangan, daftar siswa kelas tujuan sementara kecampur siswa lama & baru
+function pengingatUrutanNaik(jenjang, kelas, tahun) {
+  if (tingkatAkhir(jenjang, kelas) && jenjang !== "Paket B") return "";
+  const kePaketC = tujuanDipilihPerSiswa(jenjang, kelas);
+  const jenjangAtas = kePaketC ? "Paket C" : jenjang;
+  const tingkatAtas = kePaketC ? "10" : String(Number(tingkatKelas(kelas)) + 1);
+  const belum = daftarKelas().filter(k => k.jenjang === jenjangAtas && tingkatKelas(k.kelas) === tingkatAtas)
+    .filter(k => { const n = hitungKeputusanKelas(k.jenjang, k.kelas, tahun); return n.total && n.sudah < n.total; }).map(k => k.kelas);
+  return belum.length ? `<b>Proses kelas tertinggi dulu</b> (9 → 8 → 7, I'dad sebelum kelas 10 diisi). Kelas ${aman(belum.join(", "))} ${aman(jenjangAtas)} belum selesai diproses, jadi kalau kelas ini dinaikkan sekarang, daftar siswanya sementara tercampur.` : "";
 }
 function gambarInfoTujuan() {
   const p = panelKeputusan, info = document.getElementById("infoTujuan"), isian = document.getElementById("tujuanKelas");
   if (!p || !info || !isian) return;
   const t = rapikanTujuan(isian.value);
   info.textContent = t && mapelKelas(p.jenjang, t).length === 0
-    ? `Kelas ${t} ${p.jenjang} belum punya mapel. Guru belum bisa lihat siswa kelas itu sampai TU bikin mapel di kelas itu (menu Kurikulum).`
+    ? `Kelas ${t} ${p.jenjang} belum punya mapel. Guru belum bisa lihat siswa kelas itu sampai TU bikin mapel di kelas itu (menu Mapel).`
     : "";
 }
 // gambar ulang isi satu baris (fokus tombol dipertahankan)
@@ -556,10 +640,12 @@ async function putuskanSantri(p, id, hasil) {
   const s = toko.santri.find(x => x.id === id);
   if (!s) return;
   const isian = document.getElementById("tujuanKelas");
-  const tujuan = isian ? rapikanTujuan(isian.value) : "";
-  if (hasil === "naik" && !tujuan) {
-    await kabar("Isi dulu kelas tujuannya (kotak \"Naik ke kelas\" di atas daftar).");
-    if (isian) isian.focus();
+  const li = document.querySelector(`#panelKeputusan [data-keputusan="${CSS.escape(id)}"]`);
+  const pilihSiswa = li && li.querySelector("[data-tujuan-siswa]");
+  const tujuan = pilihSiswa ? pilihSiswa.value : isian ? rapikanTujuan(isian.value) : "";
+  if ((hasil === "naik" || hasil === "lanjut") && !tujuan) {
+    await kabar(pilihSiswa ? `Pilih dulu kelas 10 untuk ${s.nama}.` : "Isi dulu kelas tujuannya (kotak \"Naik ke kelas\" di atas daftar).");
+    (pilihSiswa || isian || { focus() {} }).focus();
     return;
   }
   const k = keputusanTahun(s, p.tahun);
@@ -567,7 +653,7 @@ async function putuskanSantri(p, id, hasil) {
   if (cek === s || (!cek && hasil === "batal" && k.fase === "belum")) return;   // udah begitu, nggak ada yang perlu ditulis
   if (!cek) {
     await kabar(k.fase === "terkunci"
-      ? `Sudah diproses di ${k.sesudah}. Batalin keputusan tahun itu dulu (buka lembar Genap ${k.sesudah}).`
+      ? `Sudah diproses di ${k.sesudah}. Batalin keputusan tahun ${k.sesudah} dulu.`
       : "Keputusan ini nggak bisa dipakai buat siswa ini.");
     gambarBarisKeputusanId(p, id);
     return;
@@ -575,12 +661,13 @@ async function putuskanSantri(p, id, hasil) {
   const a = kelasSantriDi(s, p.tahun);
   let pesan, ya;
   if (hasil === "batal") { pesan = `Batalin keputusan ${s.nama} (${labelHasilKeputusan(k.fase, p.akhir, k.tujuan)})? Kelasnya dikembalikan ke ${a.kelas}.`; ya = "Batalin"; }
-  else if (hasil === "naik") { pesan = `Naikin ${s.nama} ke ${tujuan}?`; ya = "Naik kelas"; }
+  else if (hasil === "naik") { pesan = `Naikin ${s.nama} ke ${tujuan}${jenjangTujuan(a.jenjang, "naik") !== a.jenjang ? ` (${jenjangTujuan(a.jenjang, "naik")})` : ""}?`; ya = "Naik kelas"; }
+  else if (hasil === "lanjut") { pesan = `${s.nama} lulus dari ${a.kelas} dan lanjut ke ${tujuan} (Paket C)?`; ya = "Lulus, lanjut"; }
   else if (hasil === "lulus") { pesan = `${s.nama} lulus dari ${a.kelas}?`; ya = "Lulus"; }
   else if (p.akhir) { pesan = `${s.nama} tidak lulus (tetap di ${a.kelas})?`; ya = "Tidak lulus"; }
   else { pesan = `${s.nama} tidak naik kelas (tetap ${a.kelas})?`; ya = "Tidak naik"; }
   if (k.fase !== "belum" && hasil !== "batal") pesan += `\n\nKeputusan sebelumnya (${labelHasilKeputusan(k.fase, p.akhir, k.tujuan)}) diganti.`;
-  if (hasil === "naik" && mapelKelas(a.jenjang, tujuan).length === 0) pesan += `\n\nKelas ${tujuan} ${a.jenjang} belum punya mapel. Guru belum bisa lihat siswa kelas itu sampai TU bikin mapel di kelas itu (menu Kurikulum).`;
+  if ((hasil === "naik" || hasil === "lanjut") && mapelKelas(jenjangTujuan(a.jenjang, hasil), tujuan).length === 0) pesan += `\n\nKelas ${tujuan} ${jenjangTujuan(a.jenjang, hasil)} belum punya mapel. Guru belum bisa lihat siswa kelas itu sampai TU bikin mapel di kelas itu (menu Mapel).`;
 
   p.sibuk.add(id);
   const lanjut = await tanyaYakin(pesan, { ya, bahaya: hasil === "batal" });
@@ -626,6 +713,45 @@ async function putuskanSantri(p, id, hasil) {
   });
 }
 
+// khusus admin: tombol "Siapkan lembar nilai kosong" & "Hapus lembar nilai" di layar nilai
+function pasangAksiAdminNilai(mp, sem, santri, tersimpan) {
+  if (!sayaKurikulum()) return;
+  klik("siapkanLembar", async () => {
+    if (!navigator.onLine && toko.backend.mode !== "coba") return kabar("Nyiapin lembar nilai butuh internet. Sambungkan dulu, lalu coba lagi.");
+    const tombol = document.getElementById("siapkanLembar");
+    tombol.disabled = true;
+    try {
+      const jadi = await siapkanLembarNilai(mp.id, lembarBaru(mp, sem));
+      if (!jadi) kabar("Lembar nilai semester ini ternyata udah dibuat guru, jadi nggak perlu disiapin lagi.");
+    } catch (err) {
+      gagalSimpan(err);
+    }
+    tampilkan(true);
+  });
+  klik("hapusLembar", async () => {
+    const terisi = santri.filter(s => hitungNilai(tersimpan, s.id, mp).akhir !== null).length;
+    if (!(await tanyaYakin(`Hapus lembar nilai ${mp.nama} ${mp.kelas}, ${namaSemester(sem)}?\n\nSemua nilai & kehadiran semester ini ikut terhapus${terisi ? ` (${terisi} siswa sudah punya nilai)` : ""} dan TIDAK bisa dikembalikan dari aplikasi.`, { bahaya: true, ya: "Hapus lembar" }))) return;
+    if ((await minta("Ketik HAPUS untuk memastikan.", "", { bahaya: true, ya: "Hapus" })) !== "HAPUS") return;
+    hapusLembarNilai(mp.id, tersimpan.id);
+    tampilkan(true);
+  });
+}
+
+// cara ngisi nilai: "kolom" (satu kolom, kotak gede; bawaan di HP) atau "tabel" (semua kolom)
+const KUNCI_MODE_NILAI = "banksoal-mode-nilai";
+function modeIsiNilai() {
+  const ingat = bacaLokal(KUNCI_MODE_NILAI, null);
+  if (ingat === "kolom" || ingat === "tabel") return ingat;
+  return matchMedia("(max-width: 700px)").matches ? "kolom" : "tabel";
+}
+// kolom yang lagi diisi di mode satu kolom: yang dipilih, atau kolom pertama yang belum lengkap
+function kolomNilaiDipilih(kolom, lembar, santri) {
+  if (posisi.kolomNilai === "hadir" || kolom.some(k => k.id === posisi.kolomNilai)) return posisi.kolomNilai;
+  const belum = kolom.find(k => santri.some(s => typeof ((lembar.nilai || {})[s.id] || {})[k.id] !== "number"));
+  posisi.kolomNilai = (belum || kolom[0] || { id: "hadir" }).id;
+  return posisi.kolomNilai;
+}
+
 function layarNilai() {
   const mp = mapelAktif();
   const bisaIsi = sayaPengampu(mp);          // yang ngisi nilai cuma pengampunya
@@ -651,15 +777,23 @@ function layarNilai() {
   delete lembar.bobot;   // dulu bobot disimpan per lembar; sekarang ikut pengaturan admin
   lembarAktif = lembar;
 
+  // khusus admin, waktu lembar semester ini belum ada: tombol nyiapin lembar kosong
+  const htmlSiapkan = sayaKurikulum() && !tersimpan ? `
+    <div class="pemberitahuan">
+      <p><b>Lembar nilai ${aman(namaSemester(sem))} belum dibuat.</b> Biasanya otomatis dibuat waktu guru mulai ngisi nilai. Kamu bisa nyiapin lembar kosong duluan (kolom Tugas 1, UH 1, UTS, UAS); angkanya tetap diisi guru.</p>
+      <button class="tombol-kedua" id="siapkanLembar">Siapkan lembar nilai kosong</button>
+    </div>` : "";
+
   let h = "";
   if (santri.length === 0) {
     h += infoNilaiTakTerbaca(tersimpan, santri);
     h += sayaKurikulum()
       ? `<p class="kosong">Belum ada siswa di ${aman(mp.kelas)} ${aman(mp.jenjang)}. Tambahkan daftar siswanya dulu.</p>
-         <button class="tombol-utama" id="keSantri">Isi daftar siswa</button>`
+         <button class="tombol-utama" id="keSantri">Isi daftar siswa</button>${htmlSiapkan}`
       : `<p class="kosong">Daftar siswa ${aman(mp.kelas)} ${aman(mp.jenjang)} belum diisi. Minta admin (TU) mengisinya dulu, nanti nama siswanya otomatis muncul di sini.</p>`;
     isi.innerHTML = h;
     klik("keSantri", () => pergi("santri", { kelasSantri: `${mp.jenjang}|${mp.kelas}`, dariNilai: true }));
+    pasangAksiAdminNilai(mp, sem, santri, tersimpan);
     return;
   }
 
@@ -669,24 +803,38 @@ function layarNilai() {
       <div><b>Bobot mapel ${namaJenis(jenis).toLowerCase()} ${aman(mp.jenjang)}</b><span>${aman(ringkasBobot(bobot)) || "Belum diatur"}</span></div>
       ${sayaKurikulum() ? `<button class="tombol-teks" id="keBobot">Ubah bobot</button>` : `<small>Diatur admin (TU)</small>`}
     </div>
-    ${bisaIsi ? "" : `<p class="pemberitahuan-kecil">Kamu cuma bisa melihat. Nilai diisi oleh pengampu mapel ini.</p>`}`;
+    ${bisaIsi ? "" : `<p class="pemberitahuan-kecil">Kamu cuma bisa melihat. Nilai diisi oleh pengampu mapel ini.</p>`}
+    ${htmlSiapkan}`;
 
   // ---- tabel ----
-  const kolom = [...lembar.kolom].sort((a, b) =>
+  const semuaKolom = [...lembar.kolom].sort((a, b) =>
     KELOMPOK_NILAI.findIndex(g => g.k === a.kelompok) - KELOMPOK_NILAI.findIndex(g => g.k === b.kelompok));
+  const modeKolom = modeIsiNilai() === "kolom";
+  const pilihan = modeKolom ? kolomNilaiDipilih(semuaKolom, lembar, santri) : null;
+  const kolom = modeKolom ? semuaKolom.filter(k => k.id === pilihan) : semuaKolom;
+  const tampilHadir = !modeKolom || pilihan === "hadir";
   h += `
+    <div class="pilih-kelompok pilih-mode-nilai" role="group" aria-label="Cara ngisi">
+      <button data-mode-nilai="kolom" class="${modeKolom ? "aktif" : ""}" aria-pressed="${modeKolom}">Satu kolom</button>
+      <button data-mode-nilai="tabel" class="${modeKolom ? "" : "aktif"}" aria-pressed="${!modeKolom}">Tabel lengkap</button>
+    </div>
+    ${modeKolom ? `<div class="pilih-semester pilih-kolom-nilai" role="group" aria-label="Kolom yang diisi">
+      ${semuaKolom.map(k => `<button class="chip ${k.id === pilihan ? "aktif" : ""}" data-pilih-kolom="${aman(k.id)}" aria-pressed="${k.id === pilihan}">${aman(k.label)}</button>`).join("")}
+      <button class="chip ${pilihan === "hadir" ? "aktif" : ""}" data-pilih-kolom="hadir" aria-pressed="${pilihan === "hadir"}">Kehadiran</button>
+    </div>` : ""}
     <div class="aksi-nilai">
       ${bisaIsi ? `<span class="info">Tambah kolom:</span>
-      ${KELOMPOK_NILAI.filter(g => g.k !== "kehadiran").map(g => `<button class="tombol-kecil" data-tambah-kolom="${g.k}">+ ${g.label}</button>`).join("")}` : ""}
+      ${KELOMPOK_NILAI.filter(g => g.k !== "kehadiran" && !(KELOMPOK_SEKALI.includes(g.k) && lembar.kolom.some(k => k.kelompok === g.k)))
+        .map(g => `<button class="tombol-kecil" data-tambah-kolom="${g.k}">+ ${g.label}</button>`).join("")}` : ""}
       <span class="spasi"></span>
       <span class="status-simpan" id="statusSimpan" role="status">${tersimpan ? `${bisaIsi ? "Tersimpan · diubah" : "Terakhir diubah"} ${aman(waktuRapi(tersimpan.diubah))}` : "Belum ada nilai"}</span>
     </div>
-    <div class="wadah-lembar-nilai">
+    <div class="wadah-lembar-nilai${modeKolom ? " mode-kolom" : ""}">
     <table class="lembar-nilai">
       <thead><tr>
         <th class="kol-nama">Siswa</th>
         ${kolom.map(k => `<th class="kol-${aman(k.kelompok)}">${bisaIsi ? `<button class="judul-kolom" data-kolom="${aman(k.id)}" title="Ketuk untuk ganti nama / hapus">${aman(k.label)}</button>` : `<span class="judul-kolom">${aman(k.label)}</span>`}</th>`).join("")}
-        <th class="kol-hadir">Hadir</th><th class="kol-hadir">Sakit</th><th class="kol-hadir">Izin</th>
+        ${tampilHadir ? `<th class="kol-hadir">Hadir</th><th class="kol-hadir">Sakit</th><th class="kol-hadir">Izin</th>` : ""}
         <th class="kol-akhir">Akhir</th>
       </tr></thead><tbody>`;
   santri.forEach((s, i) => {
@@ -695,20 +843,34 @@ function layarNilai() {
     const hasil = hitungNilai(lembar, s.id, mp);
     const kunciIsi = bisaIsi ? "" : " readonly tabindex=\"-1\"";
     h += `<tr data-santri="${aman(s.id)}">
-      <th class="kol-nama" scope="row"><span class="nomor-santri">${aman(noAbsen(kelasSantriDi(s, sem.tahun), i + 1))}</span>${aman(s.nama)}${tandaKeluarSantri(s)}</th>
+      <th class="kol-nama" scope="row"><span class="nomor-santri">${aman(noAbsen(kelasSantriDi(s, sem.tahun, sem.semester), i + 1))}</span>${aman(s.nama)}${tandaKeluarSantri(s)}</th>
       ${kolom.map(k => `<td><input type="number" inputmode="decimal" min="0" max="100" step="any" aria-label="${aman(k.label)} ${aman(s.nama)}" data-nilai="${aman(k.id)}" value="${aman(n[k.id] ?? "")}"${kunciIsi}></td>`).join("")}
-      ${["hadir", "sakit", "izin"].map(x => `<td><input type="number" inputmode="numeric" min="0" step="1" aria-label="${x} ${aman(s.nama)}" data-hadir="${x}" value="${aman(hd[x] ?? "")}"${kunciIsi}></td>`).join("")}
+      ${(tampilHadir ? ["hadir", "sakit", "izin"] : []).map(x => `<td><input type="number" inputmode="numeric" min="0" step="1" aria-label="${x} ${aman(s.nama)}" data-hadir="${x}" value="${aman(hd[x] ?? "")}"${kunciIsi}></td>`).join("")}
       <td class="kol-akhir" data-akhir>${angkaRapi(hasil.akhir)}</td>
     </tr>`;
   });
   h += `</tbody></table></div>
     <p class="info">${bisaIsi ? "Ketik nilai 0–100. Tersimpan otomatis. Kolom kosong nggak ikut dihitung. Kehadiran dihitung otomatis: hadir ÷ (hadir + sakit + izin) × 100." : ""}${tersimpan && tersimpan.namaPengubah ? ` Terakhir diubah oleh ${aman(tersimpan.namaPengubah)}.` : ""}</p>
-    <div class="aksi-teks"><button class="tombol-teks" id="keSantri">${sayaKurikulum() ? "Ubah" : "Lihat"} daftar siswa ${aman(mp.kelas)}</button></div>
-    ${htmlPanelKeputusan(mp, sem, santri)}`;
+    <div class="aksi-teks"><button class="tombol-teks" id="keSantri">${sayaKurikulum() ? "Ubah" : "Lihat"} daftar siswa ${aman(mp.kelas)}</button>
+      ${sayaKurikulum() && tersimpan ? `<button class="tombol-teks merah" id="hapusLembar">Hapus lembar nilai ${aman(namaSemester(sem))}</button>` : ""}</div>`;
   isi.innerHTML = h;
   document.getElementById("keSantri").onclick = () => pergi("santri", { kelasSantri: `${mp.jenjang}|${mp.kelas}`, dariNilai: true });
   klik("keBobot", () => pergi("bobot"));
-  pasangKeputusan(mp, sem, santri);       // sebelum return di bawah: TU biasanya bukan pengampu
+
+  pasangAksiAdminNilai(mp, sem, santri, tersimpan);
+  isi.querySelectorAll("[data-mode-nilai]").forEach(b => b.onclick = () => {
+    kirimNilaiTertunda();
+    tulisLokal(KUNCI_MODE_NILAI, b.dataset.modeNilai);
+    tampilkan(true);
+  });
+  isi.querySelectorAll("[data-pilih-kolom]").forEach(b => b.onclick = () => {
+    kirimNilaiTertunda();
+    posisi.kolomNilai = b.dataset.pilihKolom;
+    tampilkan(true);
+    // langsung siap ngetik di siswa pertama
+    const pertama = isi.querySelector(".lembar-nilai input:not([readonly])");
+    if (pertama) pertama.focus();
+  });
   if (!bisaIsi) return;
 
   // ---- perilaku ----
@@ -734,7 +896,8 @@ function layarNilai() {
       const sid = tr.dataset.santri;
       const kosong = inp.value.trim() === "";
       let v = Number(inp.value);
-      const salah = !kosong && (Number.isNaN(v) || v < 0 || (inp.dataset.nilai && v > 100));
+      // !! biar hasilnya selalu true/false: toggle(..., undefined) malah bolak-balik
+      const salah = !kosong && (Number.isNaN(v) || v < 0 || (!!inp.dataset.nilai && v > 100));
       inp.classList.toggle("salah", salah);
       if (salah) inp.setAttribute("aria-invalid", "true");
       else inp.removeAttribute("aria-invalid");
@@ -764,10 +927,12 @@ function layarNilai() {
       const g = KELOMPOK_NILAI.find(x => x.k === b.dataset.tambahKolom);
       if (!(Number(bobot[g.k]) > 0) && !(await tanyaYakin(`Bobot ${g.nama} untuk mapel ${namaJenis(jenis).toLowerCase()} ${mp.jenjang} sekarang 0%, jadi kolom ini belum ikut dihitung di nilai akhir. Tetap tambah?\n\n(Bobot diatur admin.)`, { ya: "Tetap tambah" }))) return;
       const ada = lembar.kolom.filter(k => k.kelompok === g.k).length;
-      const tunggal = g.k === "uts" || g.k === "uas" || g.k === "keaktifan";
-      const label = tunggal && ada === 0 ? g.label : `${g.label} ${ada + 1}`;
+      // UTS, UAS, Keaktifan cuma sekali (tombolnya juga udah disembunyiin kalau kolomnya ada)
+      if (KELOMPOK_SEKALI.includes(g.k) && ada > 0) return tampilkan(true);
+      const label = KELOMPOK_SEKALI.includes(g.k) ? g.label : `${g.label} ${ada + 1}`;
       const kolomBaru = { id: buatId(), kelompok: g.k, label };
       lembar.kolom.push(kolomBaru);
+      posisi.kolomNilai = kolomBaru.id;   // mode satu kolom: langsung buka kolom barunya
       kirimNilaiTertunda();
       // ditambahkan, bukan ngirim daftar utuh: kolom yang ditambah dari perangkat lain nggak hilang
       simpanNilaiSebagian(mp.id, lembar, [[["kolom"], tambahKeDaftar(kolomBaru)]]);
@@ -821,6 +986,7 @@ function htmlTabNilai(mp, sem) {
     h += `</div><p class="info">${terisi} dari ${santri.length} siswa sudah punya nilai akhir. Rata-rata kelas: ${angkaRapi(rataRata(hasil.map(x => x.n.akhir)))}.</p>`;
   }
   if (sayaPengampu(mp)) h += `<button class="tombol-utama" id="isiNilai">${lembar ? "Buka lembar nilai" : "Mulai isi nilai"}</button>`;
+  else if (sayaKurikulum()) h += `<button class="tombol-kedua" id="isiNilai">${lembar ? "Lihat lembar nilai" : "Siapkan lembar nilai"}</button>`;
   else if (lembar) h += `<button class="tombol-kedua" id="isiNilai">Lihat lembar nilai</button>`;
   return h;
 }

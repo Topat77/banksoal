@@ -80,6 +80,9 @@ function buatAturan(ambilDok, cekAdminAwal) {
   const nilaiValid = (lama, b) =>
     semesterTetap(lama, b) && daftar(b, "kolom", 60) && peta(b, "nilai", 300) && peta(b, "hadir", 300) &&
     teks(b, "namaPengubah", 100);
+  // lembar nilai kosong (belum ada angka & kehadiran): yang boleh disiapin admin
+  const kosongPeta = (d, k) => !ada(d, k) || d[k] === null || (jenisPeta(d[k]) && Object.keys(d[k]).length === 0);
+  const lembarKosong = (b) => kosongPeta(b, "nilai") && kosongPeta(b, "hadir");
   // profil akun: ukuran cuma dicek kalau kolomnya berubah, biar profil lama tetap bisa di-update
   const berubahKolom = (lama, b, k) => !lama || ada(lama, k) !== ada(b, k) || !sama(lama[k], b[k]);
   const profilValid = (lama, b) =>
@@ -154,12 +157,13 @@ function buatAturan(ambilDok, cekAdminAwal) {
       return baru === null || !(Array.isArray(baru.pengampu) && baru.pengampu.includes(auth.uid));
     }
 
-    // lembar nilai: cuma pengampu mapelnya yang boleh ngisi (admin cuma lihat).
-    // Yang boleh menghapus cuma admin, dan cuma buat ngebersihin waktu mapelnya sudah dihapus.
+    // lembar nilai: cuma pengampu mapelnya yang boleh ngisi angka. Admin: lihat,
+    // nyiapin lembar KOSONG, dan menghapus lembar.
     if (b[0] === "mapel" && b[2] === "nilai" && b.length === 4) {
       if (!aktif(auth)) return false;
-      if (baru === null) return kurikulum(auth) && !ambilDok(`mapel/${b[1]}`);
-      if (!lama) return pengampu(auth, b[1]) && !kurikulum(auth) && namaAsli(auth, lama, baru, "namaPengubah") && nilaiValid(lama, baru);
+      if (baru === null) return kurikulum(auth);
+      if (!lama) return namaAsli(auth, lama, baru, "namaPengubah") && nilaiValid(lama, baru)
+        && ((pengampu(auth, b[1]) && !kurikulum(auth)) || (kurikulum(auth) && lembarKosong(baru)));
       return pengampu(auth, b[1]) && !kurikulum(auth) && namaAsli(auth, lama, baru, "namaPengubah") && nilaiValid(lama, baru);
     }
     // santri & kelas: diisi, diubah, dihapus admin; ustadz cuma lihat

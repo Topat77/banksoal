@@ -186,7 +186,7 @@ grup("Nilai disimpan sebagian (cuma sel yang berubah)");
   tolak("bukan pengampu nggak boleh", bolehTulis("mapel/bi7a/nilai/l1", lama, b1, akun.aminah));
   tolak("TU nggak ngisi nilai", bolehTulis("mapel/bi7a/nilai/l1", lama, b1, akun.tu));
   tolak("ustadz nggak boleh hapus lembar", bolehTulis("mapel/bi7a/nilai/l1", lama, null, akun.hasan));
-  tolak("TU nggak boleh hapus lembar selama mapelnya masih ada", bolehTulis("mapel/bi7a/nilai/l1", lama, null, akun.tu));
+  boleh("TU boleh hapus lembar kapan aja", bolehTulis("mapel/bi7a/nilai/l1", lama, null, akun.tu));
   boleh("TU boleh bersihin lembar kalau mapelnya sudah dihapus", bolehTulis("mapel/sudahhapus/nilai/l1", lama, null, akun.tu));
   tolak("ustadz nggak boleh bersihin lembar mapel yang sudah dihapus", bolehTulis("mapel/sudahhapus/nilai/l1", lama, null, akun.hasan));
 }
@@ -223,7 +223,10 @@ boleh("TU bikin modul atas nama Hasan", bolehTulis("mapel/bi7a/modul/m9", null, 
 tolak("TU ubah modul Hasan yang udah ada", bolehTulis("mapel/bi7a/modul/m9", modul(), modul({ judul: "x" }), akun.tu));
 tolak("TU bikin modul yang ngelanggar batas", bolehTulis("mapel/bi7a/modul/m9", null, modul({ soal: banyak(501, soalPG) }), akun.tu));
 boleh("TU bikin sumatif atas nama Hasan", bolehTulis("mapel/bi7a/sumatif/s9", null, sumatif(), akun.tu));
-tolak("TU nggak bisa bikin lembar nilai", bolehTulis("mapel/bi7a/nilai/l9", null, lembar(), akun.tu));
+tolak("TU nggak bisa bikin lembar nilai yang udah ada angkanya", bolehTulis("mapel/bi7a/nilai/l9", null, lembar(), akun.tu));
+tolak("TU nggak bisa bikin lembar yang udah ada kehadirannya", bolehTulis("mapel/bi7a/nilai/l9", null, lembar({ nilai: {}, hadir: { s1: { hadir: 3 } } }), akun.tu));
+boleh("TU boleh nyiapin lembar nilai kosong", bolehTulis("mapel/bi7a/nilai/l9", null, lembar({ nilai: {}, hadir: {} }), akun.tu));
+boleh("TU boleh nyiapin lembar tanpa kolom nilai/hadir", bolehTulis("mapel/bi7a/nilai/l9", null, { semester: "Ganjil", tahun: "2026/2027", kolom: [] }, akun.tu));
 tolak("TU ngubah lembar nilai", bolehTulis("mapel/bi7a/nilai/l9", lembar(), lembar({ nilai: { s1: { k1: 1 } } }), akun.tu));
 tolak("admin yang ada di pengampu tetap nggak boleh bikin lembar nilai", bolehTulis("mapel/tupeng/nilai/l9", null, lembar(), akun.tu));
 tolak("admin yang ada di pengampu tetap nggak boleh ngubah lembar nilai", bolehTulis("mapel/tupeng/nilai/l9", lembar(), lembar({ nilai: { s1: { k1: 1 } } }), akun.tu));
@@ -264,7 +267,7 @@ grup("Pulihkan cadangan: yang dipulihkan cuma yang hilang");
   harap("mapel yang hilang ikut balik (tanpa daftar modul di dalamnya)", JSON.stringify(r.mapel), JSON.stringify([["mapel/fik7", { nama: "Fikih" }]]));
   harap("modul: yang hilang aja", jalur("modul"), "mapel/bi7a/modul/m2,mapel/fik7/modul/f1");
   harap("sumatif hilang", jalur("sumatif"), "mapel/bi7a/sumatif/s1");
-  harap("lembar nilai nggak ikut dipulihkan (rules: TU nggak boleh bikin lembar nilai)", "nilai" in r, false);
+  harap("lembar nilai nggak ikut dipulihkan (angka cuma diisi guru)", "nilai" in r, false);
   harap("daftar nilai nggak nyasar ke dokumen mapel", "nilai" in r.mapel[0][1], false);
   harap("UAS & usulan: yang hilang aja", jalur("uas") + "|" + jalur("usulan"), "grup/g-bi7/uas/uas2|grup/g-bi7/usulan/us1");
   harap("id nggak ikut ditulis ke isi dokumen", "id" in r.modul[0][1], false);
@@ -581,14 +584,15 @@ grup("Naik kelas & riwayat kelas santri");
   vm.createContext(nk);
   vm.runInContext([
     ambilFungsi(alat, "salin"), ambilFungsi(baca("js/grup.js"), "tingkatKelas"),
-    ambilFungsi(baca("js/grup.js"), "idKelas"),
-    "const KELAS_SD = [], KELAS_SMP = [], KELAS_SMA = [];", ambilKonstanta(baca("js/kurikulum.js"), "KELAS_PER_JENJANG"),
+    ambilFungsi(baca("js/grup.js"), "idKelas"), ambilFungsi(baca("js/grup.js"), "hurufRombel"),
+    ambilKonstanta(baca("js/grup.js"), "JENJANG_IDAD"),
+    "const KELAS_SD = [], KELAS_SMP = [], KELAS_SMA = [], KELAS_IDAD = [];", ambilKonstanta(baca("js/kurikulum.js"), "KELAS_PER_JENJANG"),
     ambilFungsi(nilaiJs, "bandingKelas"), ambilFungsi(tokoJs, "simpanSantri"),
     "const toko = { santri: [], backend: { tulis: () => Promise.resolve() } }; function berubah() {} function gagalSimpan() {} function pasangDiDaftar(d, x) { const i = d.findIndex(y => y.id === x.id); if (i >= 0) d[i] = x; else d.push(x); }",
     ambilFungsi(tokoJs, "tanpaId"),
     ambilFungsi(nilaiJs, "santriLembar"), ambilFungsi(nilaiJs, "jumlahNilaiTakTerbaca"),
     baca("js/naikkelas.js"),
-    "this.ekspor = { toko, tingkatAkhir, tebakKelasTujuan, tahunBerikut, kelasSantriDi, santriKelasDi, kelasDiTahun, terapkanNaikKelas, keluarkanSantri, aktifkanLagiSantri, keputusanTahun, bisaDiputuskan, ubahKeputusan, tujuanTebakan, simpanSantri, santriLembar, jumlahNilaiTakTerbaca, batalkanNaikKelas };"
+    "this.ekspor = { toko, tingkatAkhir, tebakKelasTujuan, tahunBerikut, kelasSantriDi, santriKelasDi, kelasDiTahun, terapkanNaikKelas, keluarkanSantri, aktifkanLagiSantri, keputusanTahun, bisaDiputuskan, ubahKeputusan, tujuanTebakan, simpanSantri, santriLembar, jumlahNilaiTakTerbaca, batalkanNaikKelas, hurufRombel, tingkatKelas, jenjangTujuan, tujuanDipilihPerSiswa, pindahkanKelas };"
   ].join("\n"), nk);
   const N = nk.ekspor;
   const s7 = { id: "a", nama: "Ahmad", jenjang: "Paket B", kelas: "7A1", absen: 3, aktif: true };
@@ -769,6 +773,36 @@ grup("Naik kelas & riwayat kelas santri");
   harap("yang tidak naik nggak dihitung", N.tujuanTebakan([kTinggal], "Paket B", "7A1", TH), "8A1");
   harap("tingkat akhir: nggak ada tujuan", N.tujuanTebakan([s9], "Paket B", "9A1", TH), "");
   harap("tebakan ngikutin kelas asal di tahun itu, bukan kelas sekarang", N.tujuanTebakan([kNaik], "Paket B", "7A1", TH), "8A1");
+
+  // ---- I'dad, lulus lanjut ke kelas 10, pindah kelas ----
+  harap("huruf rombel 7A2 / 10B1 / I'dad A1", [N.hurufRombel("7A2"), N.hurufRombel("10B1"), N.hurufRombel("I'dad A1"), N.hurufRombel("12 IPA")].join(","), "A,B,A,");
+  harap("tingkat I'dad A1 & I'dad B2 sama", N.tingkatKelas("I'dad A1") === N.tingkatKelas("I'dad B2"), true);
+  tolak("I'dad bukan tingkat akhir", N.tingkatAkhir("I'dad", "I'dad A1"));
+  boleh("I'dad: kelas tujuan dipilih per siswa", N.tujuanDipilihPerSiswa("I'dad", "I'dad A1"));
+  boleh("kelas 9 Paket B: kelas tujuan lanjut dipilih per siswa", N.tujuanDipilihPerSiswa("Paket B", "9A1"));
+  tolak("kelas 7: tetap ditebak otomatis", N.tujuanDipilihPerSiswa("Paket B", "7A1"));
+  harap("tebakan kelas tujuan I'dad kosong (wajib pilih)", N.tujuanTebakan([], "I'dad", "I'dad A1", "2026/2027"), "");
+  const sI = { id: "i", nama: "Ilham", jenjang: "I'dad", kelas: "I'dad A1", absen: 4, aktif: true };
+  const naikI = N.ubahKeputusan(sI, "2026/2027", "naik", "10A2");
+  harap("I'dad naik → Paket C kelas yang dipilih", naikI && `${naikI.jenjang} ${naikI.kelas}`, "Paket C 10A2");
+  harap("riwayat I'dad tercatat", JSON.stringify(N.kelasSantriDi(naikI, "2026/2027")), JSON.stringify({ jenjang: "I'dad", kelas: "I'dad A1", absen: 4 }));
+  const batalI = N.ubahKeputusan(naikI, "2026/2027", "batal");
+  harap("batal: balik ke I'dad A1", batalI && `${batalI.jenjang} ${batalI.kelas}`, "I'dad I'dad A1");
+  const lanjut = N.ubahKeputusan(s9, "2026/2027", "lanjut", "10A1");
+  harap("kelas 9 lulus lanjut → Paket C 10A1, tetap aktif", lanjut && `${lanjut.jenjang} ${lanjut.kelas} ${lanjut.aktif}`, "Paket C 10A1 true");
+  harap("keputusan lanjut kebaca", N.keputusanTahun(lanjut, "2026/2027").fase, "lanjut");
+  harap("lanjut cuma buat kelas 9 Paket B", N.ubahKeputusan(s7, "2026/2027", "lanjut", "10A1"), null);
+  harap("lanjut tanpa kelas tujuan ditolak", N.ubahKeputusan(s9, "2026/2027", "lanjut", ""), null);
+  // pindah kelas waktu Genap: Ganjil tetap kelas lama, Genap & akhir tahun kelas baru
+  const pindahK = N.pindahkanKelas(s7, "7A2", { tahun: "2026/2027", semester: "Genap" });
+  harap("pindah kelas: kelas sekarang 7A2", pindahK.kelas, "7A2");
+  harap("pindah waktu Genap: Ganjil tetap 7A1", N.kelasSantriDi(pindahK, "2026/2027", "Ganjil").kelas, "7A1");
+  harap("pindah waktu Genap: Genap pakai 7A2", N.kelasSantriDi(pindahK, "2026/2027", "Genap").kelas, "7A2");
+  const pindahGanjil = N.pindahkanKelas(s7, "7A2", { tahun: "2026/2027", semester: "Ganjil" });
+  harap("pindah waktu Ganjil: Ganjil sudah 7A2", N.kelasSantriDi(pindahGanjil, "2026/2027", "Ganjil").kelas, "7A2");
+  const naikSesudahPindah = N.ubahKeputusan(pindahK, "2026/2027", "naik", "8A2");
+  harap("naik sesudah pindah: riwayat akhir tahun 7A2, Ganjil tetap 7A1",
+    [N.kelasSantriDi(naikSesudahPindah, "2026/2027").kelas, N.kelasSantriDi(naikSesudahPindah, "2026/2027", "Ganjil").kelas, naikSesudahPindah.kelas].join(","), "7A2,7A1,8A2");
 }
 // =====================================================
 grup("Panel keputusan naik kelas (lembar nilai Genap)");
@@ -778,13 +812,18 @@ grup("Panel keputusan naik kelas (lembar nilai Genap)");
   const grupJs = baca("js/grup.js");
   vm.runInContext([
     ambilFungsi(alat, "salin"), ambilFungsi(alat, "aman"), ambilFungsi(grupJs, "tingkatKelas"), ambilFungsi(grupJs, "idKelas"),
-    "const KELAS_SD = [], KELAS_SMP = [], KELAS_SMA = [];", ambilKonstanta(baca("js/kurikulum.js"), "KELAS_PER_JENJANG"),
+    ambilFungsi(grupJs, "hurufRombel"), ambilKonstanta(grupJs, "JENJANG_IDAD"),
+    "const KELAS_SD = [], KELAS_SMP = [], KELAS_SMA = [], KELAS_IDAD = [];", ambilKonstanta(baca("js/kurikulum.js"), "KELAS_PER_JENJANG"),
+    // kelas yang ada (buat pilihan kelas tujuan per siswa) & hitungan keputusan (pengingat urutan, admin.js)
+    "function daftarKelas() { return [...F.adaMapel].map(x => { const [jenjang, kelas] = x.split('|'); return { jenjang, kelas }; }); }",
+    "function hitungKeputusanKelas() { return { total: 0, sudah: 0 }; }",
     ambilFungsi(nilaiJs, "bandingKelas"), ambilFungsi(tokoJs, "simpanSantri"), ambilFungsi(tokoJs, "tanpaId"),
     // tiruan browser & layar lain: dialog, backend, DOM, timer
     "const F = { peran: 'kurikulum', sekarang: { semester: 'Ganjil', tahun: '2026/2027' }, adaMapel: new Set(['Paket B|8A1']), dialog: [], jawab: () => Promise.resolve(true), tulis: () => Promise.resolve(), tulisan: [], timer: [], digambar: [], elemen: {}, fokus: false };",
     "const toko = { santri: [], backend: { tulis: (j, d) => { F.tulisan.push([j, d]); return F.tulis(j, d); } } };",
     "const navigator = { onLine: true };",
-    "const document = { getElementById: id => F.elemen[id] || null, activeElement: null };",
+    "const document = { getElementById: id => F.elemen[id] || null, querySelector: () => null, activeElement: null };",
+    "const CSS = { escape: x => String(x) };",
     "function setTimeout(f) { F.timer.push(f); }",
     "function sayaKurikulum() { return F.peran === 'kurikulum'; } function semesterSekarang() { return F.sekarang; }",
     "function mapelKelas(j, k) { return F.adaMapel.has(j + '|' + k) ? [{}] : []; }",
@@ -795,7 +834,7 @@ grup("Panel keputusan naik kelas (lembar nilai Genap)");
     baca("js/naikkelas.js"),
     "let panelKeputusan = null;",
     ambilKonstanta(nilaiJs, "TEKS_STATUS_KEPUTUSAN"),
-    ...["noAbsen", "panelKeputusanBoleh", "rapikanTujuan", "labelHasilKeputusan", "htmlIsiBarisKeputusan", "htmlPanelKeputusan"].map(n => ambilFungsi(nilaiJs, n)),
+    ...["noAbsen", "panelKeputusanBoleh", "rapikanTujuan", "labelHasilKeputusan", "htmlIsiBarisKeputusan", "pengingatUrutanNaik", "htmlPanelKeputusan"].map(n => ambilFungsi(nilaiJs, n)),
     "async " + ambilFungsi(nilaiJs, "putuskanSantri"),   // ambilFungsi nggak bawa kata async
     "this.ekspor = { F, toko, navigator, pasangPanel: p => { panelKeputusan = p; }, ubahKeputusan, keluarkanSantri, panelKeputusanBoleh, rapikanTujuan, labelHasilKeputusan, htmlIsiBarisKeputusan, htmlPanelKeputusan, putuskanSantri };"
   ].join("\n"), pk);
@@ -836,9 +875,9 @@ grup("Panel keputusan naik kelas (lembar nilai Genap)");
   const bNaik = P.htmlIsiBarisKeputusan(kNaik, 3, TH, null);
   harap("udah naik: Naik ditekan + ada Batalin", tombol(bNaik).join(), "naik*,tinggal,batal");
   boleh("udah naik: label 'Naik ke 8A1'", bNaik.includes("Naik ke 8A1"));
-  harap("tingkat akhir: tombol Lulus & Tidak lulus", tombol(P.htmlIsiBarisKeputusan(s9, 1, TH, null)).join(), "lulus,tinggal");
+  harap("tingkat akhir kelas 9: tombol Lulus, Lulus lanjut ke kelas 10, Tidak lulus", tombol(P.htmlIsiBarisKeputusan(s9, 1, TH, null)).join(), "lulus,lanjut,tinggal");
   const lulus9 = P.ubahKeputusan(s9, TH, "lulus");
-  harap("udah lulus lewat tombol: Lulus ditekan + Batalin", tombol(P.htmlIsiBarisKeputusan(lulus9, 1, TH, null)).join(), "lulus*,tinggal,batal");
+  harap("udah lulus lewat tombol: Lulus ditekan + Batalin", tombol(P.htmlIsiBarisKeputusan(lulus9, 1, TH, null)).join(), "lulus*,lanjut,tinggal,batal");
   const kunci = P.ubahKeputusan(kNaik, "2026/2027", "naik", "9A1");
   const bKunci = P.htmlIsiBarisKeputusan(kunci, 3, TH, null);
   harap("terkunci: semua tombol mati, nggak ada Batalin, hasil lama tetap ditandai", tombol(bKunci).join(), "naik!*,tinggal!");
@@ -1026,6 +1065,12 @@ grup("Daftar file JS & CSP tetap sinkron");
     return [...cek.matchAll(/typeof (\w+)/g)].some(m => !new RegExp(`^((async )?function ${m[1]}\\(|const ${m[1]} =)`, "m").test(src));
   }).map(x => x[0]);
   harap("nama yang dicek fileKurang() ada di file-nya", salahCek.join() || "cocok", "cocok");
+
+  // sisa bentrok merge (<<<<<<<, =======, >>>>>>>, atau nama branch nyasar sendirian di satu baris)
+  // tetap kebaca sebagai kode yang sah, tapi bikin layar error waktu dibuka
+  const sisaMerge = diFolder.concat(["sw.js", "index.html", "style.css", "firestore.rules"]).flatMap(f =>
+    baca(f).split(/\r?\n/).map((l, i) => /^(<<<<<<<|=======|>>>>>>>)|^\s*(main|[a-z]+(-[a-z0-9]+)+)\s*$/.test(l) ? `${f}:${i + 1}` : null).filter(Boolean));
+  harap("nggak ada sisa bentrok merge di file aplikasi", sisaMerge.join() || "bersih", "bersih");
 
   const skripInline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
   const hashCsp = [...html.matchAll(/'sha256-([^']+)'/g)].map(m => m[1]);
