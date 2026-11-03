@@ -46,6 +46,7 @@ function dataCadangan(lengkap) {
     oleh: (toko.saya && toko.saya.email) || "",
     lembaga: salin(toko.lembaga),
     bobot: salin(toko.bobot),
+    wali: salin(toko.wali || {}),
     pengguna: toko.pengguna.map(p => ({ id: p.id, nama: p.nama, email: p.email, peran: p.peran, nip: p.nip || "", sapaan: p.sapaan || null, dibuat: p.dibuat || null })),
     santri: salin(toko.santri),
     mapel: toko.mapel.map(m => ({
@@ -143,6 +144,7 @@ function rencanaPulihkan(c, lengkap) {
 
   if (adalahObjek(c.lembaga) && !Object.keys(toko.lembaga).length) r.pengaturan.push(["pengaturan/lembaga", salin(c.lembaga)]);
   if (adalahObjek(c.bobot) && !Object.keys(toko.bobot).length) r.pengaturan.push(["pengaturan/bobot", salin(c.bobot)]);
+  if (adalahObjek(c.wali) && adalahObjek(c.wali.tahun) && !Object.keys(toko.wali || {}).length) r.pengaturan.push(["pengaturan/wali", salin(c.wali)]);
   for (const s of daftar(c.santri)) if (!ada(toko.santri, s.id)) r.santri.push([`santri/${s.id}`, tanpaId(s)]);
 
   for (const m of daftar(c.mapel)) {

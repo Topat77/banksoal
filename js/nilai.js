@@ -217,6 +217,7 @@ function layarSantri() {
 
   h += `
     <h2 class="subjudul">Siswa ${aman(kelas)} ${aman(jenjang)} <small id="jumlahSantri">${daftar.length} siswa</small></h2>
+    ${htmlPilihWali(jenjang, kelas, semesterSekarang().tahun)}
     <p class="info">Ketik langsung di tabel, tersimpan otomatis. Bisa juga salin 3 kolom dari Excel (No. Absen, NIS, Nama) lalu tempel di kotak pertama.</p>
     <div class="wadah-tabel-santri">
       <table class="tabel-santri">
@@ -248,6 +249,10 @@ function layarSantri() {
   h += `<p class="info">Naik kelas dicatat dari lembar nilai semester Genap (menu mapel → Nilai → Keputusan naik kelas).</p>`;
   isi.innerHTML = h;
   pasangTab();
+wali-kelas
+  pasangPilihWali();
+  klik("keNaikKelas", () => pergi("naikKelas", { tahunNaik: null }));
+
   isi.querySelectorAll("[data-aktifkan]").forEach(b => b.onclick = async () => {
     const s = toko.santri.find(y => y.id === b.dataset.aktifkan);
     if (!s || !(await tanyaYakin(`Aktifkan lagi ${s.nama} di kelas ${s.kelas}?`, { ya: "Aktifkan" }))) return;
