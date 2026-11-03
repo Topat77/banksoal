@@ -534,6 +534,80 @@ grup("Batas ukuran dokumen sebelum disimpan");
 }
 
 // =====================================================
+grup("Naik kelas & riwayat kelas santri");
+{
+  const nk = { console };
+  vm.createContext(nk);
+  vm.runInContext([
+    ambilFungsi(alat, "salin"), ambilFungsi(baca("js/grup.js"), "tingkatKelas"),
+    ambilFungsi(baca("js/grup.js"), "idKelas"),
+    "const KELAS_SD = [], KELAS_SMP = [], KELAS_SMA = [];", ambilKonstanta(baca("js/kurikulum.js"), "KELAS_PER_JENJANG"),
+    ambilFungsi(nilaiJs, "bandingKelas"), ambilFungsi(tokoJs, "simpanSantri"),
+    "const toko = { santri: [], backend: { tulis: () => Promise.resolve() } }; function berubah() {} function gagalSimpan() {} function pasangDiDaftar(d, x) { const i = d.findIndex(y => y.id === x.id); if (i >= 0) d[i] = x; else d.push(x); }",
+    ambilFungsi(tokoJs, "tanpaId"),
+    baca("js/naikkelas.js"),
+    "this.ekspor = { toko, tingkatAkhir, tebakKelasTujuan, tahunBerikut, tahunSebelum, kelasSantriDi, santriKelasDi, kelasDiTahun, terapkanNaikKelas, keluarkanSantri, aktifkanLagiSantri, rencanaNaikKelas, simpanSantri };"
+  ].join("\n"), nk);
+  const N = nk.ekspor;
+  const s7 = { id: "a", nama: "Ahmad", jenjang: "Paket B", kelas: "7A1", absen: 3, aktif: true };
+  const s9 = { id: "b", nama: "Bilal", jenjang: "Paket B", kelas: "9A1", absen: 1, aktif: true };
+  const s12 = { id: "c", nama: "Citra", jenjang: "Paket C", kelas: "12 IPA", absen: 2, aktif: true };
+
+  harap("tebak kelas tujuan 7A1 → 8A1", N.tebakKelasTujuan("7A1"), "8A1");
+  harap("tebak kelas tujuan 11 IPS → 12 IPS", N.tebakKelasTujuan("11 IPS"), "12 IPS");
+  boleh("Paket B kelas 9 = tingkat akhir", N.tingkatAkhir("Paket B", "9A1"));
+  boleh("Paket C kelas 12 = tingkat akhir", N.tingkatAkhir("Paket C", "12 IPA"));
+  tolak("Paket B kelas 8 bukan tingkat akhir", N.tingkatAkhir("Paket B", "8A1"));
+  tolak("Paket C kelas 9 bukan tingkat akhir", N.tingkatAkhir("Paket C", "9"));
+  harap("tahun berikut", N.tahunBerikut("2025/2026"), "2026/2027");
+  harap("tahun sebelum", N.tahunSebelum("2025/2026"), "2024/2025");
+
+  const rencana = N.rencanaNaikKelas([s7, s9, s12, { ...s7, id: "x", aktif: false }], "2025/2026");
+  harap("rencana: santri nonaktif nggak ikut", rencana.reduce((n, g) => n + g.santri.length, 0), 3);
+  harap("rencana: kelas 7A1 bawaannya naik ke 8A1", JSON.stringify([rencana.find(g => g.kelas === "7A1").tujuan, rencana.find(g => g.kelas === "7A1").santri[0].hasil]), '["8A1","naik"]');
+  harap("rencana: kelas 9 bawaannya lulus", rencana.find(g => g.kelas === "9A1").santri[0].hasil, "lulus");
+  harap("rencana: kelas 12 bawaannya lulus", rencana.find(g => g.kelas === "12 IPA").santri[0].hasil, "lulus");
+
+  const naik = N.terapkanNaikKelas(s7, "2025/2026", "naik", "8A1");
+  harap("naik: kelas sekarang 8A1", naik.kelas, "8A1");
+  harap("naik: riwayat 2025/2026 nyimpen kelas lama", JSON.stringify(naik.riwayatKelas), '[{"tahun":"2025/2026","jenjang":"Paket B","kelas":"7A1","absen":3,"hasil":"naik"}]');
+  harap("naik: data asli nggak diubah", s7.kelas, "7A1");
+  harap("diproses ulang tahun yang sama = nggak berubah (nggak dobel)", N.terapkanNaikKelas(naik, "2025/2026", "naik", "9A1"), null);
+  harap("udah diproses tahun sesudahnya: nutup tahun lama nggak bikin naik dua kali", N.terapkanNaikKelas(naik, "2024/2025", "naik", "8A1"), null);
+  harap("rencana tahun lama nggak ngikutin santri yang udah diproses tahun sesudahnya", N.rencanaNaikKelas([naik], "2024/2025").length, 0);
+  harap("rencana: santri urut No. Absen", N.rencanaNaikKelas([{ ...s7, id: "p", absen: 5 }, { ...s7, id: "q", absen: 2 }], "2025/2026")[0].santri.map(x => x.s.id).join(), "q,p");
+  harap("naik tanpa kelas tujuan ditolak", N.terapkanNaikKelas(s7, "2025/2026", "naik", "  "), null);
+  const tinggal = N.terapkanNaikKelas(s7, "2025/2026", "tinggal");
+  harap("tinggal kelas: kelasnya tetap, riwayat tercatat", `${tinggal.kelas}|${tinggal.riwayatKelas[0].hasil}`, "7A1|tinggal");
+
+  const lulus = N.terapkanNaikKelas(s9, "2025/2026", "lulus");
+  harap("lulus: status, aktif:false, tahun keluar", `${lulus.status}|${lulus.aktif}|${lulus.keluar.tahun}`, "lulus|false|2025/2026");
+  N.toko.santri = [];
+  const tersimpan = N.simpanSantri({ ...lulus, kelasId: "paket-b-9a1" });
+  harap("lulus: kelasId dicopot waktu disimpan (guru kelas mana pun nggak baca lagi)", tersimpan.kelasId, undefined);
+  harap("santri aktif tetap dapat kelasId", N.simpanSantri(naik).kelasId, "paket-b-8a1");
+  tolak("lulus: guru kelasnya nggak bisa baca lagi (aturan)", bolehBaca("santri/b", tanpaKelas(tersimpan), akun.hasan));
+
+  N.toko.santri = [naik, tersimpan, { ...s7, id: "d", nama: "Dani", kelas: "8A1", absen: 1 }];
+  harap("kelas di tahun lalu dari riwayat", N.kelasSantriDi(naik, "2025/2026").kelas, "7A1");
+  harap("kelas di tahun ini = kelas sekarang", N.kelasSantriDi(naik, "2026/2027").kelas, "8A1");
+  harap("rapor 7A1 tahun lalu: Ahmad masih ada", N.santriKelasDi("Paket B", "7A1", "2025/2026").map(s => s.id).join(), "a");
+  harap("rapor 8A1 tahun ini: Ahmad & Dani, urut absen", N.santriKelasDi("Paket B", "8A1", "2026/2027").map(s => s.id).join(), "d,a");
+  harap("rapor 9A1 tahun lalu: yang lulus tetap muncul", N.santriKelasDi("Paket B", "9A1", "2025/2026").map(s => s.id).join(), "b");
+  harap("rapor 9A1 tahun ini: yang lulus nggak muncul", N.santriKelasDi("Paket B", "9A1", "2026/2027").length, 0);
+  boleh("kelas 9A1 tetap ada di pilihan rapor tahun lalu", N.kelasDiTahun("2025/2026").some(k => k.kelas === "9A1"));
+
+  const pindah = N.keluarkanSantri(naik, "2026/2027", "pindah");
+  harap("pindah tengah tahun: riwayat tahun ini ikut dicatat", `${pindah.status}|${pindah.riwayatKelas.map(r => r.tahun + ":" + r.kelas).join()}`, "pindah|2025/2026:7A1,2026/2027:8A1");
+  const pindahLagi = N.keluarkanSantri(naik, "2025/2026", "pindah");
+  harap("pindah sesudah naik kelas diproses: status aja, riwayat naik tetap", `${pindahLagi.status}|${pindahLagi.riwayatKelas.map(r => r.hasil).join()}`, "pindah|naik");
+  const balik = N.aktifkanLagiSantri(pindah);
+  harap("aktifkan lagi: riwayat pindah dibuang, riwayat naik tetap", `${balik.aktif}|${balik.status}|${balik.riwayatKelas.map(r => r.hasil).join()}`, "true|undefined|naik");
+  harap("aktifkan lagi sesudah 'pindah status aja': riwayat naik nggak ikut kebuang", N.aktifkanLagiSantri(pindahLagi).riwayatKelas.length, 1);
+}
+function tanpaKelas(s) { const { id, ...isi } = s; return isi; }
+
+// =====================================================
 grup("Daftar file JS & CSP tetap sinkron");
 {
   const crypto = require("crypto");

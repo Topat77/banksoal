@@ -827,7 +827,9 @@ function santriKelas(jenjang, kelas) {
 
 function simpanSantri(santri) {
   const baru = salin(santri);
-  baru.kelasId = idKelas(baru.jenjang, baru.kelas);
+  // lulus / pindah: kelasId dicopot, biar nggak ikut dibaca guru kelas mana pun
+  if (baru.aktif === false && (baru.status === "lulus" || baru.status === "pindah")) delete baru.kelasId;
+  else baru.kelasId = idKelas(baru.jenjang, baru.kelas);
   if (!baru.dibuat) baru.dibuat = Date.now();
   baru.diubah = Date.now();
   pasangDiDaftar(toko.santri, baru);

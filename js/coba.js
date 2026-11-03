@@ -123,6 +123,12 @@ function dataAwalCoba() {
     santriB.push(id);
     db[`santri/${id}`] = { absen: i + 1, nama, nis: `2526${String(i + 7).padStart(3, "0")}`, jenjang: "Paket B", kelas: "7B1", kelasId: idKelas("Paket B", "7B1"), aktif: true, dibuat: jam - 25 * hari };
   });
+  // contoh siswa yang udah keluar: datanya tetap ada (tanpa kelasId), rapornya masih bisa dibuka
+  db["santri/san-13"] = { absen: 7, nama: "Umar Faruq", nis: "2526013", jenjang: "Paket B", kelas: "7A1", aktif: false, status: "pindah",
+    keluar: { tahun: t.tahun, tanggal: jam - 3 * hari }, riwayatKelas: [{ tahun: t.tahun, jenjang: "Paket B", kelas: "7A1", absen: 7, hasil: "pindah" }], dibuat: jam - 25 * hari };
+  const tahunLalu = t.tahun.replace(/\d{4}/g, n => String(Number(n) - 1));
+  db["santri/san-14"] = { absen: 1, nama: "Yahya Ilham", nis: "2425001", jenjang: "Paket B", kelas: "9A1", aktif: false, status: "lulus",
+    keluar: { tahun: tahunLalu, tanggal: jam - 120 * hari }, riwayatKelas: [{ tahun: tahunLalu, jenjang: "Paket B", kelas: "9A1", absen: 1, hasil: "lulus" }], dibuat: jam - 400 * hari };
 
   // ---- lembar nilai contoh (semester ini) ----
   const idLembar = `${t.tahun.replace("/", "-")}_${t.semester}`;
