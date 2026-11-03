@@ -951,6 +951,9 @@ label.pilih-peran select { width: auto; padding: 8px 10px; font-size: 17px; }
   overflow: hidden;
 }
 .kartu-pantau > .info { padding: 0 16px 14px; }
+.naik-isi { display: flex; flex-direction: column; gap: 10px; padding: 0 16px 14px; }
+.naik-isi > label { max-width: 260px; }
+.naik-isi select { width: 100%; min-width: 0; }
 .kartu-pantau-judul {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   width: 100%; min-height: 56px; padding: 12px 16px;

@@ -136,6 +136,7 @@ function jalankanSinkronGrup() {
   };
   for (const m of toko.mapel) (m.pengampu || []).forEach(u => tambahKelas(m.jenjang, m.kelas).pengampu.add(u));
   for (const s of toko.santri) {
+    if (santriKeluar(s)) continue;   // lulus / pindah: kelasId-nya memang sengaja dicopot
     tambahKelas(s.jenjang, s.kelas);
     const id = idKelas(s.jenjang, s.kelas);
     if (s.kelasId !== id) b.tulis(`santri/${s.id}`, tanpaId({ ...s, kelasId: id })).catch(gagalSimpan);

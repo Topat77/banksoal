@@ -59,6 +59,16 @@ function tampilDialog(o, selesai) {
     tidak.textContent = o.tidak || "Batal";
     tombol.appendChild(tidak);
   }
+  // tombol ketiga (opsional): hasilnya "lain"
+  let lain = null;
+  if (o.lain) {
+    lain = document.createElement("button");
+    lain.type = "button";
+    lain.className = o.lainBahaya ? "tombol-bahaya" : "tombol-kedua";
+    lain.dataset.dialog = "lain";
+    lain.textContent = o.lain;
+    tombol.appendChild(lain);
+  }
   const ya = document.createElement("button");
   ya.type = "button";
   ya.className = o.bahaya ? "tombol-bahaya" : "tombol-utama";
@@ -89,7 +99,7 @@ function tampilDialog(o, selesai) {
       e.preventDefault(); jawabYa();
     } else if (e.key === "Tab") {
       // fokus nggak boleh keluar dari kotak dialog
-      const bisa = [isian, tidak, ya].filter(Boolean);
+      const bisa = [isian, tidak, lain, ya].filter(Boolean);
       const i = bisa.indexOf(document.activeElement);
       e.preventDefault();
       bisa[(i + (e.shiftKey ? bisa.length - 1 : 1)) % bisa.length].focus();
@@ -98,6 +108,7 @@ function tampilDialog(o, selesai) {
   document.addEventListener("keydown", tombolKeyboard, true);
   ya.onclick = jawabYa;
   if (tidak) tidak.onclick = jawabTidak;
+  if (lain) lain.onclick = () => tutup("lain");
   latar.onclick = (e) => { if (e.target === latar) jawabTidak(); };
 
   // dialog hapus: fokus awal ke Batal, biar Enter nggak langsung menghapus
@@ -107,6 +118,11 @@ function tampilDialog(o, selesai) {
 
 function tanyaYakin(pesan, o = {}) {
   return bukaDialog({ jenis: "tanya", pesan, ya: o.ya, tidak: o.tidak, bahaya: !!o.bahaya });
+}
+// tiga pilihan: true (ya), "lain", atau false (batal)
+//   const p = await tanyaPilih("...", { ya: "Tandai pindah", lain: "Hapus", lainBahaya: true });
+function tanyaPilih(pesan, o = {}) {
+  return bukaDialog({ jenis: "tanya", pesan, ya: o.ya, tidak: o.tidak, lain: o.lain, lainBahaya: !!o.lainBahaya, bahaya: !!o.bahaya });
 }
 function kabar(pesan) {
   return bukaDialog({ jenis: "kabar", pesan, ya: "Oke" });

@@ -24,6 +24,7 @@ Gak ada build step / npm. Semua file JS dimuat pakai `<script>` biasa dengan uru
 | `js/mapel.js`, `saya.js`, `cari.js` | halaman satu mapel + pilih semester, layar Saya, cari soal |
 | `js/menupilih.js` | tampilan menu pilihan pengganti `<select>` bawaan (otomatis buat semua select di layar) |
 | `js/beranda.js`, `modul.js`, `sumatif.js`, `uas.js`, `ai.js`, `cetak.js`, `docx.js`, `kop.js`, `kurikulum.js`, `nilai.js`, `rapor.js` | layar-layar fitur |
+| `js/naikkelas.js` | riwayat kelas santri (`riwayatKelas`, `kelasSantriDi()`), status lulus/pindah, layar naik kelas serentak (TU) |
 | `js/cadangan.js` | unduh cadangan data (.json) + pengingatnya |
 | `js/alat.js`, `js/dialog.js` | alat bantu umum (`aman`, `klik`, semester, tema, simpan lokal, ...) & dialog pengganti `confirm/alert/prompt` |
 | `js/datasoal.js` | bentuk data: `rapikanSoal`, `amankanDok`, `ukuranDok`, `pasangDiJalur`, `tambahKeDaftar` / `buangDariDaftar` |
