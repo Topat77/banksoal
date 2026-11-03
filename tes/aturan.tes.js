@@ -797,6 +797,12 @@ grup("Daftar file JS & CSP tetap sinkron");
   }).map(x => x[0]);
   harap("nama yang dicek fileKurang() ada di file-nya", salahCek.join() || "cocok", "cocok");
 
+  // sisa bentrok merge (<<<<<<<, =======, >>>>>>>, atau nama branch nyasar sendirian di satu baris)
+  // tetap kebaca sebagai kode yang sah, tapi bikin layar error waktu dibuka
+  const sisaMerge = diFolder.concat(["sw.js", "index.html", "style.css", "firestore.rules"]).flatMap(f =>
+    baca(f).split(/\r?\n/).map((l, i) => /^(<<<<<<<|=======|>>>>>>>)|^\s*(main|[a-z]+(-[a-z0-9]+)+)\s*$/.test(l) ? `${f}:${i + 1}` : null).filter(Boolean));
+  harap("nggak ada sisa bentrok merge di file aplikasi", sisaMerge.join() || "bersih", "bersih");
+
   const skripInline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
   const hashCsp = [...html.matchAll(/'sha256-([^']+)'/g)].map(m => m[1]);
   const hashSkrip = skripInline.map(s => crypto.createHash("sha256").update(s, "utf8").digest("base64"));
