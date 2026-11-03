@@ -11,6 +11,8 @@
 //
 //  Kalau nambah file baru di aplikasi, tambahkan juga ke daftar INTI.
 // =====================================================
+
+
 const VERSI = "banksoal-v39";
 const INTI = [
   "./", "index.html", "style.css", "manifest.webmanifest",

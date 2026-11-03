@@ -1,5 +1,5 @@
 // =====================================================
-//  naikkelas.js — riwayat kelas santri & naik kelas serentak (khusus admin/TU)
+//  naikkelas.js — riwayat kelas santri & keputusan naik kelas per santri (khusus admin/TU)
 //
 //  Tiap santri nyimpen riwayatKelas: [{ tahun, jenjang, kelas, absen, hasil }]
 //  hasil: "naik" | "tinggal" | "lulus" | "pindah". Ditulis waktu naik kelas (atau
@@ -25,10 +25,6 @@ function tebakKelasTujuan(kelas) {
 function tahunBerikut(tahun) {        // "2025/2026" → "2026/2027"
   const m = String(tahun || "").match(/^(\d{4})\/(\d{4})$/);
   return m ? `${Number(m[1]) + 1}/${Number(m[2]) + 1}` : "";
-}
-function tahunSebelum(tahun) {
-  const m = String(tahun || "").match(/^(\d{4})\/(\d{4})$/);
-  return m ? `${Number(m[1]) - 1}/${Number(m[2]) - 1}` : "";
 }
 
 function riwayatSantri(s) {
@@ -67,12 +63,12 @@ function kelasDiTahun(tahun) {
   return [...peta.values()];
 }
 
-// santri baru setelah naik kelas / tinggal / lulus / pindah di akhir `tahun`.
-// Kalau riwayat tahun itu udah ada, nggak diubah (proses diulang = aman, nggak dobel).
 // sudah diproses di tahun itu ATAU tahun sesudahnya (biar nutup tahun lama belakangan nggak bikin naik dua kali)
 function sudahDiproses(s, tahun) {
   return riwayatSantri(s).some(r => r.tahun >= tahun);
 }
+// santri baru setelah naik kelas / tinggal / lulus / pindah di akhir `tahun`.
+// Kalau riwayat tahun itu udah ada, nggak diubah (proses diulang = aman, nggak dobel).
 function terapkanNaikKelas(s, tahun, hasil, kelasTujuan) {
   if (sudahDiproses(s, tahun) || !HASIL_NAIK[hasil]) return null;
   const baru = salin(s);
@@ -106,104 +102,81 @@ function aktifkanLagiSantri(s) {
   return baru;
 }
 
-// rencana awal naik kelas: santri aktif yang belum punya riwayat tahun itu, dikelompokkan per kelas
-function rencanaNaikKelas(daftarSantri, tahun) {
-  const peta = new Map();
+// batalin hasil naik kelas / tinggal / lulus / pindah untuk satu santri di akhir `tahun`:
+// kelas, jenjang & absen dikembalikan ke nilai di riwayat, riwayat tahun itu dibuang, dan kalau
+// dia lulus / pindah gara-gara proses itu, status + keluar dicopot lalu aktif lagi.
+// null = nggak bisa dibatalin: nggak punya riwayat tahun itu, riwayatnya rusak, atau udah diproses lagi
+// di tahun sesudahnya (biar nggak ngerusak riwayat yang lebih baru).
+function batalkanNaikKelas(s, tahun) {
+  const r = riwayatTahun(s, tahun);
+  if (!r || typeof r.jenjang !== "string" || typeof r.kelas !== "string" || !r.jenjang || !r.kelas) return null;
+  if (riwayatSantri(s).some(x => x.tahun > tahun)) return null;
+  const baru = salin(s);
+  baru.riwayatKelas = riwayatSantri(s).filter(x => x.tahun !== tahun);
+  baru.jenjang = r.jenjang;
+  baru.kelas = r.kelas;
+  if (r.absen === undefined || r.absen === null || r.absen === "") delete baru.absen;
+  else baru.absen = r.absen;
+  if (santriKeluar(s) && s.keluar && s.keluar.tahun === tahun) {
+    delete baru.status;
+    delete baru.keluar;
+    baru.aktif = true;
+  }
+  return baru;
+}
+// ====== KEPUTUSAN NAIK KELAS PER SANTRI (tombol di lembar nilai semester Genap) ======
+// Status satu santri di akhir `tahun`:
+//   fase "belum" | "naik" | "tinggal" | "lulus" : keputusan tahun itu (belum ada / naik / tinggal kelas / lulus)
+//   fase "terkunci" : tahun sesudahnya udah diproses, jadi keputusan tahun ini nggak boleh diganti
+//   fase "dilewati" : nonaktif manual / pindah / lulus lewat jalur lain, nggak dapat tombol
+// `tujuan` (fase naik) = kelas sekarang. `hasil` = hasil tercatat di riwayat tahun itu. `sesudah` = tahun yang ngunci.
+function keputusanTahun(s, tahun) {
+  if (!s || typeof s !== "object") return { fase: "dilewati" };
+  const r = riwayatTahun(s, tahun);
+  const lebihBaru = riwayatSantri(s).filter(x => x.tahun > tahun).map(x => x.tahun).sort();
+  if (lebihBaru.length) return { fase: "terkunci", hasil: r ? r.hasil : undefined, sesudah: lebihBaru[0] };
+  if (!bisaDiputuskan(s, tahun)) return { fase: "dilewati" };
+  if (r && (r.hasil === "naik" || r.hasil === "tinggal" || r.hasil === "lulus")) {
+    return r.hasil === "naik" ? { fase: "naik", hasil: "naik", tujuan: s.kelas } : { fase: r.hasil, hasil: r.hasil };
+  }
+  return r ? { fase: "dilewati" } : { fase: "belum" };
+}
+// boleh dapat tombol? Santri aktif (belum / udah naik / tinggal), atau yang lulus gara-gara tombol ini di tahun itu
+// (biar bisa diganti jadi tidak lulus). Nonaktif manual & pindah (termasuk yang pindah sesudah naik) nggak boleh,
+// kalau nggak batalkanNaikKelas bisa "menghidupkan" santri yang udah pindah.
+function bisaDiputuskan(s, tahun) {
+  if (!s || typeof s !== "object") return false;
+  if (s.aktif !== false && !santriKeluar(s)) return true;
+  const r = riwayatTahun(s, tahun);
+  return s.status === "lulus" && !!r && r.hasil === "lulus" && !!s.keluar && s.keluar.tahun === tahun;
+}
+// santri baru sesudah keputusan `hasil` ("naik" | "tinggal" | "lulus", atau "batal" = balik ke belum diputuskan) di akhir `tahun`. null = ditolak.
+// Kalau udah ada keputusan tahun itu, diganti (riwayat tetap satu entri). Hasil sama = santri yang sama (nggak perlu nulis).
+function ubahKeputusan(s, tahun, hasil, kelasTujuan) {
+  if (!["naik", "tinggal", "lulus", "batal"].includes(hasil)) return null;
+  const k = keputusanTahun(s, tahun);
+  if (k.fase === "terkunci" || k.fase === "dilewati") return null;
+  if (hasil === "batal") return k.fase === "belum" ? null : batalkanNaikKelas(s, tahun);   // balik ke belum diputuskan (buat buka kunci tahun sebelumnya)
+  const asal = kelasSantriDi(s, tahun);
+  const akhir = tingkatAkhir(asal.jenjang, asal.kelas);
+  if ((hasil === "lulus" && !akhir) || (hasil === "naik" && akhir)) return null;
+  const tujuan = hasil === "naik" ? String(kelasTujuan || "").trim().replace(/\s+/g, " ") : "";
+  if (hasil === "naik" && !tujuan) return null;
+  if (k.fase === hasil && (hasil !== "naik" || tujuan === s.kelas)) return s;
+  const dasar = k.fase === "belum" ? s : batalkanNaikKelas(s, tahun);
+  return dasar ? terapkanNaikKelas(dasar, tahun, hasil, tujuan) : null;
+}
+// isian kelas tujuan buat satu kelas: kelas yang paling banyak dituju santri kelas ini yang udah naik di `tahun`,
+// kalau belum ada ya tebakan (7A1 -> 8A1). Tingkat akhir: kosong (nggak ada kelas tujuan).
+function tujuanTebakan(daftarSantri, jenjang, kelas, tahun) {
+  if (tingkatAkhir(jenjang, kelas)) return "";
+  const hitung = new Map();
   for (const s of daftarSantri) {
-    if (s.aktif === false || sudahDiproses(s, tahun)) continue;
-    const kunci = `${s.jenjang}|${s.kelas}`;
-    if (!peta.has(kunci)) {
-      const akhir = tingkatAkhir(s.jenjang, s.kelas);
-      peta.set(kunci, { jenjang: s.jenjang, kelas: s.kelas, akhir, tujuan: akhir ? "" : tebakKelasTujuan(s.kelas), santri: [] });
-    }
-    peta.get(kunci).santri.push({ s, hasil: peta.get(kunci).akhir ? "lulus" : "naik" });
+    const a = kelasSantriDi(s, tahun);
+    if (a.jenjang !== jenjang || a.kelas !== kelas) continue;
+    const k = keputusanTahun(s, tahun);
+    if (k.fase === "naik" && k.tujuan) hitung.set(k.tujuan, (hitung.get(k.tujuan) || 0) + 1);
   }
-  const nomor = (x) => x.absen === undefined || x.absen === null || x.absen === "" ? Infinity : Number(x.absen);
-  for (const g of peta.values()) g.santri.sort((a, c) => (nomor(a.s) - nomor(c.s)) || (a.s.nama || "").localeCompare(c.s.nama || "", "id"));
-  return [...peta.values()].sort(bandingKelas);
-}
-
-// ====== LAYAR NAIK KELAS (admin) ======
-function layarNaikKelas() {
-  wajibKurikulum();
-  tombolKembali.hidden = false;
-  if (!dataDasarSiap()) return tampilMemuat("Naik kelas");
-  const sekarang = semesterSekarang();
-  // Ganjil = tahun ajaran baru udah mulai, jadi yang ditutup biasanya tahun sebelumnya
-  const bawaan = sekarang.semester === "Ganjil" ? tahunSebelum(sekarang.tahun) : sekarang.tahun;
-  const pilihanTahun = [tahunSebelum(sekarang.tahun), sekarang.tahun];
-  const tahun = pilihanTahun.includes(posisi.tahunNaik) ? posisi.tahunNaik : bawaan;
-  posisi.tahunNaik = tahun;
-
-  judul.textContent = "Naik kelas";
-  jejak.textContent = `${tahun} → ${tahunBerikut(tahun)}`;
-  const rencana = rencanaNaikKelas(toko.santri, tahun);
-  const sudah = toko.santri.filter(s => s.aktif !== false && sudahDiproses(s, tahun)).length;
-
-  let h = `<p class="info">Semua siswa diproses sekaligus. Riwayat kelas tahun ${aman(tahun)} dicatat dulu, baru kelasnya diganti, jadi rapor tahun ini tetap bisa dibuka. Kelas tingkat akhir (Paket B kelas 9, Paket C kelas 12) otomatis lulus.</p>
-    <div class="pilih-semester" role="group" aria-label="Tahun ajaran yang ditutup">
-      ${pilihanTahun.map(t => `<button class="chip ${t === tahun ? "aktif" : ""}" data-tahun="${aman(t)}" aria-pressed="${t === tahun}">Tutup ${aman(t)}</button>`).join("")}
-    </div>`;
-  if (sudah) h += `<p class="info">${sudah} siswa sudah diproses untuk tahun ${aman(tahun)}, nggak diproses lagi.</p>`;
-  if (rencana.length === 0) {
-    isi.innerHTML = h + `<p class="kosong">Nggak ada siswa aktif yang belum diproses untuk tahun ${aman(tahun)}.</p>`;
-    return pasangTahunNaik();
-  }
-
-  rencana.forEach((g, i) => {
-    h += `<section class="kartu-pantau" data-grup="${i}">
-      <div class="kartu-pantau-judul"><span><strong>${aman(g.kelas)} · ${aman(g.jenjang)}</strong><small>${g.santri.length} siswa</small></span></div>
-      <div class="naik-isi">
-        ${g.akhir ? `<p class="info">Kelas tingkat akhir: bawaannya lulus.</p>`
-          : `<label>Naik ke kelas <input data-tujuan="${i}" value="${aman(g.tujuan)}" maxlength="20" autocomplete="off"></label>`}
-        <div class="wadah-tabel-santri"><table class="tabel-santri lihat">
-          <thead><tr><th class="kol-absen">No.</th><th>Nama siswa</th><th>Hasil</th></tr></thead>
-          <tbody>${g.santri.map((x, j) => `<tr><td class="tengah">${aman(noAbsen(x.s, j + 1))}</td><td>${aman(x.s.nama)}</td>
-            <td><select data-hasil="${aman(x.s.id)}" aria-label="Hasil ${aman(x.s.nama)}">
-              ${Object.entries(HASIL_NAIK).map(([k, t]) => `<option value="${k}" ${k === x.hasil ? "selected" : ""}>${t}</option>`).join("")}
-            </select></td></tr>`).join("")}</tbody>
-        </table></div>
-      </div>
-    </section>`;
-  });
-  h += `<div class="baris-tombol"><button class="tombol-utama" id="prosesNaik">Proses naik kelas</button></div>
-    <p class="info" id="pesanNaik" role="status"></p>`;
-  isi.innerHTML = h;
-  pasangTahunNaik();
-
-  klik("prosesNaik", async () => {
-    const pesan = document.getElementById("pesanNaik");
-    const hitung = { naik: 0, tinggal: 0, lulus: 0, pindah: 0 };
-    const kerja = [];
-    for (const [i, g] of rencana.entries()) {
-      const isian = isi.querySelector(`[data-tujuan="${i}"]`);
-      const tujuan = isian ? isian.value.trim().replace(/\s+/g, " ") : "";
-      for (const x of g.santri) {
-        const pilih = isi.querySelector(`[data-hasil="${CSS.escape(x.s.id)}"]`);
-        const hasil = pilih ? pilih.value : x.hasil;
-        if (hasil === "naik" && !tujuan) {
-          pesan.textContent = `Kelas tujuan ${g.kelas} ${g.jenjang} belum diisi.`;
-          if (isian) isian.focus();
-          return;
-        }
-        hitung[hasil]++;
-        kerja.push({ s: x.s, hasil, tujuan });
-      }
-    }
-    const ringkas = Object.entries(hitung).filter(([, n]) => n).map(([k, n]) => `${HASIL_NAIK[k]}: ${n}`).join("\n");
-    if (!(await tanyaYakin(`Proses naik kelas ${tahun} → ${tahunBerikut(tahun)}?\n\n${ringkas}`, { ya: "Proses" }))) return;
-    let jadi = 0;
-    for (const k of kerja) {
-      // data bisa berubah selama dialog kebuka (HP lain): pakai versi terbaru
-      const terbaru = toko.santri.find(s => s.id === k.s.id);
-      if (!terbaru || terbaru.aktif === false) continue;
-      const baru = terapkanNaikKelas(terbaru, tahun, k.hasil, k.tujuan);
-      if (baru) { simpanSantri(baru); jadi++; }
-    }
-    await kabar(`${jadi} siswa diproses. Kalau sinyal sempat putus, buka lagi halaman ini: siswa yang belum tersimpan bisa diproses ulang tanpa dobel.`);
-    pergi("santri", { dariNilai: false, kelasSantri: null });
-  });
-}
-function pasangTahunNaik() {
-  isi.querySelectorAll("[data-tahun]").forEach(b => b.onclick = () => pergi("naikKelas", { tahunNaik: b.dataset.tahun }));
+  const urut = [...hitung.entries()].sort((a, c) => (c[1] - a[1]) || a[0].localeCompare(c[0], "id"));
+  return urut.length ? urut[0][0] : tebakKelasTujuan(kelas);
 }
