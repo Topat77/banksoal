@@ -314,3 +314,15 @@ test("hemat kuota: query per semester diterima rules (modul, sumatif, UAS, usula
   await assertFails(daftar(yusuf(), "grup/g-bi7/uas", ...sem));
   await assertFails(daftar(yusuf(), "grup/g-bi7/usulan", ...sem));
 });
+
+test("modul lama: guru yang udah pindah kelas tetap bisa ngambil modul miliknya di kelas lama", async () => {
+  // Hasan udah bukan pengampu bi7a (pindah kelas), modulnya masih atas nama dia
+  await env.withSecurityRulesDisabled(async (c) => { await setDoc(doc(c.firestore(), "mapel/bi7a"), { pengampu: ["aminah"], grup: "g-bi7", nama: "Bahasa Indonesia" }); });
+  const db = hasan();
+  // cari mapel bernama sama (layar "Modul lama saya"), lalu modul miliknya di situ
+  await assertSucceeds(daftar(db, "mapel", ["nama", "==", "Bahasa Indonesia"]));
+  const milik = await assertSucceeds(daftar(db, "mapel/bi7a/modul", ["pemilik", "==", "hasan"]));
+  assert.deepEqual(milik.docs.map(d => d.id).sort(), ["m1", "rahasia"]);
+  // modul guru lain yang nggak dibagikan tetap nggak bisa diambil
+  await assertFails(daftar(yusuf(), "mapel/bi7a/modul", ["pemilik", "==", "hasan"]));
+});

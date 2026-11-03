@@ -50,6 +50,7 @@ const daftarLayar = {
   pilihMapel: "layarPilihMapel",
   formGuru: "formGuru",
   aiGenerator: "layarAIGenerator",
+  modulLama: "layarModulLama",
   mapelGuru: "layarMapelGuru",
   siswaGuru: "layarSiswaGuru",
   mapelTU: "layarMapelTU",
@@ -61,7 +62,7 @@ const daftarLayar = {
 // layar yang nggak boleh digambar ulang sendiri waktu data berubah
 // (lagi ngetik / milih sesuatu, nanti isiannya hilang)
 const LAYAR_DIAM = ["formSemester", "formModul", "formBacaan", "formSoal", "formSumatif",
-                    "pilihSoal", "cetak", "cari", "lainnya", "formMapel", "formGuru", "aiGenerator", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal"];
+                    "pilihSoal", "cetak", "cari", "lainnya", "modulLama", "formMapel", "formGuru", "aiGenerator", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal"];
 
 // layar yang lagi nampilin kerangka "memuat" (datanya belum kebaca): tetap digambar ulang
 // waktu data datang, walau layarnya ada di LAYAR_DIAM (belum ada isian yang bisa hilang)
@@ -237,6 +238,7 @@ function layarInduk() {
   return {
     mapel: "beranda",
     formSemester: "mapel",
+    modulLama: "mapel",
     modul: "mapel",
     formBacaan: "modul",
     formSoal: "modul",

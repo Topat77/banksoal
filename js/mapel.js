@@ -65,7 +65,8 @@ function layarMapel() {
       if (milik.length === 0) html += `<p class="kosong">Belum ada modul ajar di semester ini.</p>`;
       else html += `<div class="daftar">${milik.map((m, i) => barisModul(m, i + 1, false)).join("")}</div>`;
       html += `<button class="tombol-utama" id="tambah">+ Tambah modul ajar</button>`;
-      if (milik.length) html += `<div class="aksi-teks"><button class="tombol-teks" id="salinSemua">Salin modul semester ini ke tahun ajaran lain</button></div>`;
+      html += `<div class="aksi-teks">${milik.length ? `<button class="tombol-teks" id="salinSemua">Salin modul semester ini ke tahun ajaran lain</button>` : ""}
+        <button class="tombol-teks" id="keModulLama">Pakai modul lama saya dari kelas lain</button></div>`;
     }
 
     if (ampu) {
@@ -155,6 +156,7 @@ function layarMapel() {
     };
   });
   klik("salinSemua", () => pergi("formSalin", { salinDari: "mapel", salinModul: null }));
+  klik("keModulLama", () => { modulLamaHasil = null; pergi("modulLama"); });   // selalu ambil ulang dari server
   klik("isiNilai", () => pergi("nilai"));
   klik("ubahMapel", () => pergi("formMapel", { mapelEditId: mp.id, dariMapel: true }));
 }

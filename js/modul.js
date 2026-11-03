@@ -589,6 +589,95 @@ function salinModulBaru(m, tujuan) {
   };
 }
 
+// =====================================================
+//  MODUL LAMA DARI KELAS LAIN (guru pindah kelas di tahun ajaran baru)
+//  Diambil sekali dari server waktu layarnya dibuka: modul milik saya di mapel bernama sama
+//  di kelas lain (semester mana pun). Rules udah ngizinin baca modul milik sendiri.
+// =====================================================
+let modulLamaHasil = null;   // { idMapel, nama, daftar: [{ mp, modul: [...] }] } atau { gagal: true }
+
+async function muatModulLama(mp) {
+  const uid = uidSaya();
+  try {
+    const sejenis = (await toko.backend.ambilKoleksi("mapel", [["nama", "==", mp.nama]])).filter(x => x.id !== mp.id);
+    const daftar = [];
+    for (const m of sejenis) {
+      const modul = (await toko.backend.ambilKoleksi(`mapel/${m.id}/modul`, [["pemilik", "==", uid]])).map(amankanDok).filter(Boolean);
+      if (modul.length) daftar.push({ mp: m, modul: modul.sort((a, b) => bandingSemester(b, a) || (a.dibuat || 0) - (b.dibuat || 0)) });
+    }
+    return { idMapel: mp.id, daftar: daftar.sort((a, b) => bandingKelas(a.mp, b.mp)) };
+  } catch (err) {
+    console.error(err);
+    return { idMapel: mp.id, gagal: true };
+  }
+}
+
+function layarModulLama() {
+  const mp = mapelAktif();
+  if (!sayaPengampu(mp)) throw new DataHilang();
+  const sem = semAktif();
+  judul.textContent = "Modul lama saya";
+  jejak.textContent = `Disalin ke ${namaMapel(mp)}, ${namaSemester(sem)}`;
+  tombolKembali.hidden = false;
+
+  if (!modulLamaHasil || modulLamaHasil.idMapel !== mp.id) {
+    isi.innerHTML = `<p class="info">Mencari modul kamu di ${aman(mp.nama)} kelas lain...</p>`;
+    muatModulLama(mp).then(hasil => {
+      modulLamaHasil = hasil;
+      if (posisi.layar === "modulLama" && posisi.mapelId === mp.id) layarModulLama();
+    });
+    return;
+  }
+  const hasil = modulLamaHasil;
+  if (hasil.gagal) {
+    isi.innerHTML = `<p class="kosong">Gagal mengambil modul dari server. Pastikan ada sinyal, lalu coba lagi.</p>
+      <button class="tombol-kedua" id="cobaLagi">Coba lagi</button>`;
+    klik("cobaLagi", () => { modulLamaHasil = null; layarModulLama(); });
+    return;
+  }
+  if (!hasil.daftar.length) {
+    isi.innerHTML = `<p class="kosong">Belum ada modul kamu di ${aman(mp.nama)} kelas lain.</p>`;
+    return;
+  }
+  isi.innerHTML = `
+    <p class="info">Modul yang kamu buat dulu di ${aman(mp.nama)} kelas lain. Centang yang mau dipakai lagi, nanti disalin lengkap (pertemuan, target capaian, teks bacaan, soal) ke <b>${aman(namaMapel(mp))}, ${aman(namaSemester(sem))}</b>. Modul aslinya tetap aman. Salinannya tertutup dulu.</p>
+    <form id="form">
+      ${hasil.daftar.map(({ mp: asal, modul }) => `
+        <fieldset>
+          <legend>${aman(namaMapel(asal))} <small>${aman(asal.jenjang)}</small></legend>
+          <div class="kolom daftar-centang">
+            ${modul.map(m => `
+              <label class="centang">
+                <input type="checkbox" name="modul" value="${aman(asal.id)}|${aman(m.id)}">
+                <span dir="auto">${aman(m.judul)} <small>${aman(namaSemester(m))} · ${(m.pertemuan || []).length} pertemuan, ${jumlahSoal(m)} soal</small></span>
+              </label>`).join("")}
+          </div>
+        </fieldset>`).join("")}
+      <button type="submit" class="tombol-utama">Salin ke ${aman(namaMapel(mp))}</button>
+    </form>`;
+
+  document.getElementById("form").onsubmit = async (e) => {
+    e.preventDefault();
+    const dipilih = new FormData(e.target).getAll("modul");
+    if (!dipilih.length) return kabar("Centang minimal satu modul.");
+    const semua = hasil.daftar.flatMap(x => x.modul.map(m => [`${x.mp.id}|${m.id}`, m]));
+    const sumber = semua.filter(([k]) => dipilih.includes(k)).map(([, m]) => m);
+    const sudahAda = modulMapel(mp.id).filter(m => milikSaya(m) && samaSemester(m, sem)).map(m => m.judul.toLowerCase());
+    const kembar = sumber.filter(m => sudahAda.includes(m.judul.toLowerCase()));
+    if (kembar.length && !(await tanyaYakin(`Di ${namaSemester(sem)} sudah ada modul dengan judul sama:\n\n${kembar.map(m => "• " + m.judul).join("\n")}\n\nTetap salin?`, { ya: "Tetap salin" }))) return;
+    const jam = Date.now();
+    const disalin = sumber.filter((m, i) => {
+      const baru = salinModulBaru(m, sem);
+      baru.soal = baru.soal.map(rapikanSoal).filter(Boolean);
+      return simpanModul(mp.id, { ...baru, dibuat: jam + i });
+    });
+    if (!disalin.length) return;
+    kabar(`${disalin.length} modul berhasil disalin ke ${namaMapel(mp)}, ${namaSemester(sem)}.`);
+    modulLamaHasil = null;
+    pergi("mapel", { tab: "modul" });
+  };
+}
+
 function formSalin() {
   const mp = mapelAktif();
   if (!sayaPengampu(mp)) throw new DataHilang();
