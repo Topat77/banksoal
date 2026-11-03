@@ -14,6 +14,7 @@ const toko = {
   saya: null,         // profil di database: { nama, email, peran, ... }
   lembaga: {},        // { nama, waktu }
   bobot: {},          // bobot nilai per jenis mapel: { umum: {...}, diniah: {...} } (diatur admin)
+  wali: {},           // wali kelas per tahun (cuma admin): { tahun: { "2026-2027": { idKelas: { uid, nama, nip } } } }
   mapel: [],          // semua mapel
   mapelSiap: false,
   isi: {},            // id mapel → { modulSaya, modulBagi, modulSemua, sumatif, sumatifBagi, nilai, siap, tetangga }
@@ -211,6 +212,12 @@ function pasangData(peran) {
 
   if (guru) pasangMapelGuru();
   else langgananData.push(b.pantauKoleksi("mapel", [], mapelMasuk, laporGagal("mapel")));
+
+  // wali kelas cuma dipakai rapor (admin), jadi guru nggak ikut baca
+  if (!guru) langgananData.push(b.pantauDok("pengaturan/wali", d => {
+    toko.wali = d || {};
+    berubah();
+  }, laporGagal("wali kelas")));
 
   langgananData.push(b.pantauKoleksi("grup", saringSaya, daftar => {
     toko.grup = daftar;
@@ -528,6 +535,7 @@ function hentikanData() {
   toko.gagalMuat = [];
   toko.lembaga = {};
   toko.bobot = {};
+  toko.wali = {};
   peranTerpasang = null;
 }
 
@@ -769,6 +777,30 @@ function simpanPengguna(uid, data) {
 function simpanBobot(data) {
   toko.bobot = salin(data);
   toko.backend.tulis("pengaturan/bobot", salin(data)).catch(gagalSimpan);
+  berubah();
+}
+
+// ====== WALI KELAS (per tahun ajaran) ======
+// disimpan di pengaturan/wali: { tahun: { "2026-2027": { idKelas: { uid, nama, nip } } } }.
+// Nama & NIP disalin waktu dipilih, biar rapor lama tetap bener walau akunnya berubah / dihapus.
+const kunciTahunWali = (tahun) => String(tahun || "").replace("/", "-");
+function waliKelas(tahun, idKelasNya) {
+  const t = toko.wali && adalahObjek(toko.wali.tahun) ? toko.wali.tahun[kunciTahunWali(tahun)] : null;
+  const w = adalahObjek(t) ? t[idKelasNya] : null;
+  return adalahObjek(w) && typeof w.uid === "string" && typeof w.nama === "string" ? w : null;
+}
+// akun = profil guru dari toko.pengguna, atau null buat ngosongin
+function simpanWali(tahun, idKelasNya, akun) {
+  const kunci = kunciTahunWali(tahun);
+  const isiWali = akun ? { uid: akun.id, nama: String(akun.nama || "").slice(0, 100), nip: String(akun.nip || "").slice(0, 30) } : undefined;
+  const baru = salin(toko.wali || {});
+  pasangDiJalur(baru, ["tahun", kunci, idKelasNya], isiWali);
+  toko.wali = baru;
+  toko.backend.ubahSebagian("pengaturan/wali", [
+    [["tahun", kunci, idKelasNya], isiWali],
+    [["diubah"], Date.now()],
+    [["diubahOleh"], uidSaya()]
+  ]).catch(gagalSimpan);
   berubah();
 }
 
