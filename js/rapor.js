@@ -15,7 +15,12 @@ function nilaiRapor(santri, sem) {
   const k = kelasSantriDi(santri, sem.tahun, sem.semester);
   const baris = mapelKelas(k.jenjang, k.kelas).map(m => {
     const n = hitungNilai(lembarNilai(m.id, sem), santri.id, m);
-    return { mapel: m, jenis: jenisMapel(m), harian: n.harian, uts: n.per.uts, uas: n.per.uas, akhir: n.akhir, hadir: n.hadir };
+    return {
+      mapel: m, jenis: jenisMapel(m),
+      tugas: n.per.tugas, uh: n.per.uh, uts: n.per.uts, uas: n.per.uas,
+      keaktifan: n.per.keaktifan, kehadiran: n.per.kehadiran,
+      akhir: n.akhir, hadir: n.hadir
+    };
   });
   const umum = baris.filter(b => b.jenis === "umum");
   const diniah = baris.filter(b => b.jenis === "diniah");
@@ -128,16 +133,21 @@ function pasangPilihRapor() {
 }
 
 // ====== LEMBAR RAPOR ======
+// kolom nilai di rapor: rata-rata tiap kelompok (Tugas & UH boleh lebih dari satu kolom di lembar nilai)
+const KOLOM_RAPOR = [
+  { k: "tugas", judul: "Tugas" }, { k: "uh", judul: "UH" }, { k: "uts", judul: "UTS" }, { k: "uas", judul: "UAS" },
+  { k: "keaktifan", judul: "Keak&shy;tifan", lebar: true }, { k: "kehadiran", judul: "Keha&shy;diran", lebar: true }
+];
 function htmlTabelRapor(judulBagian, baris, mulai) {
   if (baris.length === 0) return "";
   let h = `<p class="judul-bagian">${judulBagian}</p>
     <table class="tabel-rapor" width="100%">
-      <thead><tr><th width="28">No</th><th>Mata pelajaran</th><th width="52">Harian</th><th width="46">UTS</th><th width="46">UAS</th><th width="58">Nilai akhir</th><th width="38">H</th><th width="38">S</th><th width="38">I</th></tr></thead><tbody>`;
+      <colgroup><col class="kol-no"><col>${KOLOM_RAPOR.map(x => `<col class="kol-angka${x.lebar ? " lebar" : ""}">`).join("")}<col class="kol-akhir-rapor"></colgroup>
+      <thead><tr><th>No</th><th>Mata pelajaran</th>${KOLOM_RAPOR.map(x => `<th>${x.judul}</th>`).join("")}<th>Nilai akhir</th></tr></thead><tbody>`;
   baris.forEach((b, i) => {
     h += `<tr><td class="tengah">${mulai + i}</td><td>${spanArah(b.mapel.nama)}</td>
-      <td class="tengah">${angkaRapi(b.harian)}</td><td class="tengah">${angkaRapi(b.uts)}</td><td class="tengah">${angkaRapi(b.uas)}</td>
-      <td class="tengah"><b>${angkaRapi(b.akhir)}</b></td>
-      <td class="tengah">${b.hadir ? b.hadir.hadir : "-"}</td><td class="tengah">${b.hadir ? b.hadir.sakit : "-"}</td><td class="tengah">${b.hadir ? b.hadir.izin : "-"}</td></tr>`;
+      ${KOLOM_RAPOR.map(x => `<td class="tengah">${angkaRapi(b[x.k])}</td>`).join("")}
+      <td class="tengah"><b>${angkaRapi(b.akhir)}</b></td></tr>`;
   });
   return h + `</tbody></table>`;
 }
@@ -163,7 +173,7 @@ function htmlLembarRapor(santri, sem) {
       ${r.diniah.length ? `<tr><td>Rata-rata mapel diniah</td><td class="tengah">${angkaRapi(r.rataDiniah)}</td></tr>` : ""}
       <tr><td><b>Rata-rata seluruh mapel</b></td><td class="tengah"><b>${angkaRapi(r.rataSemua)}</b></td></tr>
     </table>
-    <p class="petunjuk kecil">H = hadir, S = sakit, I = izin (jumlah pertemuan di tiap mapel).</p>
+    <p class="petunjuk kecil">Tugas & UH = rata-rata semua tugas / ulangan harian. Kehadiran = hadir ÷ (hadir + sakit + izin) × 100. Nilai akhir dihitung pakai bobot penilaian dari TU; "-" = belum ada nilainya.</p>
     <table class="ttd-rapor" width="100%"><tr>
       <td>Mengetahui,<br>Kepala PKBM<br><br><br><br>(..............................)</td>
       <td>Tulungagung, ${aman(tanggal)}<br>Wali Kelas<br><br><br><br>${wali

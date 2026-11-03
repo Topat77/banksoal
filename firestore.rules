@@ -135,6 +135,11 @@ service cloud.firestore {
         && daftar('kolom', 60) && peta('nilai', 300) && peta('hadir', 300)
         && teks('namaPengubah', 100);
     }
+    // lembar nilai kosong (belum ada angka & kehadiran): yang boleh disiapin admin
+    function lembarKosong() {
+      return (!('nilai' in isi()) || isi().nilai == null || isi().nilai.size() == 0)
+        && (!('hadir' in isi()) || isi().hadir == null || isi().hadir.size() == 0);
+    }
     // kolom yang berubah (atau dokumen baru)
     function berubah(k) {
       return resource == null || isi().diff(resource.data).affectedKeys().hasAny([k]);
@@ -242,15 +247,17 @@ service cloud.firestore {
       }
 
       // lembar nilai satu semester: diisi pengampu mapel ini aja;
-      // admin cuma bisa lihat (buat pantauan dan rapor), nggak bisa bikin atau ngubah,
-      // walau uid-nya kebetulan ada di daftar pengampu
+      // admin: lihat (pantauan & rapor), nyiapin lembar KOSONG, dan menghapus lembar.
+      // Angka nilai & kehadiran cuma bisa diisi/diubah pengampunya, dan admin tetap nggak bisa
+      // walau uid-nya kebetulan ada di daftar pengampu.
       match /nilai/{id} {
         allow read: if aktif() && (kurikulum() || pengampu(idMapel));
-        allow create: if aktif() && pengampu(idMapel) && !kurikulum() && namaAsli('namaPengubah') && nilaiValid();
+        // pengampu ngisi angka; TU cuma boleh nyiapin lembar KOSONG (angkanya tetap diisi guru)
+        allow create: if aktif() && namaAsli('namaPengubah') && nilaiValid()
+          && ((pengampu(idMapel) && !kurikulum()) || (kurikulum() && lembarKosong()));
         allow update: if aktif() && pengampu(idMapel) && !kurikulum() && namaAsli('namaPengubah') && nilaiValid();
-        // yang boleh menghapus cuma admin, dan cuma buat ngebersihin waktu mapelnya sudah dihapus
-        allow delete: if kurikulum()
-          && !exists(/databases/$(database)/documents/mapel/$(idMapel));
+        // TU boleh hapus lembar nilai kapan aja (di aplikasi ada konfirmasi + ketik HAPUS)
+        allow delete: if aktif() && kurikulum();
       }
 
       // ujian sumatif: pemiliknya + kurikulum; kalau dibagikan,

@@ -213,10 +213,20 @@ test("nilai: disimpan sebagian dari dua perangkat, cuma pengampu", async () => {
   await assertFails(tulis(aminah(), j, { nilai: { s1: { k1: 1 } } }, { merge: true }));
   await assertFails(tulis(tu(), j, { nilai: { s1: { k1: 1 } } }, { merge: true }));
   await assertFails(hapus(hasan(), j));
-  // TU cuma boleh ngehapus lembar nilai buat bersih-bersih setelah mapelnya dihapus
-  await assertFails(hapus(tu(), j));
-  await env.withSecurityRulesDisabled(async (c) => { await deleteDoc(doc(c.firestore(), "mapel/bi7a")); });
+  // admin boleh hapus lembar kapan aja (mapelnya masih ada)
   await assertSucceeds(hapus(tu(), j));
+});
+
+test("admin: nyiapin lembar nilai KOSONG boleh, ngisi angka nggak", async () => {
+  await assertSucceeds(tulis(tu(), "mapel/bi7a/nilai/kosong", lembar({ nilai: {}, hadir: {} })));
+  await assertFails(tulis(tu(), "mapel/bi7a/nilai/kosong", lembar({ nilai: { s1: { k1: 1 } }, hadir: {} })));
+  await assertFails(tulis(tu(), "mapel/bi7a/nilai/isi", lembar()));
+  await assertFails(tulis(tu(), "mapel/bi7a/nilai/hadir", lembar({ nilai: {}, hadir: { s1: { hadir: 2 } } })));
+  // admin yang kebetulan ada di daftar pengampu tetap nggak bisa ngisi angka
+  await assertSucceeds(tulis(tu(), "mapel/tupeng/nilai/kosong", lembar({ nilai: {}, hadir: {} })));
+  await assertFails(tulis(tu(), "mapel/tupeng/nilai/kosong", { nilai: { s1: { k1: 1 } } }, { merge: true }));
+  // guru tetap bisa ngisi lembar yang disiapin admin
+  await assertSucceeds(tulis(hasan(), "mapel/bi7a/nilai/kosong", { nilai: { s1: { k1: 90 } } }, { merge: true }));
 });
 
 test("pulihkan cadangan: TU boleh BIKIN modul/sumatif/usulan atas nama guru (nilai nggak), nggak boleh ngubah", async () => {
@@ -224,6 +234,7 @@ test("pulihkan cadangan: TU boleh BIKIN modul/sumatif/usulan atas nama guru (nil
   await assertFails(tulis(tu(), "mapel/bi7a/modul/m1", modul({ judul: "x" })));
   await assertFails(tulis(tu(), "mapel/bi7a/modul/m9b", modul({ soal: banyak(501, soalPG) })));
   await assertSucceeds(tulis(tu(), "mapel/bi7a/sumatif/s9", sumatif()));
+  // lembar nilai yang ada angkanya nggak bisa dibikin admin (nggak ikut dipulihkan)
   await assertFails(tulis(tu(), "mapel/bi7a/nilai/l9", lembar()));
   await assertFails(tulis(tu(), "mapel/tupeng/nilai/l9", lembar()));
   await assertFails(tulis(tu(), "mapel/bi7a/nilai/l1", lembar({ nilai: { s1: { k1: 1 } } })));

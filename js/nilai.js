@@ -19,6 +19,9 @@ const KELOMPOK_NILAI = [
   { k: "kehadiran", nama: "Kehadiran", label: "Kehadiran" }
 ];
 
+// kelompok yang kolomnya cuma boleh satu (Tugas & UH boleh berkali-kali)
+const KELOMPOK_SEKALI = ["uts", "uas", "keaktifan"];
+
 // bobot bawaan, dipakai selama admin belum ngatur sendiri
 const BOBOT_BAWAAN = {
   umum:   { tugas: 20, uh: 30, uts: 20, uas: 30, keaktifan: 0, kehadiran: 0 },
@@ -485,7 +488,8 @@ function tandaKeluarSantri(s) {
   return santriKeluar(s) ? ` <span class="tanda tanda-tutup">${aman(HASIL_NAIK[s.status])}</span>` : "";
 }
 
-// =====================================================
+// ==============================================
+
 //  KEPUTUSAN NAIK KELAS (panel di bawah Daftar siswa, khusus TU, semester Genap, setelah rapat pleno)
 //  Tiap pencet tombol: dialog konfirmasi, lalu 1 tulis simpanSantri (batal = nggak nulis apa pun).
 //  Baris cuma digambar ulang sendiri (isi <li>), lembar nilai & scroll nggak disentuh.
@@ -709,6 +713,30 @@ async function putuskanSantri(p, id, hasil) {
   });
 }
 
+// khusus admin: tombol "Siapkan lembar nilai kosong" & "Hapus lembar nilai" di layar nilai
+function pasangAksiAdminNilai(mp, sem, santri, tersimpan) {
+  if (!sayaKurikulum()) return;
+  klik("siapkanLembar", async () => {
+    if (!navigator.onLine && toko.backend.mode !== "coba") return kabar("Nyiapin lembar nilai butuh internet. Sambungkan dulu, lalu coba lagi.");
+    const tombol = document.getElementById("siapkanLembar");
+    tombol.disabled = true;
+    try {
+      const jadi = await siapkanLembarNilai(mp.id, lembarBaru(mp, sem));
+      if (!jadi) kabar("Lembar nilai semester ini ternyata udah dibuat guru, jadi nggak perlu disiapin lagi.");
+    } catch (err) {
+      gagalSimpan(err);
+    }
+    tampilkan(true);
+  });
+  klik("hapusLembar", async () => {
+    const terisi = santri.filter(s => hitungNilai(tersimpan, s.id, mp).akhir !== null).length;
+    if (!(await tanyaYakin(`Hapus lembar nilai ${mp.nama} ${mp.kelas}, ${namaSemester(sem)}?\n\nSemua nilai & kehadiran semester ini ikut terhapus${terisi ? ` (${terisi} siswa sudah punya nilai)` : ""} dan TIDAK bisa dikembalikan dari aplikasi.`, { bahaya: true, ya: "Hapus lembar" }))) return;
+    if ((await minta("Ketik HAPUS untuk memastikan.", "", { bahaya: true, ya: "Hapus" })) !== "HAPUS") return;
+    hapusLembarNilai(mp.id, tersimpan.id);
+    tampilkan(true);
+  });
+}
+
 function layarNilai() {
   const mp = mapelAktif();
   const bisaIsi = sayaPengampu(mp);          // yang ngisi nilai cuma pengampunya
@@ -734,15 +762,23 @@ function layarNilai() {
   delete lembar.bobot;   // dulu bobot disimpan per lembar; sekarang ikut pengaturan admin
   lembarAktif = lembar;
 
+  // khusus admin, waktu lembar semester ini belum ada: tombol nyiapin lembar kosong
+  const htmlSiapkan = sayaKurikulum() && !tersimpan ? `
+    <div class="pemberitahuan">
+      <p><b>Lembar nilai ${aman(namaSemester(sem))} belum dibuat.</b> Biasanya otomatis dibuat waktu guru mulai ngisi nilai. Kamu bisa nyiapin lembar kosong duluan (kolom Tugas 1, UH 1, UTS, UAS); angkanya tetap diisi guru.</p>
+      <button class="tombol-kedua" id="siapkanLembar">Siapkan lembar nilai kosong</button>
+    </div>` : "";
+
   let h = "";
   if (santri.length === 0) {
     h += infoNilaiTakTerbaca(tersimpan, santri);
     h += sayaKurikulum()
       ? `<p class="kosong">Belum ada siswa di ${aman(mp.kelas)} ${aman(mp.jenjang)}. Tambahkan daftar siswanya dulu.</p>
-         <button class="tombol-utama" id="keSantri">Isi daftar siswa</button>`
+         <button class="tombol-utama" id="keSantri">Isi daftar siswa</button>${htmlSiapkan}`
       : `<p class="kosong">Daftar siswa ${aman(mp.kelas)} ${aman(mp.jenjang)} belum diisi. Minta admin (TU) mengisinya dulu, nanti nama siswanya otomatis muncul di sini.</p>`;
     isi.innerHTML = h;
     klik("keSantri", () => pergi("santri", { kelasSantri: `${mp.jenjang}|${mp.kelas}`, dariNilai: true }));
+    pasangAksiAdminNilai(mp, sem, santri, tersimpan);
     return;
   }
 
@@ -752,7 +788,8 @@ function layarNilai() {
       <div><b>Bobot mapel ${namaJenis(jenis).toLowerCase()} ${aman(mp.jenjang)}</b><span>${aman(ringkasBobot(bobot)) || "Belum diatur"}</span></div>
       ${sayaKurikulum() ? `<button class="tombol-teks" id="keBobot">Ubah bobot</button>` : `<small>Diatur admin (TU)</small>`}
     </div>
-    ${bisaIsi ? "" : `<p class="pemberitahuan-kecil">Kamu cuma bisa melihat. Nilai diisi oleh pengampu mapel ini.</p>`}`;
+    ${bisaIsi ? "" : `<p class="pemberitahuan-kecil">Kamu cuma bisa melihat. Nilai diisi oleh pengampu mapel ini.</p>`}
+    ${htmlSiapkan}`;
 
   // ---- tabel ----
   const kolom = [...lembar.kolom].sort((a, b) =>
@@ -760,7 +797,8 @@ function layarNilai() {
   h += `
     <div class="aksi-nilai">
       ${bisaIsi ? `<span class="info">Tambah kolom:</span>
-      ${KELOMPOK_NILAI.filter(g => g.k !== "kehadiran").map(g => `<button class="tombol-kecil" data-tambah-kolom="${g.k}">+ ${g.label}</button>`).join("")}` : ""}
+      ${KELOMPOK_NILAI.filter(g => g.k !== "kehadiran" && !(KELOMPOK_SEKALI.includes(g.k) && lembar.kolom.some(k => k.kelompok === g.k)))
+        .map(g => `<button class="tombol-kecil" data-tambah-kolom="${g.k}">+ ${g.label}</button>`).join("")}` : ""}
       <span class="spasi"></span>
       <span class="status-simpan" id="statusSimpan" role="status">${tersimpan ? `${bisaIsi ? "Tersimpan · diubah" : "Terakhir diubah"} ${aman(waktuRapi(tersimpan.diubah))}` : "Belum ada nilai"}</span>
     </div>
@@ -786,10 +824,13 @@ function layarNilai() {
   });
   h += `</tbody></table></div>
     <p class="info">${bisaIsi ? "Ketik nilai 0–100. Tersimpan otomatis. Kolom kosong nggak ikut dihitung. Kehadiran dihitung otomatis: hadir ÷ (hadir + sakit + izin) × 100." : ""}${tersimpan && tersimpan.namaPengubah ? ` Terakhir diubah oleh ${aman(tersimpan.namaPengubah)}.` : ""}</p>
-    <div class="aksi-teks"><button class="tombol-teks" id="keSantri">${sayaKurikulum() ? "Ubah" : "Lihat"} daftar siswa ${aman(mp.kelas)}</button></div>`;
+    <div class="aksi-teks"><button class="tombol-teks" id="keSantri">${sayaKurikulum() ? "Ubah" : "Lihat"} daftar siswa ${aman(mp.kelas)}</button>
+      ${sayaKurikulum() && tersimpan ? `<button class="tombol-teks merah" id="hapusLembar">Hapus lembar nilai ${aman(namaSemester(sem))}</button>` : ""}</div>`;
   isi.innerHTML = h;
   document.getElementById("keSantri").onclick = () => pergi("santri", { kelasSantri: `${mp.jenjang}|${mp.kelas}`, dariNilai: true });
   klik("keBobot", () => pergi("bobot"));
+
+  pasangAksiAdminNilai(mp, sem, santri, tersimpan);
   if (!bisaIsi) return;
 
   // ---- perilaku ----
@@ -815,7 +856,8 @@ function layarNilai() {
       const sid = tr.dataset.santri;
       const kosong = inp.value.trim() === "";
       let v = Number(inp.value);
-      const salah = !kosong && (Number.isNaN(v) || v < 0 || (inp.dataset.nilai && v > 100));
+      // !! biar hasilnya selalu true/false: toggle(..., undefined) malah bolak-balik
+      const salah = !kosong && (Number.isNaN(v) || v < 0 || (!!inp.dataset.nilai && v > 100));
       inp.classList.toggle("salah", salah);
       if (salah) inp.setAttribute("aria-invalid", "true");
       else inp.removeAttribute("aria-invalid");
@@ -845,8 +887,9 @@ function layarNilai() {
       const g = KELOMPOK_NILAI.find(x => x.k === b.dataset.tambahKolom);
       if (!(Number(bobot[g.k]) > 0) && !(await tanyaYakin(`Bobot ${g.nama} untuk mapel ${namaJenis(jenis).toLowerCase()} ${mp.jenjang} sekarang 0%, jadi kolom ini belum ikut dihitung di nilai akhir. Tetap tambah?\n\n(Bobot diatur admin.)`, { ya: "Tetap tambah" }))) return;
       const ada = lembar.kolom.filter(k => k.kelompok === g.k).length;
-      const tunggal = g.k === "uts" || g.k === "uas" || g.k === "keaktifan";
-      const label = tunggal && ada === 0 ? g.label : `${g.label} ${ada + 1}`;
+      // UTS, UAS, Keaktifan cuma sekali (tombolnya juga udah disembunyiin kalau kolomnya ada)
+      if (KELOMPOK_SEKALI.includes(g.k) && ada > 0) return tampilkan(true);
+      const label = KELOMPOK_SEKALI.includes(g.k) ? g.label : `${g.label} ${ada + 1}`;
       const kolomBaru = { id: buatId(), kelompok: g.k, label };
       lembar.kolom.push(kolomBaru);
       kirimNilaiTertunda();
@@ -902,6 +945,7 @@ function htmlTabNilai(mp, sem) {
     h += `</div><p class="info">${terisi} dari ${santri.length} siswa sudah punya nilai akhir. Rata-rata kelas: ${angkaRapi(rataRata(hasil.map(x => x.n.akhir)))}.</p>`;
   }
   if (sayaPengampu(mp)) h += `<button class="tombol-utama" id="isiNilai">${lembar ? "Buka lembar nilai" : "Mulai isi nilai"}</button>`;
+  else if (sayaKurikulum()) h += `<button class="tombol-kedua" id="isiNilai">${lembar ? "Lihat lembar nilai" : "Siapkan lembar nilai"}</button>`;
   else if (lembar) h += `<button class="tombol-kedua" id="isiNilai">Lihat lembar nilai</button>`;
   return h;
 }

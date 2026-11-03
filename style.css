@@ -1130,6 +1130,25 @@ span.judul-kolom { display: inline-flex; align-items: center; cursor: default; t
 .tabel-rapor th, .tabel-rapor td { border: 1px solid #000; padding: 4px 6px; }
 .tabel-rapor th { background: #F0F0F0; font-size: 12.5px; }
 .tabel-rapor .tengah { text-align: center; }
+.tabel-rapor { table-layout: fixed; }
+.tabel-rapor col.kol-no { width: 30px; }
+.tabel-rapor col.kol-angka { width: 8.5%; }
+.tabel-rapor col.kol-angka.lebar { width: 12%; }
+.tabel-rapor col.kol-akhir-rapor { width: 10%; }
+.tabel-rapor th { hyphens: manual; overflow-wrap: anywhere; line-height: 1.2; }
+.tabel-rapor td:nth-child(2) { overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .tabel-rapor { font-size: 11px; }
+  .tabel-rapor th { font-size: 9px; padding: 3px 1px; }
+  .tabel-rapor td { padding: 3px 2px; }
+  .tabel-rapor col.kol-no { width: 20px; }
+  .tabel-rapor col.kol-angka { width: 9%; }
+  .tabel-rapor col.kol-angka.lebar { width: 11%; }
+  .identitas-rapor { font-size: 12px; width: 100%; }
+  .identitas-rapor td { padding: 1px 4px 1px 0; vertical-align: top; }
+  .identitas-rapor td:nth-child(odd) { white-space: nowrap; }
+  .ttd-rapor { font-size: 12px; }
+}
 .ringkas-rapor { width: auto; min-width: 50%; margin-left: auto; }
 .petunjuk.kecil { font-size: 12px; }
 .ttd-rapor { margin-top: 24px; font-size: 14px; }
