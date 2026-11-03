@@ -50,6 +50,8 @@ const daftarLayar = {
   pilihMapel: "layarPilihMapel",
   formGuru: "formGuru",
   aiGenerator: "layarAIGenerator",
+  mapelGuru: "layarMapelGuru",
+  siswaGuru: "layarSiswaGuru",
   mapelTU: "layarMapelTU",
   mapelNamaTU: "layarMapelNamaTU",
   pantauGuru: "layarPantauGuru",
@@ -146,7 +148,7 @@ function tampilkan(tetapDiTempat = false) {
   }
 
   // layar TU yang dibuka dari dalam menu Mapel / Siswa: tombol ‹ balik ke induknya (admin.js)
-  if (indukLayarTU()) tombolKembali.hidden = false;
+  if (indukLayarMenu()) tombolKembali.hidden = false;
 
   gambarSamping();
   gambarNavBawah();
@@ -179,6 +181,8 @@ function pergi(layar, tambahan = {}) {
   // nilai yang baru diketik langsung disimpan sebelum pindah layar
   if (typeof kirimNilaiTertunda === "function") kirimNilaiTertunda();
   posisi = { ...posisi, ...tambahan, layar };
+  // "isi nilai dari menu Siswa" cuma berlaku selama masih di lembar nilai (tombol ‹ balik ke Siswa)
+  if (layar !== "nilai" && layar !== "santri") posisi.dariSiswaGuru = false;
   if (!LAYAR_UAS.includes(layar)) posisi.uasGrup = null;
   if (!LAYAR_ALUR_AI.includes(layar)) posisi.dariAI = false;
   tampilkan();
@@ -217,8 +221,8 @@ function segarkanLayar(penuh) {
 // tombol ‹ : tiap layar balik ke layar "induk"-nya
 function layarInduk() {
   const L = posisi.layar;
-  const indukTU = indukLayarTU();
-  if (indukTU) return indukTU;
+  const indukMenu = indukLayarMenu();
+  if (indukMenu) return indukMenu;
   if (posisi.dariAI && LAYAR_ALUR_AI.includes(L) && L !== "aiGenerator") return "aiGenerator";
   if (L === "formModul") return posisi.modEditId ? "modul" : "mapel";
   if (L === "formSumatif") return posisi.sumEditId ? "sumatif" : "mapel";
@@ -523,14 +527,7 @@ window.addEventListener("offline", gambarTanda);
 //  MENU SAMPING (laptop) & MENU BAWAH (HP)
 // =====================================================
 function kelompokLayar() {
-  if (sayaKurikulum()) return kelompokLayarTU();
-  const L = posisi.layar;
-  if (["cari"].includes(L)) return "cari";
-  if (["lainnya"].includes(L)) return "lainnya";
-  if (["santri"].includes(L) && !posisi.dariNilai) return "santri";
-  if (L === "beranda" || L === "pilihMapel") return "beranda";
-  if (L === "aiGenerator" || (posisi.dariAI && LAYAR_ALUR_AI.includes(L))) return "ai";
-  return "mapel";
+  return sayaKurikulum() ? kelompokLayarTU() : kelompokLayarGuru();
 }
 
 function jumlahMenunggu() {
@@ -543,7 +540,6 @@ function jumlahUASDiajukan() {
 function gambarSamping() {
   const grup = kelompokLayar();
   const kur = sayaKurikulum();
-  const sem = semAktif();
   let h = `
     <div class="merek">
       ${logo()}
@@ -567,51 +563,10 @@ function gambarSamping() {
       <button class="menu-item ${grup === "guru" ? "aktif" : ""}" data-ke="akun">${ikonMenu("akun")}<span>Guru</span>${n ? `<span class="lencana">${n}<span class="sr"> menunggu</span></span>` : ""}</button>
       <button class="menu-item ${grup === "siswa" ? "aktif" : ""}" data-ke="kelasSiswa">${ikonMenu("santri")}<span>Siswa</span></button>`;
   } else {
-    h += `<button class="menu-item ${grup === "santri" ? "aktif" : ""}" data-ke="santri">${ikonMenu("santri")}<span>Daftar siswa</span></button>`;
-  }
-
-  const urutJ = Object.keys(KELAS_PER_JENJANG);
-  // admin: per jenjang, lalu per jenis; ustadz: per jenis (diniah dulu, lalu umum)
-  const daftar = [...mapelTerlihat()].sort((a, b) => (kur ? urutJ.indexOf(a.jenjang) - urutJ.indexOf(b.jenjang) : 0) || urutMapelJenis(a, b));
-  if (!kur) {
-    h += `<button class="menu-item ${grup === "ai" ? "aktif" : ""}" data-ke="aiGenerator">${ikonMenu("ai")}<span>AI Generator</span></button>`;
-    h += `<p class="menu-judul">Mapel kamu</p>`;
-  }
-  if (!kur && daftar.length === 0) h += `<p class="menu-kosong">${!toko.mapelSiap ? "Memuat..." : "Belum ditugaskan ke mapel"}</p>`;
-
-  let jenjangTadi = null, jenisTadi = null;
-  for (const m of kur ? [] : daftar) {
-    // admin: mapel dikelompokkan per jenjang (Paket B, Paket C)
-    if (kur && m.jenjang !== jenjangTadi) {
-      jenjangTadi = m.jenjang;
-      jenisTadi = null;
-      h += `<p class="menu-judul">${aman(m.jenjang)}</p>`;
-    }
-    if (jenisMapel(m) !== jenisTadi) {
-      jenisTadi = jenisMapel(m);
-      h += `<p class="menu-jenis">${namaJenis(jenisTadi)}</p>`;
-    }
-    const mapelIni = grup === "mapel" && m.id === posisi.mapelId;
-    h += `<button class="menu-item ${mapelIni && posisi.layar === "mapel" ? "aktif" : ""}" data-mapel="${aman(m.id)}">
-            <span>${aman(m.nama)}</span><small>${aman(m.kelas)}</small>
-          </button>`;
-    if (!mapelIni) continue;
-
-    // mapel yang lagi dibuka: tampilkan modul & sumatif semester yang dipilih
-    const modul = modulMapel(m.id).filter(x => samaSemester(x, sem));
-    const sumatif = sumatifMapel(m.id).filter(x => samaSemester(x, sem));
-    h += `<div class="menu-anak"><p class="menu-catatan">${aman(namaSemester(sem))}</p>`;
-    modul.forEach((x, i) => {
-      const ini = x.id === posisi.modId && (["modul", "formSoal", "formBacaan", "formModul"].includes(posisi.layar) || (posisi.layar === "aiSoal" && posisi.aiUntuk === "modul"));
-      h += `<button class="menu-item kecil ${ini ? "aktif" : ""}" data-mapel="${aman(m.id)}" data-mod="${aman(x.id)}">
-              <span class="menu-nomor">${i + 1}</span><span dir="auto">${aman(x.judul)}</span>
-            </button>`;
-    });
-    const sumIni = ["sumatif", "pilihSoal", "formSumatif", "formSoalUjian"].includes(posisi.layar) ||
-                   (posisi.layar === "aiSoal" && posisi.aiUntuk === "sumatif") ||
-                   (posisi.layar === "cetak" && posisi.cetakDari === "sumatif");
-    h += `<button class="menu-item kecil ${sumIni ? "aktif" : ""}" data-mapel="${aman(m.id)}" data-tab-ke="sumatif">Sumatif (${sumatif.length})</button>`;
-    h += `</div>`;
+    // guru: Mapel (modul, soal, AI, cari) · Siswa (kelas yang diajar + isi nilai), lihat menuguru.js
+    h += `
+      <button class="menu-item ${grup === "mapelGuru" ? "aktif" : ""}" data-ke="mapelGuru">${ikonMenu("mapel")}<span>Mapel</span></button>
+      <button class="menu-item ${grup === "siswa" ? "aktif" : ""}" data-ke="siswaGuru">${ikonMenu("santri")}<span>Siswa</span></button>`;
   }
 
   h += `
@@ -632,13 +587,7 @@ function gambarSamping() {
   samping.querySelectorAll(".menu-item").forEach(b => {
     b.onclick = async () => {
       if (!(await bolehTinggalkan())) return;
-      const d = b.dataset;
-      if (d.ke === "santri") return pergi("santri", { dariNilai: false });
-      if (d.ke) return pergi(d.ke);
-      if (d.mod) return pergi("modul", { mapelId: d.mapel, modId: d.mod });
-      if (d.tabKe) return pergi("mapel", { mapelId: d.mapel, tab: d.tabKe });
-      const ganti = d.mapel !== posisi.mapelId;
-      pergi("mapel", { mapelId: d.mapel, tab: ganti ? "modul" : (posisi.tab || "modul"), semester: ganti ? null : posisi.semester });
+      pergi(b.dataset.ke);
     };
   });
 }
@@ -647,8 +596,8 @@ function gambarNavBawah() {
   const grup = kelompokLayar();
   const item = sayaKurikulum()
     ? [["beranda", "beranda", "Beranda"], ["mapelTU", "mapelTU", "Mapel"], ["akun", "guru", "Guru"], ["kelasSiswa", "siswa", "Siswa"], ["lainnya", "lainnya", "Saya"]]
-    : [["beranda", "beranda", "Beranda"], ["aiGenerator", "ai", "AI"], ["cari", "cari", "Cari"], ["lainnya", "lainnya", "Saya"]];
-  const ikonDari = { ai: "ai", beranda: "beranda", lainnya: "lainnya", cari: "cari", mapelTU: "mapel", guru: "akun", siswa: "santri" };
+    : [["beranda", "beranda", "Beranda"], ["mapelGuru", "mapelGuru", "Mapel"], ["siswaGuru", "siswa", "Siswa"], ["lainnya", "lainnya", "Saya"]];
+  const ikonDari = { beranda: "beranda", lainnya: "lainnya", mapelTU: "mapel", mapelGuru: "mapel", guru: "akun", siswa: "santri" };
   navBawah.style.setProperty("--jumlah", item.length);
   const n = sayaKurikulum() ? jumlahMenunggu() : 0;
   navBawah.innerHTML = item.map(([ke, kunci, teks]) => {
@@ -659,8 +608,7 @@ function gambarNavBawah() {
   navBawah.querySelectorAll("button").forEach(b => {
     b.onclick = async () => {
       if (!(await bolehTinggalkan())) return;
-      if (b.dataset.ke === "santri") pergi("santri", { dariNilai: false });
-      else pergi(b.dataset.ke);
+      pergi(b.dataset.ke);
     };
   });
 }
