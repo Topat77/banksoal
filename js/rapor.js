@@ -10,8 +10,10 @@ function mapelKelas(jenjang, kelas) {
 }
 
 // semua nilai satu santri di satu semester
+// kelasnya kelas santri DI TAHUN rapor itu (dari riwayatKelas), bukan kelas sekarang
 function nilaiRapor(santri, sem) {
-  const baris = mapelKelas(santri.jenjang, santri.kelas).map(m => {
+  const k = kelasSantriDi(santri, sem.tahun);
+  const baris = mapelKelas(k.jenjang, k.kelas).map(m => {
     const n = hitungNilai(lembarNilai(m.id, sem), santri.id, m);
     return { mapel: m, jenis: jenisMapel(m), harian: n.harian, uts: n.per.uts, uas: n.per.uas, akhir: n.akhir, hadir: n.hadir };
   });
@@ -47,15 +49,18 @@ function layarRapor() {
     const j = posisi.kelasRapor.split("|")[0];
     if (daftarJenjang().includes(j) && j !== jenjangAktif()) pilihJenjang(j);
   }
-  const kelasAda = daftarKelas().filter(x => x.jenjang === jenjangAktif());
-  const kunciKelas = posisi.kelasRapor && kelasAda.some(x => `${x.jenjang}|${x.kelas}` === posisi.kelasRapor)
-    ? posisi.kelasRapor : (kelasAda[0] ? `${kelasAda[0].jenjang}|${kelasAda[0].kelas}` : "");
-  posisi.kelasRapor = kunciKelas;
-  const [jenjang, kelas] = kunciKelas.split("|");
   const semAda = semesterRapor();
   const kunciSem = posisi.semRapor && semAda.some(x => kunciSemester(x) === posisi.semRapor) ? posisi.semRapor : kunciSemester(semAda[0]);
   posisi.semRapor = kunciSem;
   const sem = dariKunciSemester(kunciSem);
+  // kelas sekarang + kelas yang tercatat di riwayat tahun itu (misal kelas 9 yang siswanya udah lulus)
+  const petaKelas = new Map();
+  for (const x of [...daftarKelas(), ...kelasDiTahun(sem.tahun)]) petaKelas.set(`${x.jenjang}|${x.kelas}`, x);
+  const kelasAda = [...petaKelas.values()].filter(x => x.jenjang === jenjangAktif()).sort(bandingKelas);
+  const kunciKelas = posisi.kelasRapor && kelasAda.some(x => `${x.jenjang}|${x.kelas}` === posisi.kelasRapor)
+    ? posisi.kelasRapor : (kelasAda[0] ? `${kelasAda[0].jenjang}|${kelasAda[0].kelas}` : "");
+  posisi.kelasRapor = kunciKelas;
+  const [jenjang, kelas] = kunciKelas.split("|");
 
   judul.textContent = "Rapor";
   jejak.textContent = kelas ? `${kelas}, ${jenjang} · ${namaSemester(sem)}` : jenjangAktif();
@@ -76,7 +81,7 @@ function layarRapor() {
     isi.innerHTML = h + `<p class="kosong">Belum ada kelas ${aman(jenjangAktif())}.</p>`;
     return pasangPilihRapor();
   }
-  const santri = santriKelas(jenjang, kelas);
+  const santri = santriKelasDi(jenjang, kelas, sem.tahun);
   const mapel = mapelKelas(jenjang, kelas);
   h += `<p class="info">${mapel.length} mapel di kelas ini: ${mapel.map(m => `${aman(m.nama)} (${namaJenis(jenisMapel(m))})`).join(", ") || "belum ada"}. Bentuk rapor masih sementara, nanti disesuaikan dengan format resmi pondok.</p>`;
 
@@ -88,11 +93,11 @@ function layarRapor() {
       const r = nilaiRapor(s, sem);
       h += htmlBaris({
         attr: `data-santri="${aman(s.id)}"`,
-        nomor: aman(noAbsen(s, i + 1)),
+        nomor: aman(noAbsen(kelasSantriDi(s, sem.tahun), i + 1)),
         judulBaris: aman(s.nama),
         sub: r.kosong ? `${r.kosong} mapel belum ada nilai` : "Semua mapel sudah dinilai",
         kanan: `Rata-rata ${angkaRapi(r.rataSemua)}`,
-        tanda: r.kosong ? "Belum lengkap" : "",
+        tanda: santriKeluar(s) ? HASIL_NAIK[s.status] : r.kosong ? "Belum lengkap" : "",
         tandaJenis: "tanda-tutup"
       });
     });
@@ -128,15 +133,16 @@ function htmlTabelRapor(judulBagian, baris, mulai) {
 
 function htmlLembarRapor(santri, sem) {
   const r = nilaiRapor(santri, sem);
+  const k = kelasSantriDi(santri, sem.tahun);
   const tanggal = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
   let h = `<div class="kop${pakaiKopResmi() ? " ada-resmi" : ""}">
       ${pakaiKopResmi() ? htmlKopResmi() : `<p class="kop-sekolah">${aman(toko.lembaga.nama || KONFIG.namaLembaga || "")}</p>`}
       <p class="kop-ujian">LAPORAN HASIL BELAJAR SANTRI</p>
     </div>
     <table class="identitas-rapor">
-      <tr><td>Nama santri</td><td>: <b>${aman(santri.nama)}</b></td><td>Kelas</td><td>: ${aman(santri.kelas.replace(/^Kelas\s*/i, ""))} (${aman(santri.jenjang)})</td></tr>
+      <tr><td>Nama santri</td><td>: <b>${aman(santri.nama)}</b></td><td>Kelas</td><td>: ${aman(String(k.kelas || "").replace(/^Kelas\s*/i, ""))} (${aman(k.jenjang)})</td></tr>
       <tr><td>NIS</td><td>: ${aman(santri.nis || "-")}</td><td>Semester</td><td>: ${aman(sem.semester)} ${aman(sem.tahun)}</td></tr>
-      <tr><td>No. Absen</td><td>: ${aman(santri.absen ?? "-")}</td><td></td><td></td></tr>
+      <tr><td>No. Absen</td><td>: ${aman(k.absen ?? "-")}</td><td></td><td></td></tr>
     </table>`;
   h += htmlTabelRapor("A. Mata Pelajaran Umum", r.umum, 1);
   h += htmlTabelRapor(`${r.umum.length ? "B" : "A"}. Mata Pelajaran Diniah`, r.diniah, 1);
@@ -161,7 +167,7 @@ function layarRaporCetak() {
   }
   const [jenjang, kelas] = (posisi.kelasRapor || "").split("|");
   const sem = dariKunciSemester(posisi.semRapor || kunciSemester(semesterSekarang()));
-  const semua = santriKelas(jenjang, kelas);
+  const semua = santriKelasDi(jenjang, kelas, sem.tahun);
   const daftar = posisi.raporSantri ? semua.filter(s => s.id === posisi.raporSantri) : semua;
   if (daftar.length === 0) throw new DataHilang();
 

@@ -46,6 +46,7 @@ const daftarLayar = {
   nilai: "layarNilai",
   rapor: "layarRapor",
   raporCetak: "layarRaporCetak",
+  naikKelas: "layarNaikKelas",
   bobot: "layarBobot",
   aiSoal: "layarAISoal",
   daftarUAS: "layarDaftarUAS",
@@ -57,7 +58,7 @@ const daftarLayar = {
 // layar yang nggak boleh digambar ulang sendiri waktu data berubah
 // (lagi ngetik / milih sesuatu, nanti isiannya hilang)
 const LAYAR_DIAM = ["formSemester", "formModul", "formBacaan", "formSoal", "formSumatif",
-                    "pilihSoal", "cetak", "cari", "lainnya", "formMapel", "formGuru", "aiGenerator", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal"];
+                    "pilihSoal", "cetak", "cari", "lainnya", "formMapel", "formGuru", "aiGenerator", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal", "naikKelas"];
 
 // layar yang lagi nampilin kerangka "memuat" (datanya belum kebaca): tetap digambar ulang
 // waktu data datang, walau layarnya ada di LAYAR_DIAM (belum ada isian yang bisa hilang)
@@ -231,7 +232,8 @@ function layarInduk() {
     pilihSoal: "sumatif",
     formSoalUjian: "sumatif",
     nilai: "mapel",
-    raporCetak: "rapor"
+    raporCetak: "rapor",
+    naikKelas: "santri"
   }[L] || "beranda";
 }
 function kembali() {
@@ -519,7 +521,7 @@ function kelompokLayar() {
   if (["lainnya"].includes(L)) return "lainnya";
   if (["pantauan"].includes(L)) return "pantauan";
   if (["akun", "formGuru"].includes(L)) return "akun";
-  if (["santri"].includes(L) && !posisi.dariNilai) return "santri";
+  if ((L === "santri" && !posisi.dariNilai) || L === "naikKelas") return "santri";
   if (["rapor", "raporCetak"].includes(L)) return "rapor";
   if (L === "bobot") return "bobot";
   if (L === "daftarUAS" || (posisi.uasGrup && sayaKurikulum() && !sayaPengampu(cariMapel(posisi.mapelId)))) return "uas";

@@ -125,7 +125,7 @@ function daftarKelas() {
   const peta = new Map();
   const tambah = (j, k) => { if (j && k) peta.set(`${j}|${k}`, { jenjang: j, kelas: k }); };
   for (const m of toko.mapel) tambah(m.jenjang, m.kelas);
-  for (const s of toko.santri) tambah(s.jenjang, s.kelas);
+  for (const s of toko.santri) if (s.aktif !== false) tambah(s.jenjang, s.kelas);
   return [...peta.values()].sort(bandingKelas);
 }
 // urut jenjang, lalu kelas: 7A1, 7A2, 7B1, 7B2, 8A1, ...
@@ -228,8 +228,35 @@ function layarSantri() {
       <button class="tombol-kedua" id="tambahBaris">+ Tambah 5 baris</button>
       <span class="info" id="pesanSantri" role="status"></span>
     </div>`;
+
+  // siswa yang udah lulus / pindah dari kelas ini (datanya tetap ada)
+  const keluar = toko.santri.filter(s => santriKeluar(s) && s.jenjang === jenjang && s.kelas === kelas)
+    .sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
+  if (keluar.length) {
+    h += `<h2 class="subjudul">Sudah keluar <small>${keluar.length} siswa</small></h2>
+      <p class="info">Rapor & nilai lamanya tetap bisa dibuka di halaman Rapor (pilih tahun ajarannya).</p>
+      <div class="daftar-akun">${keluar.map(s => `
+        <div class="kartu-akun redup">
+          <div class="kartu-akun-isi">
+            <strong>${aman(s.nama)}</strong>
+            <span>${HASIL_NAIK[s.status]}${s.keluar && s.keluar.tahun ? ` · ${aman(s.keluar.tahun)}` : ""}</span>
+            <small>${riwayatSantri(s).map(r => `${aman(r.kelas)} (${aman(r.tahun)})`).join(" → ") || ""}</small>
+          </div>
+          <div class="baris-tombol"><button class="tombol-kedua" data-aktifkan="${aman(s.id)}">Aktifkan lagi</button></div>
+        </div>`).join("")}</div>`;
+  }
+  h += `<h2 class="subjudul">Tahun ajaran baru</h2>
+    <p class="info">Akhir tahun ajaran: naikkan semua siswa sekaligus. Riwayat kelasnya tercatat, jadi rapor tahun lalu tetap benar.</p>
+    <div class="baris-tombol"><button class="tombol-kedua" id="keNaikKelas">Naik kelas serentak</button></div>`;
   isi.innerHTML = h;
   pasangTab();
+  klik("keNaikKelas", () => pergi("naikKelas", { tahunNaik: null }));
+  isi.querySelectorAll("[data-aktifkan]").forEach(b => b.onclick = async () => {
+    const s = toko.santri.find(y => y.id === b.dataset.aktifkan);
+    if (!s || !(await tanyaYakin(`Aktifkan lagi ${s.nama} di kelas ${s.kelas}?`, { ya: "Aktifkan" }))) return;
+    simpanSantri(aktifkanLagiSantri(s));
+    layarSantri();
+  });
 
   isi.querySelectorAll("[data-kelas]").forEach(b => b.onclick = () => pergi("santri", { kelasSantri: b.dataset.kelas }));
   const badan = document.getElementById("badanSantri");
@@ -344,7 +371,15 @@ function layarSantri() {
     const b = e.target.closest("[data-hapus-santri]");
     if (!b) return;
     const x = toko.santri.find(y => y.id === b.dataset.hapusSantri);
-    if (!x || !(await tanyaYakin(`Hapus ${x.nama} dari daftar siswa?\n\nNilai yang sudah diisi untuk siswa ini ikut nggak kepakai lagi.`, { bahaya: true, ya: "Hapus" }))) return;
+    if (!x) return;
+    const pilih = await tanyaPilih(`${x.nama} keluar dari kelas ini?\n\nPindah sekolah: datanya tetap disimpan, rapor & nilai lamanya masih bisa dibuka.\n\nHapus: cuma buat salah ketik. Datanya hilang permanen, nilai yang sudah diisi untuk siswa ini nggak kepakai lagi.`,
+      { ya: "Tandai pindah", lain: "Hapus", lainBahaya: true });
+    if (pilih === true) {
+      simpanSantri(keluarkanSantri(x, semesterSekarang().tahun, "pindah"));
+      kabar(`${x.nama} ditandai pindah sekolah. Bisa diaktifkan lagi dari bagian "Sudah keluar" di bawah.`);
+      return layarSantri();
+    }
+    if (pilih !== "lain" || !(await tanyaYakin(`Hapus ${x.nama} permanen?`, { bahaya: true, ya: "Hapus" }))) return;
     hapusSantri(x.id);
     b.closest("tr").remove();
     cekAbsen();
