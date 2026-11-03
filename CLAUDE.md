@@ -24,7 +24,7 @@ Gak ada build step / npm. Semua file JS dimuat pakai `<script>` biasa dengan uru
 | `js/mapel.js`, `saya.js`, `cari.js` | halaman satu mapel + pilih semester, layar Saya, cari soal |
 | `js/menupilih.js` | tampilan menu pilihan pengganti `<select>` bawaan (otomatis buat semua select di layar) |
 | `js/beranda.js`, `modul.js`, `sumatif.js`, `uas.js`, `ai.js`, `cetak.js`, `docx.js`, `kop.js`, `kurikulum.js`, `nilai.js`, `rapor.js` | layar-layar fitur |
-| `js/naikkelas.js` | riwayat kelas santri (`riwayatKelas`, `kelasSantriDi()`), status lulus/pindah, keputusan naik kelas per santri (`ubahKeputusan()`; panelnya di lembar nilai Genap, khusus TU, `js/nilai.js`) |
+| `js/naikkelas.js` | riwayat kelas santri (`riwayatKelas`, `kelasSantriDi()`), status lulus/pindah, keputusan naik kelas per santri (`ubahKeputusan()`; panelnya di Daftar siswa, khusus TU, diisi setelah rapat pleno; tombol "Naik kelas" di kartu kelas menu Siswa; `js/nilai.js`) |
 | `js/admin.js` | menu TU (Beranda · Mapel · Guru · Siswa · Saya): kotak per nama mapel (`layarMapelTU`) → kelas-kelasnya + pantauan per guru (`layarMapelNamaTU`), pantau per guru (`layarPantauGuru`), kelas & siswa Putra (A) / Putri (B) (`layarKelasSiswa`). Bobot, UAS, ubah mapel, Daftar siswa & Rapor (satu kelas) dibuka dari dalamnya; tombol ‹ ikut `INDUK_TU` |
 | `js/menuguru.js` | menu guru (Beranda · Mapel · Siswa · Saya): kotak mapel yang diampu + tombol AI & Cari (`layarMapelGuru`), kelas yang diajar + tombol isi nilai (`layarSiswaGuru`). `indukLayarMenu()` / `kelompokLayar()` milih menu TU atau guru |
 | `js/cadangan.js` | unduh cadangan data (.json) + pengingatnya |

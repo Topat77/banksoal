@@ -202,8 +202,8 @@ function segarkanLayar(penuh) {
     gambarNavBawah();
     // cari: hasilnya dihitung ulang (kotak ketiknya nggak diganggu), biar mapel yang baru kebaca ikut
     if (posisi.layar === "cari" && typeof cariUlang === "function") cariUlang();
-    // lembar nilai: cuma panel keputusan naik kelas yang disegarkan (data santri bisa berubah dari HP lain)
-    if (posisi.layar === "nilai" && typeof segarkanKeputusan === "function") segarkanKeputusan();
+    // daftar siswa: cuma panel keputusan naik kelas yang disegarkan (data santri bisa berubah dari HP lain)
+    if (posisi.layar === "santri" && typeof segarkanKeputusan === "function") segarkanKeputusan();
     return;
   }
   if (posisi.layar === "modul") {

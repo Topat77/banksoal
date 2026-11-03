@@ -349,6 +349,7 @@ function layarKelasSiswa() {
             <div class="baris-tombol">
               <button class="tombol-kedua" data-ubah-siswa="${aman(kunci)}">Ubah daftar siswa</button>
               <button class="tombol-kedua" data-rapor="${aman(kunci)}">Rapor</button>
+              <button class="tombol-kedua" data-naik-kelas="${aman(kunci)}">Naik kelas</button>
             </div>
           </div>
         </details>`;
@@ -366,5 +367,6 @@ function layarKelasSiswa() {
   pasangPilihWali();
   isi.querySelectorAll("[data-bagian]").forEach(b => b.onclick = () => pergi("kelasSiswa", { bagianSiswa: b.dataset.bagian }));
   isi.querySelectorAll("[data-ubah-siswa]").forEach(b => b.onclick = () => pergi("santri", { kelasSantri: b.dataset.ubahSiswa, dariNilai: false }));
+  isi.querySelectorAll("[data-naik-kelas]").forEach(b => b.onclick = () => pergi("santri", { kelasSantri: b.dataset.naikKelas, dariNilai: false, keNaikKelas: true }));
   isi.querySelectorAll("[data-rapor]").forEach(b => b.onclick = () => pergi("rapor", { kelasRapor: b.dataset.rapor }));
 }

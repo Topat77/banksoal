@@ -1768,3 +1768,5 @@ body.ada-dialog { overflow: hidden; }
 .daftar-guru-kelas li span { font-weight: 600; }
 .aksi-tu .ikon-menu { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .ubin-mapel .tanda { border-radius: 8px; line-height: 1.3; padding: 2px 8px; }
+.naik-tahun-lalu { margin-top: 18px; }
+.naik-tahun-lalu > summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; }
