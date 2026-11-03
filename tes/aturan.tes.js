@@ -274,6 +274,46 @@ grup("Pulihkan cadangan: yang dipulihkan cuma yang hilang");
     grup: [{ id: "g-bi7", uas: [{ id: "uas2" }], usulan: [{ id: "us1" }] }] }, lengkap);
   harap("pakai isi lengkap: modul semester lain yang masih ada nggak dianggap hilang", r2.modul.length + r2.sumatif.length, 0);
   harap("pakai isi lengkap: UAS yang masih ada dilewati, usulan yang hilang dipulihkan", r2.uas.length + "|" + r2.usulan.map(x => x[0]).join(), "0|grup/g-bi7/usulan/us1");
+  // wali kelas: dipulihkan kalau di database kosong, dilewati kalau udah ada
+  const waliCadangan = { tahun: { "2026-2027": { "paket-b-7a1": { uid: "hasan", nama: "Ustadz Hasan" } } } };
+  harap("wali kelas kosong → dipulihkan", rencanaPulihkan({ versiCadangan: 3, wali: waliCadangan }).pengaturan.map(x => x[0]).join(), "pengaturan/wali");
+  tokoTes.wali = { tahun: { "2026-2027": {} } };
+  harap("wali kelas udah ada → nggak ditimpa", rencanaPulihkan({ versiCadangan: 3, wali: waliCadangan }).pengaturan.length, 0);
+  harap("wali kelas rusak di file cadangan → dilewati", rencanaPulihkan({ versiCadangan: 3, wali: "x" }).pengaturan.length, 0);
+}
+
+// =====================================================
+grup("Wali kelas per tahun ajaran");
+{
+  // aturan: pengaturan/wali kayak pengaturan lain (semua akun aktif baca, cuma admin nulis)
+  const wali = { tahun: { "2026-2027": { "paket-b-7a1": { uid: "hasan", nama: "Ustadz Hasan", nip: "123" } } } };
+  boleh("ustadz boleh baca wali kelas", bolehBaca("pengaturan/wali", wali, akun.hasan));
+  tolak("akun belum disetujui nggak boleh baca", bolehBaca("pengaturan/wali", wali, akun.baru));
+  boleh("admin boleh ngatur wali kelas", bolehTulis("pengaturan/wali", null, wali, akun.tu));
+  tolak("ustadz nggak boleh ngatur wali kelas (walau dirinya sendiri)", bolehTulis("pengaturan/wali", null, wali, akun.hasan));
+
+  const wk = { console };
+  vm.createContext(wk);
+  vm.runInContext([
+    ...["adalahObjek", "salin", "pasangDiJalur", "samaIsi"].map(n => alat.includes(`function ${n}(`) ? ambilFungsi(alat, n) : ambilKonstanta(alat, n)),
+    ambilKonstanta(tokoJs, "kunciTahunWali"), ambilFungsi(tokoJs, "waliKelas"), ambilFungsi(tokoJs, "simpanWali"),
+    "const toko = { wali: {}, backend: { ubahSebagian: (j, p) => { kiriman.push([j, p]); return Promise.resolve(); } } }; const kiriman = [];",
+    "function berubah() {} function gagalSimpan() {} function uidSaya() { return 'tu'; }",
+    "this.ekspor = { toko, kiriman, waliKelas, simpanWali };"
+  ].join("\n"), wk);
+  const W = wk.ekspor;
+  harap("belum diatur → null", W.waliKelas("2026/2027", "paket-b-7a1"), null);
+  W.simpanWali("2026/2027", "paket-b-7a1", { id: "hasan", nama: "Ustadz Hasan", nip: "123", email: "rahasia@x" });
+  harap("tersimpan per tahun & kelas (nama + NIP disalin, email nggak)", JSON.stringify(W.waliKelas("2026/2027", "paket-b-7a1")), '{"uid":"hasan","nama":"Ustadz Hasan","nip":"123"}');
+  harap("tahun lain nggak ikut", W.waliKelas("2025/2026", "paket-b-7a1"), null);
+  harap("yang dikirim cuma kelas itu (isian TU di HP lain nggak ketimpa)", JSON.stringify(W.kiriman[0][1][0][0]), '["tahun","2026-2027","paket-b-7a1"]');
+  W.simpanWali("2026/2027", "paket-b-7b1", { id: "aminah", nama: "Ustadzah Aminah" });
+  harap("kelas lain di tahun sama tetap ada", W.waliKelas("2026/2027", "paket-b-7a1").uid, "hasan");
+  W.simpanWali("2026/2027", "paket-b-7a1", null);
+  harap("dikosongin → null", W.waliKelas("2026/2027", "paket-b-7a1"), null);
+  harap("ngosongin = kolomnya dihapus di database", W.kiriman[2][1][0][1], undefined);
+  W.toko.wali = { tahun: { "2026-2027": { "paket-b-7a1": { uid: 5, nama: null }, "paket-b-7b1": "rusak" } } };
+  harap("data rusak dari database → dianggap belum diatur", [W.waliKelas("2026/2027", "paket-b-7a1"), W.waliKelas("2026/2027", "paket-b-7b1")].join(), ",");
 }
 
 // =====================================================

@@ -940,6 +940,7 @@ label.pilih-soal:has(input:checked) { background: var(--hijau-muda); }
 .kartu-akun-isi span { font-size: 16px; color: var(--tinta-redup); overflow-wrap: anywhere; }
 .kartu-akun-isi small { font-size: 15px; color: var(--tinta-redup); }
 .kartu-akun .baris-tombol { flex: 0 1 auto; }
+label.pilih-wali { max-width: 420px; }
 label.pilih-peran { flex-direction: row; align-items: center; gap: 8px; font-weight: 500; }
 label.pilih-peran select { width: auto; padding: 8px 10px; font-size: 17px; }
 
