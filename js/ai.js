@@ -216,12 +216,42 @@ function bacaJawabanAI(teks, bahan) {
   return hasil;
 }
 
+// ====== JATAH AI ======
+// Jatah gratis Gemini direset tiap 00.00 waktu Pasifik (Los Angeles), ≈ 14.00 / 15.00 WIB.
+function resetJatahAI(sekarang = new Date()) {
+  const f = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
+  const p = Object.fromEntries(f.formatToParts(sekarang).map(x => [x.type, x.value]));
+  const lewat = ((Number(p.hour) * 60 + Number(p.minute)) * 60 + Number(p.second)) * 1000;
+  return new Date(sekarang.getTime() - lewat + 24 * 3600 * 1000);
+}
+// "pukul 15.00 WIB" (ditambah "besok" kalau tanggalnya beda)
+function teksResetAI(sekarang = new Date()) {
+  const r = resetJatahAI(sekarang);
+  const tgl = (d) => d.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" });
+  const jam = r.toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" });
+  return `${tgl(r) === tgl(sekarang) ? "hari ini" : "besok"} pukul ${jam} WIB`;
+}
+// jatah harian habis: diingat di perangkat ini sampai jam reset, biar guru langsung tahu sebelum nyoba
+const KUNCI_AI_HABIS = "banksoal-ai-habis";
+function catatJatahAIHabis() { tulisLokal(KUNCI_AI_HABIS, resetJatahAI().getTime()); }
+function jatahAIHabis() { return Number(bacaLokal(KUNCI_AI_HABIS, 0)) > Date.now(); }
+function jenisJatahAI(t) {
+  if (/per.?day|perday|daily|per_day/i.test(t)) return "hari";
+  if (/per.?minute|perminute|per_minute|rate.?limit|too many requests/i.test(t)) return "menit";
+  return "";
+}
+
 function pesanGagalAI(err) {
   const t = `${(err && err.code) || ""} ${(err && err.message) || err || ""}`;
   if (!navigator.onLine) return "Sinyal putus. Bikin soal pakai AI butuh internet, coba lagi pas ada sinyal.";
   if (/JAWABAN_RUSAK/.test(t)) return "Jawaban AI-nya nggak kebaca. Coba tekan Buat draft soal sekali lagi.";
   if (/JAWABAN_KOSONG/.test(t)) return "AI nggak ngasih soal apa pun. Coba tambahin bahannya (target capaian, ringkasan, atau PDF), lalu coba lagi.";
-  if (/\b429\b|quota|RESOURCE_EXHAUSTED|rate.?limit|too many requests/i.test(t)) return "Jatah AI gratis lagi habis atau kebanyakan permintaan. Tunggu sebentar (atau besok), atau kurangi jumlah soal.";
+  if (/\b429\b|quota|RESOURCE_EXHAUSTED|rate.?limit|too many requests/i.test(t)) {
+    const jenis = jenisJatahAI(t);
+    if (jenis === "menit") return "Permintaan ke AI lagi kebanyakan dalam waktu dekat. Tunggu sekitar 1 menit, lalu coba lagi.";
+    if (jenis === "hari") { catatJatahAIHabis(); return `Jatah AI gratis hari ini udah habis. AI bisa dipakai lagi ${teksResetAI()}.`; }
+    return `Jatah AI gratis lagi habis atau permintaannya kebanyakan. Coba lagi 1 menit lagi. Kalau masih gagal, berarti jatah hari ini udah habis dan AI bisa dipakai lagi ${teksResetAI()}.`;
+  }
   if (/timeout has expired|timed? ?out|deadline/i.test(t)) return "Server AI Google lagi lambat, jadi nggak ada jawaban. Coba lagi beberapa menit lagi (jumlah soalnya dikurangi juga boleh).";
   if (/\[50[034]\b|unavailable|overloaded/i.test(t)) return "Server AI Google lagi penuh. Tunggu beberapa menit, lalu coba lagi (jumlah soalnya dikurangi juga boleh).";
   if (/app.?check/i.test(t)) return "AI ditolak karena pengaman App Check. Admin perlu ngecek pengaturan App Check di Firebase (lihat tutorial).";
@@ -272,6 +302,7 @@ function layarAISoal() {
 
   isi.innerHTML = `
     <div class="layar-ai">
+      ${jatahAIHabis() ? `<p class="pemberitahuan-kecil">Jatah AI gratis hari ini udah habis. AI bisa dipakai lagi ${aman(teksResetAI())}.</p>` : ""}
       ${coba ? `<p class="pemberitahuan-kecil">Mode coba: soal yang keluar di sini <b>contoh bohongan</b>, bukan buatan AI beneran. AI aslinya jalan setelah Firebase disambungkan.</p>` : ""}
       <section class="bagian">
         <h2>Bahan untuk AI</h2>

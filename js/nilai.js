@@ -243,15 +243,7 @@ function layarSantri() {
   if (keluar.length) {
     h += `<h2 class="subjudul">Sudah keluar <small>${keluar.length} siswa</small></h2>
       <p class="info">Rapor & nilai lamanya tetap bisa dibuka di halaman Rapor (pilih tahun ajarannya).</p>
-      <div class="daftar-akun">${keluar.map(s => `
-        <div class="kartu-akun redup">
-          <div class="kartu-akun-isi">
-            <strong>${aman(s.nama)}</strong>
-            <span>${HASIL_NAIK[s.status]}${s.keluar && s.keluar.tahun ? ` · ${aman(s.keluar.tahun)}` : ""}</span>
-            <small>${riwayatSantri(s).map(r => `${aman(r.kelas)} (${aman(r.tahun)})`).join(" → ") || ""}</small>
-          </div>
-          <div class="baris-tombol"><button class="tombol-kedua" data-aktifkan="${aman(s.id)}">Aktifkan lagi</button></div>
-        </div>`).join("")}</div>`;
+      <div class="daftar-akun">${keluar.map(htmlKartuKeluar).join("")}</div>`;
   }
   // keputusan naik kelas (khusus TU, diisi setelah rapat pleno): tahun ajaran yang sedang / baru selesai
   const semNaik = semesterNaikKelas();
@@ -274,12 +266,7 @@ function layarSantri() {
   }
 
 
-  isi.querySelectorAll("[data-aktifkan]").forEach(b => b.onclick = async () => {
-    const s = toko.santri.find(y => y.id === b.dataset.aktifkan);
-    if (!s || !(await tanyaYakin(`Aktifkan lagi ${s.nama} di kelas ${s.kelas}?`, { ya: "Aktifkan" }))) return;
-    simpanSantri(aktifkanLagiSantri(s));
-    layarSantri();
-  });
+  pasangAksiKeluar(layarSantri);
 
   isi.querySelectorAll("[data-kelas]").forEach(b => b.onclick = () => pergi("santri", { kelasSantri: b.dataset.kelas }));
   const badan = document.getElementById("badanSantri");
@@ -482,7 +469,37 @@ function jumlahNilaiTakTerbaca(lembar, santri) {
 }
 function infoNilaiTakTerbaca(lembar, santri) {
   if (sayaKurikulum() || !jumlahNilaiTakTerbaca(lembar, santri)) return "";
-  return `<p class="info">Sebagian siswa tahun ini udah pindah kelas, namanya cuma kelihatan di akun TU.</p>`;
+  return `<p class="info">Ada siswa yang sudah pindah ke kelas lain. Nilainya di kelas ini tetap tersimpan dan ikut di rapornya, cuma namanya nggak ditampilkan lagi di sini.</p>`;
+}
+// kartu siswa yang udah keluar (lulus / pindah sekolah): dipakai di Daftar siswa & Arsip (menu Siswa)
+function htmlKartuKeluar(s) {
+  return `
+    <div class="kartu-akun redup">
+      <div class="kartu-akun-isi">
+        <strong>${aman(s.nama)}</strong>
+        <span>${HASIL_NAIK[s.status]}${s.keluar && s.keluar.tahun ? ` · ${aman(s.keluar.tahun)}` : ""}${s.nis ? ` · NIS ${aman(s.nis)}` : ""}</span>
+        <small>${riwayatSantri(s).map(r => `${aman(r.kelas)} (${aman(r.tahun)})`).join(" → ") || aman(s.kelas || "")}</small>
+      </div>
+      <div class="baris-tombol">
+        <button class="tombol-kedua" data-aktifkan="${aman(s.id)}">Aktifkan lagi</button>
+        <button class="tombol-teks merah" data-hapus-keluar="${aman(s.id)}">Hapus permanen</button>
+      </div>
+    </div>`;
+}
+// tombol di kartu siswa keluar; gambarUlang = layar yang digambar lagi sesudahnya
+function pasangAksiKeluar(gambarUlang) {
+  isi.querySelectorAll("[data-aktifkan]").forEach(b => b.onclick = async () => {
+    const s = toko.santri.find(y => y.id === b.dataset.aktifkan);
+    if (!s || !(await tanyaYakin(`Aktifkan lagi ${s.nama} di kelas ${s.kelas}?`, { ya: "Aktifkan" }))) return;
+    simpanSantri(aktifkanLagiSantri(s));
+    gambarUlang();
+  });
+  isi.querySelectorAll("[data-hapus-keluar]").forEach(b => b.onclick = async () => {
+    const s = toko.santri.find(y => y.id === b.dataset.hapusKeluar);
+    if (!s || !(await tanyaYakin(`Hapus data ${s.nama} permanen?\n\nRapor lamanya nggak bisa dicetak lagi. Kalau masih perlu, unduh cadangan atau cetak rapornya dulu.`, { bahaya: true, ya: "Hapus permanen" }))) return;
+    hapusSantri(s.id);
+    gambarUlang();
+  });
 }
 function tandaKeluarSantri(s) {
   return santriKeluar(s) ? ` <span class="tanda tanda-tutup">${aman(HASIL_NAIK[s.status])}</span>` : "";
@@ -739,6 +756,7 @@ function pasangAksiAdminNilai(mp, sem, santri, tersimpan) {
 
 // cara ngisi nilai: "kolom" (satu kolom, kotak gede; bawaan di HP) atau "tabel" (semua kolom)
 const KUNCI_MODE_NILAI = "banksoal-mode-nilai";
+const KUNCI_PETUNJUK_KOLOM = "banksoal-petunjuk-kolom";   // penjelasan mode satu kolom udah ditutup
 function modeIsiNilai() {
   const ingat = bacaLokal(KUNCI_MODE_NILAI, null);
   if (ingat === "kolom" || ingat === "tabel") return ingat;
@@ -818,6 +836,7 @@ function layarNilai() {
       <button data-mode-nilai="kolom" class="${modeKolom ? "aktif" : ""}" aria-pressed="${modeKolom}">Satu kolom</button>
       <button data-mode-nilai="tabel" class="${modeKolom ? "" : "aktif"}" aria-pressed="${!modeKolom}">Tabel lengkap</button>
     </div>
+    ${modeKolom && bisaIsi && !bacaLokal(KUNCI_PETUNJUK_KOLOM, false) ? `<div class="pemberitahuan petunjuk-kolom"><p><b>Isi satu kolom dulu.</b> Pilih kolomnya di bawah, ketik nilai, lalu tekan Enter buat pindah ke siswa berikutnya. Mau lihat semua kolom sekaligus? Pilih <b>Tabel lengkap</b>.</p><button class="tombol-teks" id="tutupPetunjukKolom">Mengerti</button></div>` : ""}
     ${modeKolom ? `<div class="pilih-semester pilih-kolom-nilai" role="group" aria-label="Kolom yang diisi">
       ${semuaKolom.map(k => `<button class="chip ${k.id === pilihan ? "aktif" : ""}" data-pilih-kolom="${aman(k.id)}" aria-pressed="${k.id === pilihan}">${aman(k.label)}</button>`).join("")}
       <button class="chip ${pilihan === "hadir" ? "aktif" : ""}" data-pilih-kolom="hadir" aria-pressed="${pilihan === "hadir"}">Kehadiran</button>
@@ -858,7 +877,13 @@ function layarNilai() {
   klik("keBobot", () => pergi("bobot"));
 
   pasangAksiAdminNilai(mp, sem, santri, tersimpan);
+  klik("tutupPetunjukKolom", () => {
+    tulisLokal(KUNCI_PETUNJUK_KOLOM, true);
+    const p = isi.querySelector(".petunjuk-kolom");
+    if (p) p.remove();
+  });
   isi.querySelectorAll("[data-mode-nilai]").forEach(b => b.onclick = () => {
+    tulisLokal(KUNCI_PETUNJUK_KOLOM, true);   // udah tahu ada dua cara
     kirimNilaiTertunda();
     tulisLokal(KUNCI_MODE_NILAI, b.dataset.modeNilai);
     tampilkan(true);

@@ -47,7 +47,6 @@ const daftarLayar = {
   bobot: "layarBobot",
   aiSoal: "layarAISoal",
   daftarUAS: "layarDaftarUAS",
-  pilihMapel: "layarPilihMapel",
   formGuru: "formGuru",
   aiGenerator: "layarAIGenerator",
   modulLama: "layarModulLama",
@@ -102,6 +101,20 @@ function butuh(x) {
   return x;
 }
 
+// TU: isi mapel yang dibutuhin layar ini dimuat dulu (lihat mintaIsiMapel di toko.js)
+const LAYAR_ISI_SEMUA_TU = new Set(["pantauGuru", "cari", "rapor", "raporCetak"]);
+function mintaIsiLayarTU() {
+  if (LAYAR_ISI_SEMUA_TU.has(posisi.layar)) return mintaIsiSemua();
+  const ids = [];
+  const mp = posisi.mapelId && cariMapel(posisi.mapelId);
+  if (mp) ids.push(mp.id, ...mapelSegrup(mp).map(x => x.id));   // modul kelas lain di grup ikut kelihatan
+  const edit = posisi.layar === "formMapel" && posisi.mapelEditId && cariMapel(posisi.mapelEditId);
+  if (edit) ids.push(edit.id);
+  if (posisi.uasGrup) ids.push(...mapelGrup(posisi.uasGrup).map(x => x.id));
+  if (posisi.layar === "mapelNamaTU") ids.push(...toko.mapel.filter(m => m.jenjang === jenjangAktif() && m.nama === posisi.namaMapelTU).map(m => m.id));
+  mintaIsiMapel(ids);
+}
+
 function tampilkan(tetapDiTempat = false) {
   statusTergambar = toko.status;
   document.body.dataset.status = toko.status;
@@ -126,6 +139,7 @@ function tampilkan(tetapDiTempat = false) {
   // semester yang lagi dibuka (dan semester UAS-nya) ikut dimuat kalau belum
   pastikanSemester(semAktif());
   if (posisi.uasGrup && posisi.uasSem) pastikanSemester(dariKunciSemester(posisi.uasSem));
+  if (sayaKurikulum()) { mintaIsiLayarTU(); cadanganOtomatis(); }
 
   try {
     window[daftarLayar[posisi.layar] || "layarBeranda"]();

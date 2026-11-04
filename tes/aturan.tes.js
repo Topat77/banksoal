@@ -1078,6 +1078,21 @@ grup("Daftar file JS & CSP tetap sinkron");
   boleh("tiap script inline punya hash di CSP (kalau isinya diubah, hash-nya ikut diganti)", skripInline.length > 0 && hashSkrip.every(h => hashCsp.includes(h)));
 }
 
+// =====================================================
+grup("Jatah AI: jam reset (00.00 waktu Pasifik) dalam WIB");
+{
+  const c = vm.createContext({ Intl, Date });
+  vm.runInContext([ambilFungsi(aiJs, "resetJatahAI"), ambilFungsi(aiJs, "teksResetAI"), ambilFungsi(aiJs, "jenisJatahAI"),
+    "this.ekspor3 = { teksResetAI, jenisJatahAI };"].join("\n"), c);
+  const { teksResetAI, jenisJatahAI } = c.ekspor3;
+  harap("November (PST), pagi WIB: hari ini 15.00", teksResetAI(new Date("2026-11-04T03:00:00Z")), "hari ini pukul 15.00 WIB");
+  harap("November, sore WIB setelah reset: besok 15.00", teksResetAI(new Date("2026-11-04T09:00:00Z")), "besok pukul 15.00 WIB");
+  harap("Juli (PDT): 14.00", teksResetAI(new Date("2026-07-04T09:00:00Z")), "besok pukul 14.00 WIB");
+  harap("galat per hari kebaca harian", jenisJatahAI("429 Quota exceeded for metric: generate_content_free_tier_requests, limit: GenerateRequestsPerDayPerProjectPerModel"), "hari");
+  harap("galat per menit kebaca per menit", jenisJatahAI("429 Quota exceeded ... GenerateRequestsPerMinutePerProjectPerModel"), "menit");
+  harap("429 tanpa keterangan: nggak ditebak", jenisJatahAI("[429] RESOURCE_EXHAUSTED"), "");
+}
+
 Promise.all(tunggu).then(() => {
   console.log(`\n${lolos} lolos, ${gagal} gagal`);
   process.exit(gagal ? 1 : 0);

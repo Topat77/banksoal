@@ -271,9 +271,31 @@ function pasangData(peran) {
 // tiap mapel yang kelihatan dipantau isinya (modul & sumatif).
 // Mapel "tetangga" (kelas lain di grup yang sama, yang nggak diampu) cuma dipantau
 // modul & sumatif yang dibagikan.
+// TU (hemat kuota): isi mapel (modul, sumatif, nilai) baru dimuat waktu mapelnya dibuka
+// (mintaIsiMapel), atau semuanya sekalian lewat mintaIsiSemua (Pantau guru, Rapor, Cari, Perbarui ringkasan).
+// Yang udah dimuat tetap dipantau sampai keluar.
+const isiDimintaTU = new Set();
+let isiSemuaTU = false;
+function mintaIsiMapel(ids) {
+  if (!sayaKurikulum()) return;
+  let baru = false;
+  for (const id of ids) if (id && !isiDimintaTU.has(id)) { isiDimintaTU.add(id); baru = true; }
+  if (baru && !isiSemuaTU) setTimeout(aturLanggananMapel, 0);   // jangan langganan di tengah nggambar layar
+}
+function mintaIsiSemua() {
+  if (!sayaKurikulum() || isiSemuaTU) return;
+  isiSemuaTU = true;
+  setTimeout(aturLanggananMapel, 0);
+}
+// semua isi mapel udah dimuat (buat TU: udah diminta semua & udah kebaca)
+function isiSemuaSiap() {
+  return (!sayaKurikulum() || isiSemuaTU) && toko.mapel.every(m => isiMapelSiap(m.id));
+}
+
 function aturLanggananMapel() {
   const perlu = new Map();
-  for (const m of mapelTerlihat()) perlu.set(m.id, "ampu");
+  const kur = sayaKurikulum();
+  for (const m of mapelTerlihat()) if (!kur || isiSemuaTU || isiDimintaTU.has(m.id)) perlu.set(m.id, "ampu");
   for (const m of mapelTetangga()) {
     // aturan database baru ngizinin kalau grupnya udah mencatat akun ini sebagai pengampu
     const g = dataGrup(idGrup(m));
@@ -512,6 +534,8 @@ function hentikanData() {
   generasiSegrup++;
   for (const id of Object.keys(langgananMapel)) hentiLangganan(langgananMapel[id]);
   langgananMapel = {};
+  isiDimintaTU.clear();
+  isiSemuaTU = false;
   for (const id of Object.keys(langgananGrup)) hentiLangganan(langgananGrup[id]);
   langgananGrup = {};
   semesterDimuat.clear();

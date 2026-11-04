@@ -16,7 +16,7 @@ function indukLayarGuru() {
 // menu guru yang menyala buat layar sekarang
 function kelompokLayarGuru() {
   const L = posisi.layar;
-  if (L === "beranda" || L === "pilihMapel") return "beranda";
+  if (L === "beranda") return "beranda";
   if (L === "lainnya") return "lainnya";
   if (L === "siswaGuru" || L === "nilai" || L === "santri") return "siswa";
   return "mapelGuru";
