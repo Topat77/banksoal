@@ -72,7 +72,7 @@ function formModul() {
 
       <fieldset>
         <legend>Hubungan dengan modul lain (opsional)</legend>
-        <p class="info">Biar kelihatan urutan materinya. Pilihannya modul kamu dan modul yang dibagikan di ${aman(namaGrup(mp))}.</p>
+        <p class="info">Agar terlihat urutan materinya. Pilihannya modul Anda dan modul yang dibagikan di ${aman(namaGrup(mp))}.</p>
         <label>Lanjutan dari modul
           <select name="lanjutanDari">
             <option value="">Bukan lanjutan modul lain</option>
@@ -90,7 +90,7 @@ function formModul() {
       <label>Link file modul (opsional)
         <input name="link" type="url" maxlength="500" value="${aman(m.link || "")}" placeholder="https://drive.google.com/...">
       </label>
-      <p class="info">Upload file modulnya ke Google Drive, atur aksesnya jadi "Siapa saja yang memiliki link", lalu tempel link-nya di sini. Isinya nanti tampil langsung di halaman modul.</p>
+      <p class="info">Unggah file modulnya ke Google Drive, atur aksesnya jadi "Siapa saja yang memiliki link", lalu tempel link-nya di sini. Isinya nanti tampil langsung di halaman modul.</p>
 
       <button type="submit" class="tombol-utama">Simpan</button>
       ${lama ? `<button type="button" class="tombol-hapus" id="hapus">Hapus modul ini</button>` : ""}
@@ -123,7 +123,7 @@ function formModul() {
         ambilKetikan();
         const id = b.dataset.hapusPertemuan;
         const dipakai = lama ? (lama.soal || []).filter(s => s.pertemuanId === id).length : 0;
-        if (dipakai && !(await tanyaYakin(`${dipakai} soal ditandai untuk pertemuan ini. Soalnya tetap ada, cuma pindah ke "Soal lainnya". Hapus pertemuan ini?`, { bahaya: true, ya: "Hapus pertemuan" }))) return;
+        if (dipakai && !(await tanyaYakin(`${dipakai} soal ditandai untuk pertemuan ini. Soalnya tetap ada, hanya pindah ke "Soal lainnya". Hapus pertemuan ini?`, { bahaya: true, ya: "Hapus pertemuan" }))) return;
         ambilKetikan();
         daftar = daftar.filter(x => x.id !== id);
         gambarPertemuan();
@@ -223,10 +223,10 @@ function layarModul() {
         <input type="checkbox" id="bagikan" ${m.dibagikan ? "checked" : ""}>
         <span class="saklar-isi"><b>Bagikan ke guru lain di ${aman(namaGrup(mp))}</b><small>${m.dibagikan
           ? `Pengampu ${aman(mp.nama)} di semua kelas ${aman(tingkatKelas(mp.kelas))} (${aman([mp, ...mapelSegrup(mp)].map(x => x.kelas).join(", "))}) bisa melihat dan memakai soalnya untuk sumatif & UAS.`
-          : "Tertutup: cuma kamu dan admin (TU) yang bisa melihat."}</small></span>
+          : "Tertutup: hanya Anda dan admin (TU) yang bisa melihat."}</small></span>
       </label>`;
   } else {
-    kiri += `<p class="info">${m.dibagikan ? "Dibagikan" : "Tertutup"}${dariKelasLain ? ` · dari ${aman(asal.kelas)}` : ""} · cuma bisa dilihat, yang bisa mengubah hanya ${aman(m.namaPemilik || "pemiliknya")}.</p>`;
+    kiri += `<p class="info">${m.dibagikan ? "Dibagikan" : "Tertutup"}${dariKelasLain ? ` · dari ${aman(asal.kelas)}` : ""} · hanya bisa dilihat, yang bisa mengubah hanya ${aman(m.namaPemilik || "pemiliknya")}.</p>`;
   }
   // alur & modul terkait
   const semuaGrup = modulGrup(mp.id);
@@ -246,7 +246,7 @@ function layarModul() {
     </div>`;
   }
   if (m.lanjutanDari && !sebelum.length) {
-    kiri += `<p class="info">Lanjutan dari modul yang sudah nggak tersedia (dihapus atau nggak dibagikan lagi).</p>`;
+    kiri += `<p class="info">Lanjutan dari modul yang sudah tidak tersedia (dihapus atau tidak dibagikan lagi).</p>`;
   }
   kiri += `<div class="aksi-teks">`;
   if (linkAman(m.link)) kiri += `<a class="tombol-teks" href="${aman(m.link)}" target="_blank" rel="noopener">Buka file di tab baru</a>`;
@@ -257,17 +257,17 @@ function layarModul() {
   if (pratinjau) {
     kiri += `<iframe class="pratinjau" src="${aman(pratinjau)}" title="File modul" loading="lazy"></iframe>`;
   } else if (m.link && linkAman(m.link)) {
-    kiri += `<p class="info">Link ini bukan link Google Drive, jadi isinya nggak bisa ditampilkan di sini. Pakai "Buka file di tab baru".</p>`;
+    kiri += `<p class="info">Link ini bukan link Google Drive, jadi isinya tidak bisa ditampilkan di sini. Pakai "Buka file di tab baru".</p>`;
   } else if (boleh) {
-    kiri += `<p class="info">Tempel link Google Drive file modulnya lewat "Ubah modul &amp; pertemuan", biar isinya tampil di sini.</p>`;
+    kiri += `<p class="info">Tempel link Google Drive file modulnya lewat "Ubah modul &amp; pertemuan", agar isinya tampil di sini.</p>`;
   }
 
   // --- teks bacaan ---
   let kanan = `<h2 class="subjudul">Teks bacaan <small>${bacaan.length} teks</small></h2>`;
   if (bacaan.length === 0 && boleh) {
-    kanan += `<p class="info">Pakai teks bacaan kalau beberapa soal mengacu ke satu teks yang sama, misalnya cerita, paragraf, atau hadits. Teksnya cukup diketik sekali.</p>`;
+    kanan += `<p class="info">Pakai teks bacaan jika beberapa soal mengacu ke satu teks yang sama, misalnya cerita, paragraf, atau hadits. Teksnya cukup diketik sekali.</p>`;
   } else if (bacaan.length === 0) {
-    kanan += `<p class="info">Nggak ada teks bacaan.</p>`;
+    kanan += `<p class="info">Tidak ada teks bacaan.</p>`;
   }
   for (const b of bacaan) {
     const dipakai = soal.filter(s => s.bacaanId === b.id).length;
@@ -289,7 +289,7 @@ function layarModul() {
   kanan += `<h2 class="subjudul">Pertemuan &amp; soal formatif <small>${soal.length} soal</small></h2>`;
   if (boleh) {
     kanan += `<div class="ajakan-ai">
-        <div><b>Bikin soal sekali pencet</b><span>AI langsung bikinin draft soal dari isi modul ini. Kamu tinggal cek, lalu simpan.</span></div>
+        <div><b>Buat soal sekali tekan</b><span>AI langsung membuatkan draft soal dari isi modul ini. Anda cukup memeriksa, lalu menyimpan.</span></div>
         <button class="tombol-utama tombol-ai" id="keAIOtomatis">${IKON_AI}<span>Buatkan soal</span></button>
         <button class="tombol-teks" id="keAI">Atur sendiri</button>
       </div>`;
@@ -450,7 +450,7 @@ function formBacaan() {
       if (!t) return;
       const dipakai = (t.soal || []).filter(s => s.bacaanId === lama.id);
       const pesan = dipakai.length
-        ? `Hapus teks ini? ${dipakai.length} soal yang memakainya tetap ada, cuma nggak punya teks bacaan lagi.`
+        ? `Hapus teks ini? ${dipakai.length} soal yang memakainya tetap ada, hanya tidak punya teks bacaan lagi.`
         : "Hapus teks bacaan ini?";
       if (!(await tanyaYakin(pesan, { bahaya: true, ya: "Hapus teks" }))) return;
       t = ambilModulTerbaru();
@@ -627,7 +627,7 @@ function layarModulLama() {
   tombolKembali.hidden = false;
 
   if (!modulLamaHasil || modulLamaHasil.idMapel !== mp.id) {
-    isi.innerHTML = `<p class="info">Mencari modul lama kamu di ${aman(mp.nama)}...</p>`;
+    isi.innerHTML = `<p class="info">Mencari modul lama Anda di ${aman(mp.nama)}...</p>`;
     muatModulLama(mp).then(hasil => {
       modulLamaHasil = hasil;
       if (posisi.layar === "modulLama" && posisi.mapelId === mp.id) layarModulLama();
@@ -642,11 +642,11 @@ function layarModulLama() {
     return;
   }
   if (!hasil.daftar.length) {
-    isi.innerHTML = `<p class="kosong">Belum ada modul lama kamu di ${aman(mp.nama)}, baik di kelas ini (semester lain) maupun kelas lain.</p>`;
+    isi.innerHTML = `<p class="kosong">Belum ada modul lama Anda di ${aman(mp.nama)}, baik di kelas ini (semester lain) maupun kelas lain.</p>`;
     return;
   }
   isi.innerHTML = `
-    <p class="info">Modul yang kamu buat dulu di ${aman(mp.nama)}: kelas ini di semester lain, dan kelas lain. Centang yang mau dipakai lagi, nanti disalin lengkap (pertemuan, target capaian, teks bacaan, soal) ke <b>${aman(namaMapel(mp))}, ${aman(namaSemester(sem))}</b>. Modul aslinya tetap aman. Salinannya tertutup dulu.</p>
+    <p class="info">Modul yang Anda buat dulu di ${aman(mp.nama)}: kelas ini di semester lain, dan kelas lain. Centang yang ingin dipakai lagi, nanti disalin lengkap (pertemuan, target capaian, teks bacaan, soal) ke <b>${aman(namaMapel(mp))}, ${aman(namaSemester(sem))}</b>. Modul aslinya tetap aman. Salinannya tertutup dulu.</p>
     <form id="form">
       ${hasil.daftar.map(({ mp: asal, modul }) => `
         <fieldset>
@@ -727,7 +727,7 @@ function formSalin() {
     if (dipilih.length === 0) return kabar("Centang minimal satu modul.");
     const tujuan = { semester: f.get("semester"), tahun: f.get("tahun").trim() };
     if (kunciSemester(tujuan) === kunciSemester(sem) &&
-        !(await tanyaYakin("Tujuannya sama dengan semester asal, jadi bakal ada modul kembar di semester ini. Lanjut?", { ya: "Lanjut" }))) return;
+        !(await tanyaYakin("Tujuannya sama dengan semester asal, jadi akan ada modul kembar di semester ini. Lanjut?", { ya: "Lanjut" }))) return;
 
     // semester tujuan mungkin belum dimuat: tunggu dulu, biar cek judul kembar nggak kelewat
     const tombolSalin = e.target.querySelector('button[type="submit"]');

@@ -18,7 +18,7 @@ function layarBobot() {
   const jumlahMapel = (j, t) => toko.mapel.filter(m => m.jenjang === j && jenisMapel(m) === t).length;
   const kunci = (j, t) => `${j}|${t}`;
 
-  let h = `<p class="info">Nilai akhir tiap mapel = gabungan rata-rata tiap kelompok sesuai bobot di bawah. Kelompok yang bobotnya 0% nggak dihitung. Kehadiran dihitung otomatis dari hadir ÷ (hadir + sakit + izin) × 100. Ustadz/ustadzah cuma bisa melihat bobot ini.</p>`;
+  let h = `<p class="info">Nilai akhir tiap mapel = gabungan rata-rata tiap kelompok sesuai bobot di bawah. Kelompok yang bobotnya 0% tidak dihitung. Kehadiran dihitung otomatis dari hadir ÷ (hadir + sakit + izin) × 100. Ustadz/ustadzah hanya bisa melihat bobot ini.</p>`;
   for (const j of jenjang) {
     h += `<h2 class="subjudul">${aman(j)}</h2><div class="grid-bobot">`;
     for (const t of JENIS_MAPEL) {
@@ -39,7 +39,7 @@ function layarBobot() {
       <button class="tombol-teks" id="bawaanBobot">Pakai bobot bawaan</button>
       <span class="tersimpan" id="pesanSimpanBobot" role="status"></span>
     </div>
-    <p class="info">Kalau bobot diubah di tengah semester, nilai akhir semua siswa langsung dihitung ulang. Nilai yang sudah diisi ustadz nggak berubah.</p>`;
+    <p class="info">Jika bobot diubah di tengah semester, nilai akhir semua siswa langsung dihitung ulang. Nilai yang sudah diisi ustadz tidak berubah.</p>`;
   isi.innerHTML = h;
 
   const pesan = document.getElementById("pesanSimpanBobot");
@@ -48,7 +48,7 @@ function layarBobot() {
     for (const j of jenjang) for (const t of JENIS_MAPEL) {
       const total = KELOMPOK_NILAI.reduce((a, g) => a + (Number(isian[j][t][g.k]) || 0), 0);
       const el = isi.querySelector(`[data-total="${CSS.escape(kunci(j, t))}"]`);
-      el.textContent = `Total ${total}%${total === 100 ? "" : " · sebaiknya pas 100%"}`;
+      el.textContent = `Total ${total}%${total === 100 ? "" : " · sebaiknya tepat 100%"}`;
       el.classList.toggle("salah", total !== 100);
       if (total !== 100) semuaPas = false;
     }
@@ -64,7 +64,7 @@ function layarBobot() {
     };
   });
   document.getElementById("simpanBobot").onclick = async () => {
-    if (!tulisTotal() && !(await tanyaYakin("Total bobot belum pas 100%. Tetap simpan?\n\n(Nilai akhir tetap dihitung adil: dibagi total bobot yang ada.)", { ya: "Tetap simpan" }))) return;
+    if (!tulisTotal() && !(await tanyaYakin("Total bobot belum tepat 100%. Tetap simpan?\n\n(Nilai akhir tetap dihitung adil: dibagi total bobot yang ada.)", { ya: "Tetap simpan" }))) return;
     const data = { diubah: Date.now(), diubahOleh: uidSaya() };
     for (const j of jenjang) data[j] = { umum: { ...isian[j].umum }, diniah: { ...isian[j].diniah } };
     simpanBobot(data);

@@ -566,7 +566,7 @@ grup("Batas ukuran dokumen sebelum disimpan");
   boleh("dokumen kecil boleh", muatDiDok(dok("a", 10), null, "Modul"));
   harap("dokumen kecil: nggak ada pesan", pesan.length, 0);
   tolak("dokumen baru di atas batas ditolak", muatDiDok(dok("b", 950), null, "Modul"));
-  boleh("ditolak → guru dikasih tau", /NGGAK disimpan/.test(pesan.pop()));
+  boleh("ditolak → guru dikasih tau", /TIDAK disimpan/.test(pesan.pop()));
   tolak("dokumen yang makin gede di atas batas ditolak", muatDiDok(dok("c", 950), dok("c", 920), "Modul"));
   pesan.length = 0;
   boleh("dokumen kegedean yang dikecilin tetap boleh disimpan", muatDiDok(dok("d", 950), dok("d", 990), "Modul"));
@@ -976,7 +976,7 @@ grup("Panel keputusan naik kelas (lembar nilai Genap)");
 
     p = siapkan([kNaik]);
     await P.putuskanSantri(p, "a", "batal"); await jeda();
-    harap("batalin: konfirmasi merah + teks", `${yakin()[0].bahaya}|${yakin()[0].teks}`, "true|Batalin keputusan Ahmad (Naik ke 8A1)? Kelasnya dikembalikan ke 7A1.");
+    harap("batalin: konfirmasi merah + teks", `${yakin()[0].bahaya}|${yakin()[0].teks}`, "true|Batalkan keputusan Ahmad (Naik ke 8A1)? Kelasnya dikembalikan ke 7A1.");
     harap("batalin: kelas balik, riwayat kosong", `${santri("a").kelas}|${santri("a").riwayatKelas.length}`, "7A1|0");
 
     p = siapkan([kNaik]);

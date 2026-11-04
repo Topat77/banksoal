@@ -36,11 +36,11 @@ function layarMapelGuru() {
 
   let h = `
     <div class="aksi-tu">
-      <button class="tombol-kedua" id="keAI">${ikonMenu("ai")}Buat soal pakai AI</button>
+      <button class="tombol-kedua" id="keAI">${ikonMenu("ai")}Buat soal dengan AI</button>
       <button class="tombol-kedua" id="keCari">${ikonMenu("cari")}Cari soal</button>
     </div>`;
   if (!diampu.length) {
-    h += `<p class="kosong">Kamu belum ditugaskan ke mapel mana pun. Minta admin (TU) menambahkan kamu sebagai pengampu.</p>`;
+    h += `<p class="kosong">Anda belum ditugaskan ke mapel mana pun. Minta admin (TU) menambahkan Anda sebagai pengampu.</p>`;
   }
   for (const k of kelompokJenis(diampu)) {
     h += `<h2 class="subjudul">Mapel ${namaJenis(k.jenis).toLowerCase()} <small>${k.mapel.length} mapel</small></h2><div class="ubin-mapel-daftar">`;
@@ -75,8 +75,8 @@ function layarSiswaGuru() {
   const diampu = mapelDiampu();
   const kelas = daftarKelas().filter(k => kelasDiajar().has(`${k.jenjang}|${k.kelas}`));
 
-  let h = `<p class="info">Kelas yang kamu ajar. Pilih mapel untuk mengisi nilai.</p>`;
-  if (!kelas.length) h += `<p class="kosong">Kamu belum mengajar di kelas mana pun.</p>`;
+  let h = `<p class="info">Kelas yang Anda ajar. Pilih mapel untuk mengisi nilai.</p>`;
+  if (!kelas.length) h += `<p class="kosong">Anda belum mengajar di kelas mana pun.</p>`;
   for (const kl of kelas) {
     const kunci = `${kl.jenjang}|${kl.kelas}`;
     const siswa = santriKelas(kl.jenjang, kl.kelas);

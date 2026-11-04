@@ -13,7 +13,7 @@ const KUNCI_COBA_AKUN = "banksoal-coba-akun";
 
 const AKUN_CONTOH = [
   { uid: "u-aminah",  nama: "Ustadzah Aminah",  email: "aminah@contoh.id", emailTerverifikasi: true, ket: "Ustadzah, B. Indonesia 7B1 (putri), koordinator UAS B. Indonesia kelas 7" },
-  { uid: "u-hasan",   nama: "Ustadz Hasan",     email: "hasan@contoh.id", emailTerverifikasi: true, ket: "Ustadz, ngajar di 7A1 & 8A1 (putra)" },
+  { uid: "u-hasan",   nama: "Ustadz Hasan",     email: "hasan@contoh.id", emailTerverifikasi: true, ket: "Ustadz, mengajar di 7A1 & 8A1 (putra)" },
   { uid: "u-yusuf",   nama: "Ustadz Yusuf",     email: "yusuf@contoh.id", emailTerverifikasi: true, ket: "Ustadz, B. Indonesia 7A2 (satu grup dengan 7A1 & 7B1)" },
   { uid: "u-kur",     nama: "Admin TU",         email: "kurikulum@contoh.id", emailTerverifikasi: true, ket: "Admin (TU): guru, mapel, siswa, bobot, rapor" },
   { uid: "u-baru",    nama: "Ustadz Fadil",     email: "fadil@contoh.id", emailTerverifikasi: true, ket: "Akun baru, belum disetujui" }
@@ -287,7 +287,7 @@ function dataAwalCoba() {
         pilihan: ["kemudian, setelah itu, lalu", "namun, tetapi, walaupun", "karena, sebab, akibatnya", "seperti, bagaikan, laksana", ""], kunci: 0 },
       { id: "s-y3", jenis: "Esai", pertemuanId: y2, bacaanId: null,
         teks: "Tuliskan langkah-langkah berwudhu secara urut!",
-        pedoman: "Urutan benar: niat, membasuh telapak tangan, berkumur, ... sampai membasuh kaki (skor penuh kalau urut & lengkap)." }
+        pedoman: "Urutan benar: niat, membasuh telapak tangan, berkumur, ... sampai membasuh kaki (skor penuh jika urut & lengkap)." }
     ],
     dibuat: jam - 12 * hari, diubah: jam - 4 * hari
   };
@@ -445,7 +445,7 @@ function buatBackendCoba() {
     },
     async masuk(uid) {
       const a = AKUN_CONTOH.find(x => x.uid === uid);
-      if (!a) throw new Error("Akun contoh nggak ada");
+      if (!a) throw new Error("Akun contoh tidak ada");
       auth = a;
       tulisLokal(KUNCI_COBA_AKUN, a.uid);
       for (const cb of pendengarAuth) cb({ uid: a.uid, nama: a.nama, email: a.email, foto: "" });

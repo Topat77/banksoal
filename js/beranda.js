@@ -94,7 +94,7 @@ function htmlKelengkapan(sem, k = hitungKelengkapan(sem)) {
         <span><b>${persen}%</b><small>lengkap</small></span>
       </div>
       <div class="bar-bar">
-        ${bar("Sudah bikin modul ajar", k.modul)}
+        ${bar("Sudah membuat modul ajar", k.modul)}
         ${bar("Sudah ada soal", k.soal)}
         ${bar("Nilai sudah diisi", k.nilai)}
         <p class="info kecil">Dari ${k.total} guru yang mengampu mapel, ${aman(namaSemester(sem))}.</p>
@@ -109,7 +109,7 @@ let aktivitasTampil = [];   // yang lagi tampil di beranda (buat tombolnya)
 function kumpulAktivitas() {
   const kur = sayaKurikulum();
   const hasil = [];
-  const siapa = (uid, nama) => uid && uid === uidSaya() ? "Kamu" : (nama || "Seseorang");
+  const siapa = (uid, nama) => uid && uid === uidSaya() ? "Anda" : (nama || "Seseorang");
   // mapel yang kelihatan: admin semua; ustadz yang diampu + kelas lain di grupnya
   const mapel = kur ? toko.mapel : [...mapelDiampu(), ...mapelTetangga()];
   // buat ustadz: modul kelas lain dibuka lewat mapel sendiri yang satu grup
@@ -295,7 +295,7 @@ function htmlBerandaTU(sem) {
   if (uasDiajukan) h += `<div class="pemberitahuan"><p><b>${uasDiajukan} UAS bersama</b> sudah diajukan koordinator dan menunggu diperiksa.</p><button class="tombol-teks" id="keUASDiajukan">Periksa</button></div>`;
   const hariCadangan = hariSejakCadangan();
   if (perluCadangan()) {
-    h += `<div class="pemberitahuan"><p>${hariCadangan === null ? "<b>Cadangan data belum pernah diunduh.</b>" : `<b>Cadangan bulanan: terakhir diunduh ${hariCadangan} hari lalu.</b>`} ${bisaUnduhOtomatis() ? "Kalau belum keunduh otomatis, pencet tombol ini." : "Pencet tombol ini buat nyimpen file cadangannya."}</p><button class="tombol-teks" id="cadanganBeranda">Unduh cadangan</button></div>`;
+    h += `<div class="pemberitahuan"><p>${hariCadangan === null ? "<b>Cadangan data belum pernah diunduh.</b>" : `<b>Cadangan bulanan: terakhir diunduh ${hariCadangan} hari lalu.</b>`} ${bisaUnduhOtomatis() ? "Jika belum terunduh otomatis, tekan tombol ini." : "Tekan tombol ini untuk menyimpan file cadangannya."}</p><button class="tombol-teks" id="cadanganBeranda">Unduh cadangan</button></div>`;
   }
   const kelasKosong = daftarKelas().filter(x => santriKelas(x.jenjang, x.kelas).length === 0);
   if (kelasKosong.length) {
@@ -331,7 +331,7 @@ function htmlBerandaTU(sem) {
       <section class="panduan">
         <h2>Mulai dari sini</h2>
         <ol>
-          <li><strong>Setujui akun guru</strong><span>Minta ustadz dan ustadzah masuk pakai akun Google masing-masing, lalu setujui di halaman Guru.</span></li>
+          <li><strong>Setujui akun guru</strong><span>Minta ustadz dan ustadzah masuk menggunakan akun Google masing-masing, lalu setujui di halaman Guru.</span></li>
           <li><strong>Tambah mapel dan pengampunya</strong><span>Misalnya Bahasa Indonesia Paket B kelas 7A1, diampu Ustadz Hasan.</span></li>
           <li><strong>Isi daftar siswa tiap kelas</strong><span>No. absen, NIS, dan nama. Paling cepat: salin dari Excel lalu tempel di tabel.</span></li>
           <li><strong>Pantau isinya</strong><span>Lihat modul, soal, dan nilai yang sudah diisi tiap guru, lalu cetak rapor.</span></li>
@@ -464,15 +464,15 @@ function htmlBerandaGuru(sem, diampu) {
       : u.status === "diajukan" ? "sudah diajukan, menunggu TU" : "sudah dikunci TU";
     h += `
       <section class="kartu-tugas">
-        <p><b>Tugas kamu:</b> koordinator UAS ${aman(namaGrup(m))}. UAS-nya ${pesan}.</p>
+        <p><b>Tugas Anda:</b> koordinator UAS ${aman(namaGrup(m))}. UAS-nya ${pesan}.</p>
         <button class="tombol-utama" data-koor-mapel="${aman(m.id)}">${!u ? "Mulai susun UAS" : "Buka UAS"}</button>
       </section>`;
   }
 
   // ---- mapel yang diampu + aktivitas ----
-  let mapelHtml = `<section class="panel"><div class="panel-kepala"><h2>Progres mapel yang kamu ampu</h2><span class="info">${diampu.length} mapel</span></div>`;
+  let mapelHtml = `<section class="panel"><div class="panel-kepala"><h2>Progres mapel yang Anda ampu</h2><span class="info">${diampu.length} mapel</span></div>`;
   if (diampu.length === 0) {
-    mapelHtml += `<p class="info">Kamu belum ditugaskan ke mapel mana pun. Minta admin (TU) menambahkanmu sebagai pengampu. Setelah ditambahkan, mapelnya otomatis muncul di sini.</p>`;
+    mapelHtml += `<p class="info">Anda belum ditugaskan ke mapel mana pun. Minta admin (TU) menambahkan Anda sebagai pengampu. Setelah ditambahkan, mapelnya otomatis muncul di sini.</p>`;
   } else {
     for (const k of kelompokJenis(diampu)) {
       mapelHtml += `<p class="label-kelompok">Mapel ${namaJenis(k.jenis).toLowerCase()}</p><div class="daftar">`;

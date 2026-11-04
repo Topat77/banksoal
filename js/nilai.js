@@ -159,18 +159,18 @@ function jumlahNilaiTakTerbaca(lembar, santri) {
 }
 function infoNilaiTakTerbaca(lembar, santri) {
   if (sayaKurikulum() || !jumlahNilaiTakTerbaca(lembar, santri)) return "";
-  return `<p class="info">Ada siswa yang sudah pindah ke kelas lain. Nilainya di kelas ini tetap tersimpan dan ikut di rapornya, cuma namanya nggak ditampilkan lagi di sini.</p>`;
+  return `<p class="info">Ada siswa yang sudah pindah ke kelas lain. Nilainya di kelas ini tetap tersimpan dan ikut di rapornya, hanya namanya tidak ditampilkan lagi di sini.</p>`;
 }
 // khusus admin: tombol "Siapkan lembar nilai kosong" & "Hapus lembar nilai" di layar nilai
 function pasangAksiAdminNilai(mp, sem, santri, tersimpan) {
   if (!sayaKurikulum()) return;
   klik("siapkanLembar", async () => {
-    if (!navigator.onLine && toko.backend.mode !== "coba") return kabar("Nyiapin lembar nilai butuh internet. Sambungkan dulu, lalu coba lagi.");
+    if (!navigator.onLine && toko.backend.mode !== "coba") return kabar("Menyiapkan lembar nilai butuh internet. Sambungkan dulu, lalu coba lagi.");
     const tombol = document.getElementById("siapkanLembar");
     tombol.disabled = true;
     try {
       const jadi = await siapkanLembarNilai(mp.id, lembarBaru(mp, sem));
-      if (!jadi) kabar("Lembar nilai semester ini ternyata udah dibuat guru, jadi nggak perlu disiapin lagi.");
+      if (!jadi) kabar("Lembar nilai semester ini ternyata sudah dibuat guru, jadi tidak perlu disiapkan lagi.");
     } catch (err) {
       gagalSimpan(err);
     }
@@ -229,7 +229,7 @@ function layarNilai() {
   // khusus admin, waktu lembar semester ini belum ada: tombol nyiapin lembar kosong
   const htmlSiapkan = sayaKurikulum() && !tersimpan ? `
     <div class="pemberitahuan">
-      <p><b>Lembar nilai ${aman(namaSemester(sem))} belum dibuat.</b> Biasanya otomatis dibuat waktu guru mulai ngisi nilai. Kamu bisa nyiapin lembar kosong duluan (kolom Tugas 1, UH 1, UTS, UAS); angkanya tetap diisi guru.</p>
+      <p><b>Lembar nilai ${aman(namaSemester(sem))} belum dibuat.</b> Biasanya otomatis dibuat waktu guru mulai mengisi nilai. Anda bisa menyiapkan lembar kosong lebih dulu (kolom Tugas 1, UH 1, UTS, UAS); angkanya tetap diisi guru.</p>
       <button class="tombol-kedua" id="siapkanLembar">Siapkan lembar nilai kosong</button>
     </div>` : "";
 
@@ -252,7 +252,7 @@ function layarNilai() {
       <div><b>Bobot mapel ${namaJenis(jenis).toLowerCase()} ${aman(mp.jenjang)}</b><span>${aman(ringkasBobot(bobot)) || "Belum diatur"}</span></div>
       ${sayaKurikulum() ? `<button class="tombol-teks" id="keBobot">Ubah bobot</button>` : `<small>Diatur admin (TU)</small>`}
     </div>
-    ${bisaIsi ? "" : `<p class="pemberitahuan-kecil">Kamu cuma bisa melihat. Nilai diisi oleh pengampu mapel ini.</p>`}
+    ${bisaIsi ? "" : `<p class="pemberitahuan-kecil">Anda hanya bisa melihat. Nilai diisi oleh pengampu mapel ini.</p>`}
     ${htmlSiapkan}`;
 
   // ---- tabel ----
@@ -263,11 +263,11 @@ function layarNilai() {
   const kolom = modeKolom ? semuaKolom.filter(k => k.id === pilihan) : semuaKolom;
   const tampilHadir = !modeKolom || pilihan === "hadir";
   h += `
-    <div class="pilih-kelompok pilih-mode-nilai" role="group" aria-label="Cara ngisi">
+    <div class="pilih-kelompok pilih-mode-nilai" role="group" aria-label="Cara mengisi">
       <button data-mode-nilai="kolom" class="${modeKolom ? "aktif" : ""}" aria-pressed="${modeKolom}">Satu kolom</button>
       <button data-mode-nilai="tabel" class="${modeKolom ? "" : "aktif"}" aria-pressed="${!modeKolom}">Tabel lengkap</button>
     </div>
-    ${modeKolom && bisaIsi && !bacaLokal(KUNCI_PETUNJUK_KOLOM, false) ? `<div class="pemberitahuan petunjuk-kolom"><p><b>Isi satu kolom dulu.</b> Pilih kolomnya di bawah, ketik nilai, lalu tekan Enter buat pindah ke siswa berikutnya. Mau lihat semua kolom sekaligus? Pilih <b>Tabel lengkap</b>.</p><button class="tombol-teks" id="tutupPetunjukKolom">Mengerti</button></div>` : ""}
+    ${modeKolom && bisaIsi && !bacaLokal(KUNCI_PETUNJUK_KOLOM, false) ? `<div class="pemberitahuan petunjuk-kolom"><p><b>Isi satu kolom dulu.</b> Pilih kolomnya di bawah, ketik nilai, lalu tekan Enter untuk pindah ke siswa berikutnya. Ingin lihat semua kolom sekaligus? Pilih <b>Tabel lengkap</b>.</p><button class="tombol-teks" id="tutupPetunjukKolom">Mengerti</button></div>` : ""}
     ${modeKolom ? `<div class="pilih-semester pilih-kolom-nilai" role="group" aria-label="Kolom yang diisi">
       ${semuaKolom.map(k => `<button class="chip ${k.id === pilihan ? "aktif" : ""}" data-pilih-kolom="${aman(k.id)}" aria-pressed="${k.id === pilihan}">${aman(k.label)}</button>`).join("")}
       <button class="chip ${pilihan === "hadir" ? "aktif" : ""}" data-pilih-kolom="hadir" aria-pressed="${pilihan === "hadir"}">Kehadiran</button>
@@ -300,7 +300,7 @@ function layarNilai() {
     </tr>`;
   });
   h += `</tbody></table></div>
-    <p class="info">${bisaIsi ? "Ketik nilai 0–100. Tersimpan otomatis. Kolom kosong nggak ikut dihitung. Kehadiran dihitung otomatis: hadir ÷ (hadir + sakit + izin) × 100." : ""}${tersimpan && tersimpan.namaPengubah ? ` Terakhir diubah oleh ${aman(tersimpan.namaPengubah)}.` : ""}</p>
+    <p class="info">${bisaIsi ? "Ketik nilai 0–100. Tersimpan otomatis. Kolom kosong tidak ikut dihitung. Kehadiran dihitung otomatis: hadir ÷ (hadir + sakit + izin) × 100." : ""}${tersimpan && tersimpan.namaPengubah ? ` Terakhir diubah oleh ${aman(tersimpan.namaPengubah)}.` : ""}</p>
     <div class="aksi-teks"><button class="tombol-teks" id="keSantri">${sayaKurikulum() ? "Ubah" : "Lihat"} daftar siswa ${aman(mp.kelas)}</button>
       ${sayaKurikulum() && tersimpan ? `<button class="tombol-teks merah" id="hapusLembar">Hapus lembar nilai ${aman(namaSemester(sem))}</button>` : ""}</div>`;
   isi.innerHTML = h;

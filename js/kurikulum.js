@@ -33,9 +33,9 @@ function layarAkun() {
           </label>`;
   let h = htmlSegmenGuru("akun") + `<h2 class="subjudul">Menunggu persetujuan <small>${menunggu.length} akun</small></h2>`;
   if (menunggu.length === 0) {
-    h += `<p class="info">Nggak ada yang menunggu. Akun baru muncul di sini setelah ustadz/ustadzah masuk pakai akun Google-nya.</p>`;
+    h += `<p class="info">Tidak ada yang menunggu. Akun baru muncul di sini setelah ustadz/ustadzah masuk menggunakan akun Google-nya.</p>`;
   } else {
-    h += `<p class="info">Pastikan nama dan emailnya memang ustadz/ustadzah atau staf TU di lembaga ini. Siswa atau orang luar jangan disetujui. Akun yang disetujui jadi ustadz/ustadzah dulu; kalau dia staf TU, perannya bisa diganti jadi admin di daftar akun aktif.</p>`;
+    h += `<p class="info">Pastikan nama dan emailnya memang ustadz/ustadzah atau staf TU di lembaga ini. Siswa atau orang luar jangan disetujui. Akun yang disetujui jadi ustadz/ustadzah dulu; jika dia staf TU, perannya bisa diganti jadi admin di daftar akun aktif.</p>`;
     for (const p of menunggu) {
       h += `
         <article class="kartu-akun menunggu">
@@ -64,7 +64,7 @@ function layarAkun() {
         const cari = [p.nama, p.email, p.nip, ...ampu].join(" ").toLowerCase();
         return `<tr data-cari="${aman(cari)}">
           <td class="kol-no">${i + 1}</td>
-          <td class="kol-nama"><span class="nama-guru"><b>${aman(p.nama)}${p.id === uidSaya() ? " (kamu)" : ""}</b><small>${sap ? SAPAAN[sap] + " · " : ""}${aman(p.email)}</small></span></td>
+          <td class="kol-nama"><span class="nama-guru"><b>${aman(p.nama)}${p.id === uidSaya() ? " (Anda)" : ""}</b><small>${sap ? SAPAAN[sap] + " · " : ""}${aman(p.email)}</small></span></td>
           <td class="kol-nip">${aman(p.nip || "")}</td>
           <td class="kol-mapel"><span class="mapel-guru">${ampu.length ? aman(ampu.join(", ")) : "Belum mengampu mapel"}</span></td>
           <td class="kol-status"><span class="tanda-status ${p.peran === "kurikulum" ? "admin" : ""}">${p.peran === "kurikulum" ? "Admin TU" : "Aktif"}</span></td>
@@ -72,7 +72,7 @@ function layarAkun() {
         </tr>`;
       }).join("")}</tbody>
     </table></div>
-    <p class="info" id="cariGuruKosong" hidden>Nggak ada guru yang cocok.</p>`;
+    <p class="info" id="cariGuruKosong" hidden>Tidak ada guru yang cocok.</p>`;
 
   if (lain.length) {
     h += `<h2 class="subjudul">Ditolak &amp; nonaktif <small>${lain.length} akun</small></h2><div class="daftar-akun">`;
@@ -137,7 +137,7 @@ function layarAkun() {
   isi.querySelectorAll("[data-tolak]").forEach(b => {
     b.onclick = async () => {
       const p = toko.pengguna.find(x => x.id === b.dataset.tolak);
-      if (await tanyaYakin(`Tolak ${p.nama} (${p.email})? Akun ini nggak bisa membuka isi aplikasi.`, { bahaya: true, ya: "Tolak" })) ubahPeran(p.id, "ditolak");
+      if (await tanyaYakin(`Tolak ${p.nama} (${p.email})? Akun ini tidak bisa membuka isi aplikasi.`, { bahaya: true, ya: "Tolak" })) ubahPeran(p.id, "ditolak");
     };
   });
   isi.querySelectorAll("[data-peran]").forEach(sel => {
@@ -189,7 +189,7 @@ function formGuru() {
           </select>
         </label>
       </div>
-      ${diriSendiri ? `<p class="info">Peran akunmu sendiri nggak bisa diganti dari sini.</p>` : ""}
+      ${diriSendiri ? `<p class="info">Peran akun Anda sendiri tidak bisa diganti dari sini.</p>` : ""}
       <p class="info">Mengampu: ${ampu.length ? aman(ampu.map(namaMapel).join(", ")) : "belum ada mapel"}. Atur di halaman Mapel &amp; pengampu.</p>
       <button type="submit" class="tombol-utama">Simpan</button>
       ${diriSendiri ? "" : `
@@ -197,7 +197,7 @@ function formGuru() {
         <button type="button" class="tombol-hapus" id="nonaktif">Nonaktifkan akun ini</button>
         ${akunBisaDihapus(p) ? `<button type="button" class="tombol-hapus" id="hapusAkun">Hapus akun ini</button>` : ""}
       </div>
-      <p class="info kecil"><b>Nonaktifkan</b>: akun nggak bisa masuk, tapi masih tercatat dan bisa diaktifkan lagi. <b>Hapus</b>: akun hilang dari daftar guru dan dicabut dari semua mapel yang diampu; kalau login lagi, statusnya jadi menunggu persetujuan.</p>`}
+      <p class="info kecil"><b>Nonaktifkan</b>: akun tidak bisa masuk, tetapi masih tercatat dan bisa diaktifkan lagi. <b>Hapus</b>: akun hilang dari daftar guru dan dicabut dari semua mapel yang diampu; jika login lagi, statusnya jadi menunggu persetujuan.</p>`}
     </form>`;
 
   const form = document.getElementById("form");
@@ -209,7 +209,7 @@ function formGuru() {
     const sapaan = f.get("sapaan") || null;
     const peran = diriSendiri ? p.peran : f.get("peran");
     if (!nama) return;
-    if (nip && !/^[0-9 ]+$/.test(nip)) return kabar("NIP cuma boleh berisi angka (dan spasi).");
+    if (nip && !/^[0-9 ]+$/.test(nip)) return kabar("NIP hanya boleh berisi angka (dan spasi).");
     const kembar = nip && toko.pengguna.find(x => x.id !== p.id && (x.nip || "").replace(/\s/g, "") === nip.replace(/\s/g, ""));
     if (kembar && !(await tanyaYakin(`NIP ini sudah dipakai ${kembar.nama}. Tetap simpan?`, { ya: "Tetap simpan" }))) return;
     const kelasA = [...ampu.filter(m => kelasPutra(m.kelas)).map(namaMapel), ...waliKelasPutra(p.id).map(k => `wali ${k}`)];
@@ -228,7 +228,7 @@ function formGuru() {
     pergi("akun");
   });
   klik("nonaktif", async () => {
-    if (!(await tanyaYakin(`Nonaktifkan ${p.nama}? Modul dan soalnya tetap tersimpan, cuma dia nggak bisa masuk sampai diaktifkan lagi.`, { bahaya: true, ya: "Nonaktifkan" }))) return;
+    if (!(await tanyaYakin(`Nonaktifkan ${p.nama}? Modul dan soalnya tetap tersimpan, tetapi akun ini tidak bisa masuk sampai diaktifkan lagi.`, { bahaya: true, ya: "Nonaktifkan" }))) return;
     const { id, ...data } = toko.pengguna.find(x => x.id === p.id) || p;
     simpanPengguna(p.id, { ...data, peran: "nonaktif", diubahOleh: uidSaya(), diubah: Date.now() });
     pergi("akun");
@@ -343,7 +343,7 @@ function formMapel() {
           <label class="radio"><input type="radio" name="jenis" value="umum" ${jenisMapel(m) === "umum" ? "checked" : ""}> Umum</label>
           <label class="radio"><input type="radio" name="jenis" value="diniah" ${jenisMapel(m) === "diniah" ? "checked" : ""}> Diniah</label>
         </div>
-        <p class="info">Ngaruh ke bobot penilaian (diatur di halaman Bobot nilai) dan bagian di rapor.</p>
+        <p class="info">Berpengaruh ke bobot penilaian (diatur di halaman Bobot nilai) dan bagian di rapor.</p>
       </fieldset>
       <fieldset>
         <legend>Pengampu</legend>
@@ -414,7 +414,7 @@ function formMapel() {
     const kelas = f.get("kelas").trim().replace(/\s+/g, " ");
     const kembar = toko.mapel.find(x => x.id !== (lama && lama.id) &&
       x.nama.toLowerCase() === nama.toLowerCase() && x.jenjang === f.get("jenjang") && x.kelas === kelas);
-    if (kembar && !(await tanyaYakin(`Mapel ${nama} ${kelas} (${f.get("jenjang")}) sudah ada. Tetap bikin satu lagi?`, { ya: "Tetap bikin" }))) return;
+    if (kembar && !(await tanyaYakin(`Mapel ${nama} ${kelas} (${f.get("jenjang")}) sudah ada. Tetap membuat satu lagi?`, { ya: "Tetap membuat" }))) return;
     const salah = ustadzahDiKelasPutra();
     if (salah.length) return kabar(`${kelas} kelas putra, sedangkan ${salah.join(", ")} ustadzah. Ustadzah tidak boleh mengajar siswa putra, jadi hapus centangnya dulu.`);
 
@@ -435,7 +435,7 @@ function formMapel() {
       if (!isiMapelSiap(lama.id)) { kabar("Data masih dimuat, coba lagi sebentar."); return; }
       // ambil isi lengkap (semua semester) dari server; tanpa sinyal batal, jangan hapus setengah-setengah
       const isi = await ambilIsiMapel(lama.id);
-      if (!isi) { kabar("Gagal ngambil isi mapel dari server (sinyal putus atau jatah harian habis). Mapel belum dihapus, coba lagi nanti."); return; }
+      if (!isi) { kabar("Gagal mengambil isi mapel dari server (sinyal putus atau jatah harian habis). Mapel belum dihapus, coba lagi nanti."); return; }
       const modul = isi.modul;
       const nSoal = modul.reduce((x, y) => x + jumlahSoal(y), 0);
       const yakin = await tanyaYakin(

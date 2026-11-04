@@ -7,7 +7,7 @@ Vanilla JS + Firebase (Auth, Firestore, AI Logic/Gemini), di-host di GitHub Page
 - **Tanya dulu sebelum ngubah apa pun.** Jelasin dulu rencananya, tunggu disetujui, baru ngedit file.
 - **Kerja lewat branch + PR.** Bikin branch baru dari `main` (nama kebab-case bahasa Indonesia, misal `perbaikan-hp`), commit di situ, push branch-nya, lalu buka PR.
 - **Jangan pernah push langsung ke `main`**, dan jangan merge PR sendiri.
-- Pesan commit & teks di aplikasi pakai bahasa Indonesia santai, kayak yang udah ada.
+- **Teks di aplikasi pakai bahasa Indonesia formal**: "Anda", "tidak", "sudah", "hanya", "agar", "jika", "membuat", "tekan". Kalimat pendek & langsung ke tindakan. Pesan commit & komentar kode boleh santai.
 
 ## Struktur
 Gak ada build step / npm. Semua file JS dimuat pakai `<script>` biasa dengan urutan tetap di `index.html`; fungsinya global.

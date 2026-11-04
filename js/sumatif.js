@@ -162,7 +162,7 @@ function layarSumatif() {
         <input type="checkbox" id="bagikanSum" ${sum.dibagikan ? "checked" : ""}>
         <span class="saklar-isi"><b>Bagikan ke guru lain di ${aman(namaGrup(mp))}</b><small>${sum.dibagikan
           ? "Guru lain di grup ini bisa melihat ujian ini dan menyalinnya jadi ujian mereka sendiri."
-          : "Tertutup: cuma kamu dan admin (TU) yang bisa melihat."}</small></span>
+          : "Tertutup: hanya Anda dan admin (TU) yang bisa melihat."}</small></span>
       </label>
       <div class="aksi-teks"><button class="tombol-teks" id="editSum">Ubah nama ujian</button></div>`;
     }
@@ -170,7 +170,7 @@ function layarSumatif() {
   html += `</div><div class="baris-tombol">
       ${boleh ? `<button class="tombol-kedua" id="pilih">Pilih soal dari modul</button>
       <button class="tombol-kedua" id="soalUjian">+ Soal khusus ujian</button>
-      <button class="tombol-kedua tombol-ai" id="keAI">${IKON_AI}<span>Buat soal ujian pakai AI</span></button>` : ""}
+      <button class="tombol-kedua tombol-ai" id="keAI">${IKON_AI}<span>Buat soal ujian dengan AI</span></button>` : ""}
       ${!uas && !punyaSendiri && sayaPengampu(mp) ? `<button class="tombol-utama" id="salinUjian">Salin jadi ujian saya</button>` : ""}
       ${uas ? htmlTombolUAS(sum, daftar.length) : ""}
       ${daftar.length > 0 && (!uas || kur) ? `<button class="${!uas && !punyaSendiri && sayaPengampu(mp) ? "tombol-kedua" : "tombol-utama"}" id="cetak">Cetak soal</button>` : ""}
@@ -181,7 +181,7 @@ function layarSumatif() {
   if (daftar.length === 0) {
     html += `<p class="kosong">Belum ada soal.${boleh ? " Pilih soal dari modul-modul semester ini, atau tulis soal khusus ujian." : ""}</p>`;
   } else if (boleh) {
-    html += `<p class="info">Atur urutan pakai tombol ↑ ↓. Di lembar cetak, pilihan ganda dikumpulkan di bagian A dan esai di bagian B.</p>`;
+    html += `<p class="info">Atur urutan menggunakan tombol ↑ ↓. Di lembar cetak, pilihan ganda dikumpulkan di bagian A dan esai di bagian B.</p>`;
   }
   daftar.forEach((x, i) => {
     const kelasAsal = x.modul && mapelAsal(x.modul.id) && mapelAsal(x.modul.id).id !== mp.id ? ` (${aman(mapelAsal(x.modul.id).kelas)})` : "";
@@ -190,7 +190,7 @@ function layarSumatif() {
         ? `<span dir="auto">${aman(potong(x.modul.judul, 30))}</span>${kelasAsal}${milikSaya(x.modul) ? "" : ` · ${aman(x.modul.namaPemilik || "")}`}`
         : x.salinan && x.salinan.judulModul
           ? `<span dir="auto">${aman(potong(x.salinan.judulModul, 30))}</span> · ${aman(x.salinan.namaPemilik || "")} (salinan)`
-          : `Salinan (modul asal sudah nggak tersedia)`;
+          : `Salinan (modul asal sudah tidak tersedia)`;
     html += kartuSoal(x.soal, {
       nomor: i + 1,
       pertama: i === 0,
@@ -222,7 +222,7 @@ function layarSumatif() {
       disalinDari: { nama: sum.namaPemilik || "", kelas: (mapelAsal(sum.id) || {}).kelas || "" }
     });
     if (!baru) return;
-    kabar(`Ujian "${sum.nama}" sudah disalin jadi ujianmu di ${mp.kelas}. Sekarang kamu bisa mengubahnya sesuka hati.`);
+    kabar(`Ujian "${sum.nama}" sudah disalin jadi ujian Anda di ${mp.kelas}. Sekarang Anda bisa mengubahnya sesuka hati.`);
     pergi("sumatif", { sumId: baru.id, uasGrup: null });
   });
   const saklar = document.getElementById("bagikanSum");
@@ -237,7 +237,7 @@ function layarSumatif() {
   isi.querySelectorAll("[data-lepas]").forEach(b => {
     b.onclick = async () => {
       const k = b.dataset.lepas;
-      if (k.startsWith(MODUL_UJIAN + ":") && !(await tanyaYakin("Hapus soal khusus ujian ini? Soal ini nggak ada di modul mana pun, jadi bakal hilang.", { bahaya: true, ya: "Hapus soal" }))) return;
+      if (k.startsWith(MODUL_UJIAN + ":") && !(await tanyaYakin("Hapus soal khusus ujian ini? Soal ini tidak ada di modul mana pun, jadi akan hilang.", { bahaya: true, ya: "Hapus soal" }))) return;
       simpanUrutan(urutan.filter(x => x !== k));
     };
   });
@@ -272,8 +272,8 @@ function layarPilihSoal() {
   const kelasModul = (m) => { const asal = mapelAsal(m.id); return asal && asal.id !== mp.id ? ` · ${aman(asal.kelas)}` : ""; };
 
   let html = usul
-    ? `<p class="info">Centang soal yang mau kamu usulkan ke ${aman(sum.nama)}. Koordinator yang memutuskan soal mana yang dipakai. Soal yang sudah ada di UAS nggak bisa dipilih lagi.</p>`
-    : `<p class="info">Centang soal yang mau dimasukkan ke ${aman(sum.nama)}. Modul pengampu lain yang muncul di sini cuma yang sudah dibagikan, termasuk dari kelas lain di ${aman(namaGrup(mp))}.</p>`;
+    ? `<p class="info">Centang soal yang ingin Anda usulkan ke ${aman(sum.nama)}. Koordinator yang memutuskan soal mana yang dipakai. Soal yang sudah ada di UAS tidak bisa dipilih lagi.</p>`
+    : `<p class="info">Centang soal yang ingin dimasukkan ke ${aman(sum.nama)}. Modul pengampu lain yang muncul di sini hanya yang sudah dibagikan, termasuk dari kelas lain di ${aman(namaGrup(mp))}.</p>`;
   if (modul.length === 0) {
     html += `<p class="kosong">Belum ada modul di semester ini. Buat modul dan soal formatif dulu.</p>`;
   }
@@ -356,7 +356,7 @@ function formSoalUjian() {
   tombolKembali.hidden = false;
 
   isi.innerHTML = `
-    <p class="info">Soal ini cuma ada di ujian ${aman(sum.nama)}, nggak masuk ke modul mana pun. Cocok buat soal yang sengaja beda dari latihan harian.</p>
+    <p class="info">Soal ini hanya ada di ujian ${aman(sum.nama)}, tidak masuk ke modul mana pun. Cocok untuk soal yang sengaja beda dari latihan harian.</p>
     <form id="form">
       ${htmlIsianSoal(s)}
       <button type="submit" class="tombol-utama">Simpan soal</button>

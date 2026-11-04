@@ -61,7 +61,7 @@ async function jalankan() {
     toko.status = "gagal";
     toko.pesanGagal = navigator.onLine
       ? "Aplikasi gagal tersambung ke server. Coba muat ulang halaman ini."
-      : "Nggak ada sinyal, dan aplikasi belum pernah dibuka di perangkat ini. Sambungkan internet dulu sekali, setelah itu bisa dipakai tanpa sinyal.";
+      : "Tidak ada sinyal, dan aplikasi belum pernah dibuka di perangkat ini. Sambungkan internet dulu sekali, setelah itu bisa dipakai tanpa sinyal.";
     tampilkan();
   }
 }
@@ -79,7 +79,7 @@ function dalamBingkaiLain() {
 
 if (dalamBingkaiLain()) {
   document.getElementById("isi").innerHTML =
-    `<div class="kosong">Bank Soal cuma bisa dibuka langsung di tab browser.</div>`;
+    `<div class="kosong">Bank Soal hanya bisa dibuka langsung di tab browser.</div>`;
 } else {
   jalankan();
 }

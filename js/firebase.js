@@ -82,7 +82,7 @@ export async function buatBackendFirebase(konfig) {
   try {
     db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
   } catch (err) {
-    console.warn("Cache offline nggak tersedia:", err);
+    console.warn("Cache offline tidak tersedia:", err);
     db = initializeFirestore(app, { localCache: memoryLocalCache() });
   }
 
@@ -132,7 +132,7 @@ export async function buatBackendFirebase(konfig) {
         await terminate(db);
         await clearIndexedDbPersistence(db);
       } catch (err) {
-        console.warn("Cache offline gagal dihapus (mungkin aplikasi masih kebuka di tab lain):", err);
+        console.warn("Cache offline gagal dihapus (mungkin aplikasi masih terbuka di tab lain):", err);
       }
       // Firestore yang udah dihentikan nggak bisa dipakai lagi, jadi dimuat ulang (balik ke layar masuk)
       location.reload();
@@ -217,7 +217,7 @@ export async function buatBackendFirebase(konfig) {
         const nama = giliran[i];
         if (i > 0) {
           const ulang = nama === giliran[i - 1];
-          kabarProses(ulang ? `Server AI lagi penuh, nyoba lagi (${i + 1}/3)...`
+          kabarProses(ulang ? `Server AI sedang penuh, mencoba lagi (${i + 1}/3)...`
             : `${alasan || "Server AI bermasalah"}, pindah ke model ${nama === cadangan ? "cadangan" : "utama"}...`);
           await tunggu(ulang ? 3000 * i : 1000);
         }
@@ -242,7 +242,7 @@ export async function buatBackendFirebase(konfig) {
           // kuota satu model habis (429): langsung coba model lain (jatahnya terpisah)
           if (kode === 429) { alasan = "Jatah AI model ini habis"; i = lompatKeModelLain(i) - 1; continue; }
           // model nggak ditemukan (misal namanya udah diganti Google): langsung coba model lain
-          if (hilang) { alasan = "Model AI nggak ditemukan"; i = lompatKeModelLain(i) - 1; continue; }
+          if (hilang) { alasan = "Model AI tidak ditemukan"; i = lompatKeModelLain(i) - 1; continue; }
           if (penuh) { alasan = "Server AI masih penuh"; continue; }
           // galat lain (izin / App Check / permintaan nggak valid): model lain juga nggak bakal bisa,
           // jadi langsung ditampilkan

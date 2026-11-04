@@ -90,13 +90,13 @@ function panjangBahanAI(bahan, d) {
 function modulDriveAI(bahan, d) {
   return modulBahanAI(bahan, d).filter(m => m && linkPratinjau(m.link));
 }
-const PESAN_DRIVE_AI = "File modul di Google Drive nggak dibaca AI. Biar soalnya sesuai isi file itu, download PDF-nya lalu pilih di bagian c.";
+const PESAN_DRIVE_AI = "File modul di Google Drive tidak dibaca AI. Agar soalnya sesuai isi file itu, unduh PDF-nya lalu pilih di bagian c.";
 
 // ---------- susun perintah ke AI ----------
 function susunPerintahAI(bahan, d) {
   const mp = bahan.mapel;
   const baris = [];
-  baris.push(`Kamu membantu ustadz/ustadzah di ${toko.lembaga.nama || KONFIG.namaLembaga || "sebuah PKBM pondok pesantren"} menyusun soal ${bahan.untuk === "sumatif" ? "ujian sumatif" : "formatif (latihan per pertemuan)"}.`);
+  baris.push(`Anda membantu ustadz/ustadzah di ${toko.lembaga.nama || KONFIG.namaLembaga || "sebuah PKBM pondok pesantren"} menyusun soal ${bahan.untuk === "sumatif" ? "ujian sumatif" : "formatif (latihan per pertemuan)"}.`);
   baris.push(`Mapel: ${mp.nama} (${namaJenis(jenisMapel(mp)).toLowerCase()}), kelas ${mp.kelas}, ${mp.jenjang}.`);
   baris.push("", "BAHAN:");
 
@@ -125,8 +125,8 @@ function susunPerintahAI(bahan, d) {
   baris.push(`Buat tepat ${d.jumlahPG} soal pilihan ganda dan ${d.jumlahEsai} soal esai.`);
   baris.push("Aturan:");
   baris.push("- Semua soal, kunci jawaban, dan pedoman HARUS bisa dijawab dari bahan di atas. Jangan keluar dari materi.");
-  baris.push("- Jangan menambah fakta, angka, tanggal, nama tokoh, ayat, hadits, atau dalil yang tidak ada di bahan. Kalau mengutip ayat atau hadits, tulis persis seperti di bahan.");
-  baris.push("- Kalau bahannya tidak cukup untuk jumlah soal yang diminta, buat lebih sedikit soal saja. Jangan mengarang supaya jumlahnya pas.");
+  baris.push("- Jangan menambah fakta, angka, tanggal, nama tokoh, ayat, hadits, atau dalil yang tidak ada di bahan. Jika mengutip ayat atau hadits, tulis persis seperti di bahan.");
+  baris.push("- Jika bahannya tidak cukup untuk jumlah soal yang diminta, buat lebih sedikit soal saja. Jangan mengarang supaya jumlahnya pas.");
   baris.push("- Pilihan ganda: 4 pilihan jawaban, tepat satu yang benar, pengecohnya masuk akal, posisi jawaban benar diacak.");
   baris.push("- Jangan tulis huruf (A., B., ...) di depan pilihan jawaban.");
   baris.push("- Esai: sertakan pedoman jawaban berupa poin-poin yang diharapkan.");
@@ -137,14 +137,14 @@ function susunPerintahAI(bahan, d) {
     sulit: "- Tingkat kesulitan: sulit (menganalisis, mengevaluasi, HOTS)."
   }[d.tingkat]);
   baris.push({
-    ikut: "- Bahasa soal mengikuti bahasa materinya (kalau materinya berbahasa Arab, tulis soal dalam bahasa Arab).",
+    ikut: "- Bahasa soal mengikuti bahasa materinya (jika materinya berbahasa Arab, tulis soal dalam bahasa Arab).",
     indonesia: "- Tulis soal dalam bahasa Indonesia yang baku dan mudah dipahami.",
     arab: "- Tulis soal dan pilihan jawaban dalam bahasa Arab (boleh berharakat)."
   }[d.bahasa]);
   baris.push("- Bahasa sopan dan contoh yang cocok untuk lingkungan pondok pesantren.");
   if (bahan.untuk === "modul") {
     baris.push(`- Isi "pertemuan" dengan nomor pertemuan yang paling cocok${d.pilih.length ? ` (pilih dari: ${bahan.pilihan.filter(x => d.pilih.includes(x.id)).map(x => x.nomor).join(", ")})` : ""}, atau null.`);
-    if (d.pakaiBacaan && bahan.bacaan.length) baris.push(`- Kalau soal mengacu ke teks bacaan, isi "bacaan" dengan nomor teksnya. Kalau nggak, null.`);
+    if (d.pakaiBacaan && bahan.bacaan.length) baris.push(`- Jika soal mengacu ke teks bacaan, isi "bacaan" dengan nomor teksnya. Jika tidak, null.`);
   }
   if (d.catatan.trim()) baris.push(`- Permintaan tambahan guru: ${d.catatan.trim()}`);
 
@@ -243,23 +243,23 @@ function jenisJatahAI(t) {
 
 function pesanGagalAI(err) {
   const t = `${(err && err.code) || ""} ${(err && err.message) || err || ""}`;
-  if (!navigator.onLine) return "Sinyal putus. Bikin soal pakai AI butuh internet, coba lagi pas ada sinyal.";
-  if (/JAWABAN_RUSAK/.test(t)) return "Jawaban AI-nya nggak kebaca. Coba tekan Buat draft soal sekali lagi.";
-  if (/JAWABAN_KOSONG/.test(t)) return "AI nggak ngasih soal apa pun. Coba tambahin bahannya (target capaian, ringkasan, atau PDF), lalu coba lagi.";
+  if (!navigator.onLine) return "Sinyal putus. Buat soal dengan AI butuh internet, coba lagi saat ada sinyal.";
+  if (/JAWABAN_RUSAK/.test(t)) return "Jawaban AI-nya tidak terbaca. Coba tekan Buat draft soal sekali lagi.";
+  if (/JAWABAN_KOSONG/.test(t)) return "AI tidak memberi soal apa pun. Coba tambahkan bahannya (target capaian, ringkasan, atau PDF), lalu coba lagi.";
   if (/\b429\b|quota|RESOURCE_EXHAUSTED|rate.?limit|too many requests/i.test(t)) {
     const jenis = jenisJatahAI(t);
-    if (jenis === "menit") return "Permintaan ke AI lagi kebanyakan dalam waktu dekat. Tunggu sekitar 1 menit, lalu coba lagi.";
-    if (jenis === "hari") { catatJatahAIHabis(); return `Jatah AI gratis hari ini udah habis. AI bisa dipakai lagi ${teksResetAI()}.`; }
-    return `Jatah AI gratis lagi habis atau permintaannya kebanyakan. Coba lagi 1 menit lagi. Kalau masih gagal, berarti jatah hari ini udah habis dan AI bisa dipakai lagi ${teksResetAI()}.`;
+    if (jenis === "menit") return "Permintaan ke AI sedang terlalu banyak dalam waktu dekat. Tunggu sekitar 1 menit, lalu coba lagi.";
+    if (jenis === "hari") { catatJatahAIHabis(); return `Jatah AI gratis hari ini sudah habis. AI bisa dipakai lagi ${teksResetAI()}.`; }
+    return `Jatah AI gratis sedang habis atau permintaannya terlalu banyak. Coba lagi 1 menit lagi. Jika masih gagal, berarti jatah hari ini sudah habis dan AI bisa dipakai lagi ${teksResetAI()}.`;
   }
-  if (/timeout has expired|timed? ?out|deadline/i.test(t)) return "Server AI Google lagi lambat, jadi nggak ada jawaban. Coba lagi beberapa menit lagi (jumlah soalnya dikurangi juga boleh).";
-  if (/\[50[034]\b|unavailable|overloaded/i.test(t)) return "Server AI Google lagi penuh. Tunggu beberapa menit, lalu coba lagi (jumlah soalnya dikurangi juga boleh).";
-  if (/app.?check/i.test(t)) return "AI ditolak karena pengaman App Check. Admin perlu ngecek pengaturan App Check di Firebase (lihat tutorial).";
-  if (/network-request-failed|Failed to fetch|NetworkError/i.test(t)) return "Gagal nyambung ke server AI. Cek sinyal, lalu coba lagi.";
-  if (/not.*enabled|has not been used|PERMISSION_DENIED|403|api-not-enabled|genai config not found|config-not-found/i.test(t)) return "Fitur AI belum diaktifkan di Firebase. Admin perlu nyalain Firebase AI Logic dulu (lihat tutorial).";
+  if (/timeout has expired|timed? ?out|deadline/i.test(t)) return "Server AI Google sedang lambat, jadi tidak ada jawaban. Coba lagi beberapa menit lagi (jumlah soalnya dikurangi juga boleh).";
+  if (/\[50[034]\b|unavailable|overloaded/i.test(t)) return "Server AI Google sedang penuh. Tunggu beberapa menit, lalu coba lagi (jumlah soalnya dikurangi juga boleh).";
+  if (/app.?check/i.test(t)) return "AI ditolak karena pengaman App Check. Admin perlu memeriksa pengaturan App Check di Firebase (lihat tutorial).";
+  if (/network-request-failed|Failed to fetch|NetworkError/i.test(t)) return "Gagal tersambung ke server AI. Periksa sinyal, lalu coba lagi.";
+  if (/not.*enabled|has not been used|PERMISSION_DENIED|403|api-not-enabled|genai config not found|config-not-found/i.test(t)) return "Fitur AI belum diaktifkan di Firebase. Admin perlu menyalakan Firebase AI Logic dulu (lihat tutorial).";
   if (/SAFETY|blocked/i.test(t)) return "AI menolak bahan ini. Coba ubah ringkasan atau catatan tambahannya.";
-  if (/too large|payload|size/i.test(t)) return `File PDF-nya kegedean. Maksimal ${AI_MAKS_PDF_MB} MB.`;
-  return "Gagal bikin soal pakai AI. " + ((err && err.message) || "");
+  if (/too large|payload|size/i.test(t)) return `File PDF-nya terlalu besar. Maksimal ${AI_MAKS_PDF_MB} MB.`;
+  return "Gagal membuat soal menggunakan AI. " + ((err && err.message) || "");
 }
 // pesan + kode aslinya (buat dilaporin kalau ada masalah)
 function pesanGagalAILengkap(err) {
@@ -289,7 +289,7 @@ function layarAISoal() {
   const coba = toko.backend.mode === "coba";
   const keModul = bahan.untuk === "modul";
 
-  judul.textContent = keModul ? "Buat soal pakai AI" : bahan.usul ? "Usulkan soal UAS pakai AI" : "Buat soal ujian pakai AI";
+  judul.textContent = keModul ? "Buat soal dengan AI" : bahan.usul ? "Usulkan soal UAS menggunakan AI" : "Buat soal ujian dengan AI";
   jejak.textContent = keModul ? `${bahan.modul.judul}` : `${bahan.sum.nama} · ${namaMapel(mp)}`;
   tombolKembali.hidden = false;
 
@@ -298,12 +298,12 @@ function layarAISoal() {
         <input type="checkbox" name="pilihBahan" value="${aman(x.id)}" ${d.pilih.includes(x.id) ? "checked" : ""}>
         <span dir="auto">${aman(x.label)} <small dir="auto">${aman(potong(x.sub, 90))}</small></span>
       </label>`).join("")
-    : `<p class="info">${keModul ? "Modul ini belum punya pertemuan. Isi target capaiannya dulu, atau pakai ringkasan materi / PDF." : "Belum ada modul di semester ini. Pakai ringkasan materi / PDF aja."}</p>`;
+    : `<p class="info">${keModul ? "Modul ini belum punya pertemuan. Isi target capaiannya dulu, atau gunakan ringkasan materi / PDF." : "Belum ada modul di semester ini. Gunakan ringkasan materi / PDF saja."}</p>`;
 
   isi.innerHTML = `
     <div class="layar-ai">
-      ${jatahAIHabis() ? `<p class="pemberitahuan-kecil">Jatah AI gratis hari ini udah habis. AI bisa dipakai lagi ${aman(teksResetAI())}.</p>` : ""}
-      ${coba ? `<p class="pemberitahuan-kecil">Mode coba: soal yang keluar di sini <b>contoh bohongan</b>, bukan buatan AI beneran. AI aslinya jalan setelah Firebase disambungkan.</p>` : ""}
+      ${jatahAIHabis() ? `<p class="pemberitahuan-kecil">Jatah AI gratis hari ini sudah habis. AI bisa dipakai lagi ${aman(teksResetAI())}.</p>` : ""}
+      ${coba ? `<p class="pemberitahuan-kecil">Mode coba: soal yang keluar di sini <b>contoh tiruan</b>, bukan buatan AI sungguhan. AI aslinya jalan setelah Firebase disambungkan.</p>` : ""}
       <section class="bagian">
         <h2>Bahan untuk AI</h2>
         <fieldset>
@@ -312,7 +312,7 @@ function layarAISoal() {
           ${keModul && bahan.bacaan.length ? `
           <label class="centang">
             <input type="checkbox" id="pakaiBacaan" ${d.pakaiBacaan ? "checked" : ""}>
-            <span>Boleh bikin soal dari teks bacaan modul <small>${bahan.bacaan.length} teks</small></span>
+            <span>Boleh membuat soal dari teks bacaan modul <small>${bahan.bacaan.length} teks</small></span>
           </label>` : ""}
         </fieldset>
         <label for="ringkasanAI">b. Ringkasan materi (opsional)</label>
@@ -321,25 +321,25 @@ function layarAISoal() {
           <span class="label-isian">c. File PDF modul (opsional)</span>
           <button type="button" class="tombol-kedua pilih-file" id="pilihPdfAI">Pilih file PDF</button>
           <input type="file" id="pdfAI" accept="application/pdf" hidden>
-          <span class="info" id="namaPdf">${d.pdf ? `${aman(d.pdf.nama)} <button class="tombol-teks merah" id="lepasPdf" type="button">Lepas</button>` : `Maks. ${AI_MAKS_PDF_MB} MB. Link Google Drive nggak bisa dibaca AI, jadi download dulu PDF-nya lalu pilih di sini.`}</span>
+          <span class="info" id="namaPdf">${d.pdf ? `${aman(d.pdf.nama)} <button class="tombol-teks merah" id="lepasPdf" type="button">Lepas</button>` : `Maks. ${AI_MAKS_PDF_MB} MB. Link Google Drive tidak bisa dibaca AI, jadi unduh dulu PDF-nya lalu pilih di sini.`}</span>
         </div>
         ${!d.pdf && keModul && modulDriveAI(bahan, d).length ? `<p class="pemberitahuan-kecil" id="ingatDrive">${PESAN_DRIVE_AI}</p>` : ""}
       </section>
 
       <section class="bagian">
-        <h2>Soal yang mau dibuat</h2>
+        <h2>Soal yang ingin dibuat</h2>
         <div class="dua-kolom">
           <label>Pilihan ganda <input type="number" id="jumlahPG" min="0" max="${AI_MAKS_PG}" value="${d.jumlahPG}" inputmode="numeric"></label>
           <label>Esai <input type="number" id="jumlahEsai" min="0" max="${AI_MAKS_ESAI}" value="${d.jumlahEsai}" inputmode="numeric"></label>
           <label>Tingkat kesulitan <select id="tingkatAI">${Object.entries(TINGKAT_AI).map(([k, v]) => `<option value="${k}" ${d.tingkat === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
           <label>Bahasa soal <select id="bahasaAI">${Object.entries(BAHASA_AI).map(([k, v]) => `<option value="${k}" ${d.bahasa === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
         </div>
-        <label>Permintaan tambahan (opsional) <input id="catatanAI" value="${aman(d.catatan)}" placeholder="Misalnya: pakai contoh kegiatan di pondok"></label>
+        <label>Permintaan tambahan (opsional) <input id="catatanAI" value="${aman(d.catatan)}" placeholder="Misalnya: menggunakan contoh kegiatan di pondok"></label>
         <div class="baris-tombol">
           <button class="tombol-utama tombol-ai" id="buatAI">${IKON_AI}<span>${d.soal.length ? "Buat lagi (ditambah ke draft)" : "Buat draft soal"}</span></button>
           <span class="info" id="statusAI" role="status" aria-live="polite"></span>
         </div>
-        <p class="info kecil">Yang dikirim ke AI cuma isi modul di atas. Data siswa dan nilai nggak pernah dikirim. Hasil AI bisa salah, jadi cek dulu tiap soal dan kuncinya sebelum disimpan.</p>
+        <p class="info kecil">Yang dikirim ke AI hanya isi modul di atas. Data siswa dan nilai tidak pernah dikirim. Hasil AI bisa salah, jadi periksa dulu tiap soal dan kuncinya sebelum disimpan.</p>
       </section>
 
       <div id="wadahDraf"></div>
@@ -373,7 +373,7 @@ function layarAISoal() {
     const f = e.target.files[0];
     if (!f) return;
     if (f.type && f.type !== "application/pdf") { status.textContent = "Filenya harus PDF."; return; }
-    if (f.size > AI_MAKS_PDF_MB * 1024 * 1024) { status.textContent = `File-nya ${(f.size / 1048576).toFixed(1)} MB, kegedean. Maksimal ${AI_MAKS_PDF_MB} MB.`; return; }
+    if (f.size > AI_MAKS_PDF_MB * 1024 * 1024) { status.textContent = `File-nya ${(f.size / 1048576).toFixed(1)} MB, terlalu besar. Maksimal ${AI_MAKS_PDF_MB} MB.`; return; }
     status.textContent = "Membaca file...";
     try {
       d.pdf = { nama: f.name, mime: "application/pdf", ukuran: f.size, data: await bacaFileBase64(f) };
@@ -399,15 +399,15 @@ function layarAISoal() {
     // bahan tipis / file cuma di Drive: AI gampang ngarang, jadi diingetin dulu
     if (!d.pdf) {
       const ingat = [];
-      if (panjangBahanAI(bahan, d) < AI_BAHAN_TIPIS) ingat.push("Bahannya masih sedikit. Kalau bahannya tipis, AI gampang ngarang fakta, dalil, atau contoh yang nggak ada di materi. Biar lebih akurat, tempel ringkasan materi atau pilih file PDF modulnya.");
+      if (panjangBahanAI(bahan, d) < AI_BAHAN_TIPIS) ingat.push("Bahannya masih sedikit. Jika bahannya tipis, AI mudah mengarang fakta, dalil, atau contoh yang tidak ada di materi. Agar lebih akurat, tempel ringkasan materi atau pilih file PDF modulnya.");
       if (modulDriveAI(bahan, d).length) ingat.push(PESAN_DRIVE_AI);
-      if (ingat.length && !(await tanyaYakin(`${ingat.join("\n\n")}\n\nTetap buat soal sekarang?`, { ya: "Tetap buat" }))) return;
+      if (ingat.length && !(await tanyaYakin(`${ingat.join("\n\n")}\n\nTetap membuat soal sekarang?`, { ya: "Tetap membuat" }))) return;
     }
 
     tombol.disabled = true;
     // detik berjalan, biar kelihatan prosesnya masih jalan (bukan macet)
     const mulai = Date.now();
-    let keterangan = "AI lagi nyusun soal...";
+    let keterangan = "AI sedang menyusun soal...";
     const tulisStatus = () => { status.textContent = `${keterangan} ${Math.round((Date.now() - mulai) / 1000)} detik`; };
     tulisStatus();
     const jam = setInterval(tulisStatus, 1000);
@@ -427,7 +427,7 @@ function layarAISoal() {
       d.soal.push(...baru);
       const ragu = baru.filter(x => x.ragu).length;
       const diminta = d.jumlahPG + d.jumlahEsai;
-      status.textContent = `${baru.length} soal baru masuk draft.${baru.length < diminta ? ` (Diminta ${diminta}; AI bikin lebih sedikit karena bahannya terbatas.)` : ""}${ragu ? ` ${ragu} soal kuncinya belum jelas, cek ya.` : ""}`;
+      status.textContent = `${baru.length} soal baru masuk draft.${baru.length < diminta ? ` (Diminta ${diminta}; AI membuat lebih sedikit karena bahannya terbatas.)` : ""}${ragu ? ` ${ragu} soal kuncinya belum jelas, mohon diperiksa.` : ""}`;
       tombol.querySelector("span").textContent = "Buat lagi (ditambah ke draft)";
       gambarDraf();
       document.getElementById("wadahDraf").scrollIntoView({ block: "start", behavior: "smooth" });
@@ -456,7 +456,7 @@ function layarAISoal() {
           <span class="nomor">${i + 1}.</span>
           <span class="jenis">${s.jenis === "PG" ? "Pilihan ganda" : "Esai"}</span>
           ${s.bacaanId ? `<span class="label-bacaan">Teks: ${aman(potong((bahan.bacaan.find(b => b.id === s.bacaanId) || {}).judul || "bacaan", 24))}</span>` : ""}
-          ${s.ragu ? `<span class="tanda-ragu">Cek kuncinya</span>` : ""}
+          ${s.ragu ? `<span class="tanda-ragu">Periksa kuncinya</span>` : ""}
           <span class="spasi"></span>
           <button class="tombol-teks merah" data-buang>Buang</button>
         </div>
@@ -475,7 +475,7 @@ function layarAISoal() {
     const dipakai = d.soal.filter(s => s.pakai).length;
     wadah.innerHTML = `
       <h2 class="subjudul">Draft soal <small id="hitungDraf">${d.soal.length} soal · ${dipakai} dipakai</small></h2>
-      <p class="info">Cek tiap soal. Bisa langsung diedit di sini, kunci jawaban ditandai huruf yang dilingkari merah. Hilangkan centang "Pakai" atau tekan Buang buat soal yang nggak cocok.</p>
+      <p class="info">Periksa tiap soal. Bisa langsung diedit di sini, kunci jawaban ditandai huruf yang dilingkari merah. Hilangkan centang "Pakai" atau tekan Buang untuk soal yang tidak cocok.</p>
       <div class="kolom">${d.soal.map(htmlSoal).join("")}</div>
       <div class="baris-tombol bawah-draf">
         <button class="tombol-utama" id="simpanDraf">${labelSimpanAI(bahan, dipakai)}</button>
@@ -559,7 +559,7 @@ function simpanDrafAI(bahan, d, wadah, gambarUlang) {
     const t = ujianTerbaru(mp.id, bahan.sum.id);
     if (!t) { kabar("Ujian ini sudah dihapus (mungkin dari perangkat lain)."); return kembaliKeDaftar(); }
     if (bahan.usul) {
-      if (t.status === "dikunci") { kabar("UAS ini sudah dikunci TU, jadi nggak bisa diusulkan soal lagi."); return pergi("sumatif", { usul: false }); }
+      if (t.status === "dikunci") { kabar("UAS ini sudah dikunci TU, jadi tidak bisa diusulkan soal lagi."); return pergi("sumatif", { usul: false }); }
       // siap[i] = dipakai[i] (kalau ada yang salah, udah balik di atas)
       const terkirim = new Set();
       siap.forEach((s, i) => {
@@ -577,7 +577,7 @@ function simpanDrafAI(bahan, d, wadah, gambarUlang) {
         return gambarUlang();
       }
       drafAI = null;
-      kabar(`${siap.length} soal sudah dikirim sebagai usulan. Koordinator yang memutuskan dipakai atau nggak.`);
+      kabar(`${siap.length} soal sudah dikirim sebagai usulan. Koordinator yang memutuskan dipakai atau tidak.`);
       return pergi("sumatif", { usul: false });
     }
     const butir = [...(t.butir || []), ...siap.map(s => ({
@@ -607,7 +607,7 @@ const IKON_AI = `<svg viewBox="0 0 24 24" aria-hidden="true" class="ikon-ai"><pa
 function layarAIGenerator() {
   if (sayaKurikulum() && !mapelDiampu().length) throw new DataHilang();
   judul.textContent = "AI Generator soal";
-  jejak.textContent = "Bikin draft soal dari modul, tinggal cek & edit";
+  jejak.textContent = "Buat draft soal dari modul, cukup periksa & ubah";
   const diampu = [...mapelDiampu()].sort(urutMapelJenis);
   const sem = semesterSekarang();
   const pilihMapel = posisi.aiMapel && diampu.some(m => m.id === posisi.aiMapel) ? posisi.aiMapel : (diampu[0] && diampu[0].id);
@@ -616,10 +616,10 @@ function layarAIGenerator() {
 
   let h = `<section class="kartu-sambut kecil"><div class="sambut-teks">
       <h2>Buat soal dengan AI</h2>
-      <p>AI menyusun draft soal pilihan ganda & esai dari target capaian, ringkasan, atau PDF modulmu. Kamu tetap yang memeriksa dan menyimpan.</p>
+      <p>AI menyusun draft soal pilihan ganda & esai dari target capaian, ringkasan, atau PDF modul Anda. Anda tetap yang memeriksa dan menyimpan.</p>
     </div></section>`;
   if (!diampu.length) {
-    isi.innerHTML = h + `<p class="kosong">Kamu belum ditugaskan ke mapel mana pun. Minta admin (TU) menambahkanmu sebagai pengampu.</p>`;
+    isi.innerHTML = h + `<p class="kosong">Anda belum ditugaskan ke mapel mana pun. Minta admin (TU) menambahkan Anda sebagai pengampu.</p>`;
     return;
   }
   const modulSaya = modulMapel(mp.id).filter(m => bisaDiubahDi(mp.id, m, modulMapel(mp.id)) && samaSemester(m, sem));
@@ -631,7 +631,7 @@ function layarAIGenerator() {
         <select id="aiMapel">${diampu.map(m => `<option value="${aman(m.id)}" data-ket="${aman(namaJenis(jenisMapel(m)))} · ${aman(m.jenjang)}" ${m.id === mp.id ? "selected" : ""}>${aman(namaMapel(m))}</option>`).join("")}</select>
       </label>
       <fieldset>
-        <legend>2. Soalnya mau dimasukkan ke mana?</legend>
+        <legend>2. Soalnya ingin dimasukkan ke mana?</legend>
         <div class="pilih-jenis">
           <label class="radio"><input type="radio" name="aiKe" value="modul" ${ke === "modul" ? "checked" : ""}> Soal formatif di modul</label>
           <label class="radio"><input type="radio" name="aiKe" value="sumatif" ${ke === "sumatif" ? "checked" : ""}> Ujian sumatif</label>
@@ -643,14 +643,14 @@ function layarAIGenerator() {
           : `<option value="">${ke === "modul" ? "Belum ada modul" : "Belum ada ujian"}</option>`}</select>
       </label>
       ${pilihan.length ? "" : `<p class="info">${ke === "modul"
-        ? "Bikin modul dulu, isi target capaian tiap pertemuan. AI pakai isi modul itu sebagai bahan."
-        : "Bikin ujian sumatif dulu di tab Sumatif mapel ini, atau pilih “Soal formatif di modul”."}</p>`}
+        ? "Buat modul dulu, isi target capaian tiap pertemuan. AI menggunakan isi modul itu sebagai bahan."
+        : "Buat ujian sumatif dulu di tab Sumatif mapel ini, atau pilih “Soal formatif di modul”."}</p>`}
       <div class="baris-tombol">
         ${pilihan.length
-          ? `<button type="submit" class="tombol-utama tombol-ai">${IKON_AI}<span>Lanjut buat soal</span></button>`
+          ? `<button type="submit" class="tombol-utama tombol-ai">${IKON_AI}<span>Lanjut membuat soal</span></button>`
           : `<button type="button" class="tombol-utama" id="aiBuatDulu">${ke === "modul" ? "+ Tambah modul ajar" : "+ Buat ujian sumatif"}</button>`}
       </div>
-      <p class="info kecil">Yang dikirim ke AI cuma isi modul. Data siswa dan nilai nggak pernah dikirim. Soal UAS bersama dibuat dari halaman UAS-nya.</p>
+      <p class="info kecil">Yang dikirim ke AI hanya isi modul. Data siswa dan nilai tidak pernah dikirim. Soal UAS bersama dibuat dari halaman UAS-nya.</p>
     </form>`;
   isi.innerHTML = h;
 

@@ -116,8 +116,8 @@ function rapikanSoal(s) {
 
 // pesan galat kalau ada teks soal yang kepanjangan, atau "" kalau aman
 function galatPanjangSoal(s) {
-  if ((s.teks || "").length > BATAS_SOAL.teks) return `Pertanyaannya kepanjangan (maks. ${BATAS_SOAL.teks} huruf).`;
-  if ((s.pilihan || []).some(x => (x || "").length > BATAS_SOAL.pilihan)) return `Ada pilihan jawaban yang kepanjangan (maks. ${BATAS_SOAL.pilihan} huruf).`;
-  if ((s.pedoman || "").length > BATAS_SOAL.pedoman) return `Pedoman jawabannya kepanjangan (maks. ${BATAS_SOAL.pedoman} huruf).`;
+  if ((s.teks || "").length > BATAS_SOAL.teks) return `Pertanyaannya terlalu panjang (maks. ${BATAS_SOAL.teks} huruf).`;
+  if ((s.pilihan || []).some(x => (x || "").length > BATAS_SOAL.pilihan)) return `Ada pilihan jawaban yang terlalu panjang (maks. ${BATAS_SOAL.pilihan} huruf).`;
+  if ((s.pedoman || "").length > BATAS_SOAL.pedoman) return `Pedoman jawabannya terlalu panjang (maks. ${BATAS_SOAL.pedoman} huruf).`;
   return "";
 }

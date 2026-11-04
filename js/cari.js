@@ -19,7 +19,7 @@ let cariUlang = null;
 
 function layarCari() {
   judul.textContent = "Cari soal";
-  jejak.textContent = sayaKurikulum() ? "Di semua mapel" : "Di mapel yang kamu ampu";
+  jejak.textContent = sayaKurikulum() ? "Di semua mapel" : "Di mapel yang Anda ampu";
 
   isi.innerHTML = `
     <input type="search" id="kataCari" value="${aman(posisi.kata || "")}" placeholder="Ketik kata yang ada di soal" aria-label="Kata yang dicari">
@@ -56,7 +56,7 @@ function layarCari() {
     const belumSiap = mapelTerlihat().filter(mp => !isiMapelSiap(mp.id)).length;
     const catatanMuat = belumSiap ? `<p class="info" role="status">${belumSiap} mapel masih dimuat, hasilnya bisa belum lengkap.</p>` : "";
     if (hasil.length === 0) {
-      tempat.innerHTML = catatanMuat + (belumSiap ? "" : `<p class="kosong">Nggak ada soal yang mengandung "${aman(kata)}".</p>`);
+      tempat.innerHTML = catatanMuat + (belumSiap ? "" : `<p class="kosong">Tidak ada soal yang mengandung "${aman(kata)}".</p>`);
       return;
     }
     let h = catatanMuat + `<p class="info">${hasil.length} soal ketemu${hasil.length > 100 ? ", ditampilkan 100 pertama" : ""}</p><div class="daftar">`;

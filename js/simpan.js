@@ -11,7 +11,7 @@ function gagalSimpan(err) {
   console.error(err);
   const kode = err && err.code;
   if (kode === "permission-denied") {
-    kabar("Gagal menyimpan: perubahan ini ditolak.\n\nMungkin kamu sudah bukan pengampu mapel ini, atau isinya melebihi batas (misalnya judul terlalu panjang atau soalnya lebih dari 500). Kalau masih bingung, hubungi admin (TU).");
+    kabar("Gagal menyimpan: perubahan ini ditolak.\n\nMungkin Anda sudah bukan pengampu mapel ini, atau isinya melebihi batas (misalnya judul terlalu panjang atau soalnya lebih dari 500). Jika masih bingung, hubungi admin (TU).");
   } else {
     kabar("Gagal menyimpan.\n\n" + (err && err.message ? err.message : err));
   }
@@ -37,12 +37,12 @@ function muatDiDok(baru, lama, jenis) {
   const ukuran = ukuranDok(tanpaId(baru));
   const kb = (n) => Math.round(n / 1024);
   if (ukuran > BATAS_DOK.maks && (!lama || ukuran > ukuranDok(tanpaId(lama)))) {
-    kabar(`${jenis} ini kegedean (±${kb(ukuran)} KB, batasnya ±${kb(BATAS_DOK.maks)} KB), jadi perubahan ini NGGAK disimpan.\n\nPecah jadi dua ${jenis.toLowerCase()}, atau pendekin teks bacaan / soal yang panjang.`);
+    kabar(`${jenis} ini terlalu besar (±${kb(ukuran)} KB, batasnya ±${kb(BATAS_DOK.maks)} KB), jadi perubahan ini TIDAK disimpan.\n\nPecah jadi dua ${jenis.toLowerCase()}, atau pendekkan teks bacaan / soal yang panjang.`);
     return false;
   }
   if (ukuran > BATAS_DOK.peringatan && !sudahDiingatkanUkuran.has(baru.id)) {
     sudahDiingatkanUkuran.add(baru.id);
-    kabar(`${jenis} ini udah ±${kb(ukuran)} KB, mendekati batas ±${kb(BATAS_DOK.maks)} KB. Soal berikutnya sebaiknya ditaruh di ${jenis.toLowerCase()} baru.`);
+    kabar(`${jenis} ini sudah ±${kb(ukuran)} KB, mendekati batas ±${kb(BATAS_DOK.maks)} KB. Soal berikutnya sebaiknya diletakkan di ${jenis.toLowerCase()} baru.`);
   }
   return true;
 }

@@ -173,7 +173,7 @@ function htmlLembarRapor(santri, sem) {
       ${r.diniah.length ? `<tr><td>Rata-rata mapel diniah</td><td class="tengah">${angkaRapi(r.rataDiniah)}</td></tr>` : ""}
       <tr><td><b>Rata-rata seluruh mapel</b></td><td class="tengah"><b>${angkaRapi(r.rataSemua)}</b></td></tr>
     </table>
-    <p class="petunjuk kecil">Tugas & UH = rata-rata semua tugas / ulangan harian. Kehadiran = hadir ÷ (hadir + sakit + izin) × 100. Nilai akhir dihitung pakai bobot penilaian dari TU; "-" = belum ada nilainya.</p>
+    <p class="petunjuk kecil">Tugas & UH = rata-rata semua tugas / ulangan harian. Kehadiran = hadir ÷ (hadir + sakit + izin) × 100. Nilai akhir dihitung menggunakan bobot penilaian dari TU; "-" = belum ada nilainya.</p>
     <table class="ttd-rapor" width="100%"><tr>
       <td>Mengetahui,<br>Kepala PKBM<br><br><br><br>(..............................)</td>
       <td>Tulungagung, ${aman(tanggal)}<br>Wali Kelas<br><br><br><br>${wali
@@ -204,7 +204,7 @@ function layarRaporCetak() {
       <div class="panel-cetak jangan-cetak">
         <p class="info">${daftar.length} rapor${daftar.length > 1 ? ", tiap siswa satu halaman" : ""}.</p>
         <div class="baris-tombol"><button class="tombol-utama" id="print">Cetak / PDF</button></div>
-        <p class="info">Mau jadi PDF? Di jendela cetak, pilih tujuan "Simpan sebagai PDF".</p>
+        <p class="info">Ingin menyimpan sebagai PDF? Di jendela cetak, pilih tujuan "Simpan sebagai PDF".</p>
       </div>
       <div id="lembar">${daftar.map((s, i) => (i ? `<div class="halaman-baru"></div>` : "") + htmlLembarRapor(s, sem)).join("")}</div>
     </div>`;
@@ -223,7 +223,7 @@ function htmlPilihWali(jenjang, kelas, tahun) {
   const salah = w && putra && akunLama && sapaanPengguna(akunLama) === "ustadzah";
   // wali lama yang akunnya udah nonaktif / dihapus / ustadzah di kelas putra tetap kelihatan
   const lama = w && !guru.some(p => p.id === w.uid)
-    ? `<option value="${aman(w.uid)}" selected>${aman(w.nama)} (${salah ? "ustadzah, harus diganti" : "akun nggak aktif"})</option>` : "";
+    ? `<option value="${aman(w.uid)}" selected>${aman(w.nama)} (${salah ? "ustadzah, harus diganti" : "akun tidak aktif"})</option>` : "";
   return `${salah ? `<p class="pemberitahuan-kecil">Wali kelas ${aman(kelas)} tercatat ustadzah. Kelas putra harus diwalikan ustadz, silakan ganti.</p>` : ""}
     <label class="pilih-wali">Wali kelas ${aman(kelas)} · ${aman(tahun)}${putra ? ` <small>(kelas putra: hanya ustadz)</small>` : ""}
       <select data-wali="${aman(id)}" data-wali-tahun="${aman(tahun)}">
