@@ -126,7 +126,7 @@ function usulanGrup(gid, sem) {
 // ---- dari perangkat admin: catat grup tiap mapel & daftar pengampu tiap grup ----
 let jadwalSinkron = null;
 function sinkronGrup() {
-  if (!sayaKurikulum() || !toko.mapelSiap || !toko.grupSiap || !toko.kelasSiap) return;
+  if (!sayaKurikulum() || !toko.mapelSiap || !toko.grupSiap || !toko.kelasSiap || !toko.santriSiap) return;
   clearTimeout(jadwalSinkron);
   jadwalSinkron = setTimeout(jalankanSinkronGrup, 300);
 }

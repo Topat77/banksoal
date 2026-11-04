@@ -515,6 +515,8 @@ grup("Hitung nilai akhir");
   const rusak = hitungNilai({ ...lembarN(lengkap), hadir: { s1: { hadir: "<b>", sakit: "2", izin: -3 } } }, "s1", diniah);
   harap("isian kehadiran rusak jadi angka >= 0", JSON.stringify(rusak.hadir), JSON.stringify({ hadir: 0, sakit: 2, izin: 0 }));
   harap("nilai berupa teks nggak ikut dihitung", hitungNilai(lembarN({ k1: "80", k2: 60 }), "s1", umum).per.tugas, null);
+  harap("nilai di luar 0–100 dari database dibuang (UH 1000 & 90 → 90)", hitungNilai(lembarN({ k2: 1000, k3: 90 }), "s1", umum).per.uh, 90);
+  harap("nilai negatif dibuang", hitungNilai(lembarN({ k1: -5 }), "s1", umum).per.tugas, null);
   harap("belum ada nilai sama sekali → akhir kosong", hitungNilai(lembarN({}), "s1", umum).akhir, null);
   harap("lembar belum ada → akhir kosong", hitungNilai(null, "s1", umum).akhir, null);
   ctx.toko = { bobot: { "Paket B": { umum: { tugas: 50, uh: 50, uts: 0, uas: 0, keaktifan: 0, kehadiran: 0 } } } };

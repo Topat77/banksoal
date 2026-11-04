@@ -95,11 +95,17 @@ function hitungNilai(lembar, idSantri, mapel) {
   const hasil = { per: {}, harian: null, akhir: null, hadir: null };
   if (!lembar) return hasil;
   const isi = (lembar.nilai || {})[idSantri] || {};
+  // batas 0–100 cuma dicek di kotak isian (rules nggak ngecek angkanya), jadi angka di luar itu
+  // dari database (misal ditulis langsung) dibuang, biar nilai akhir di rapor nggak kacau
+  const angkaNilai = (k) => {
+    const v = isi[k.id];
+    return typeof v === "number" && v >= 0 && v <= 100 ? v : null;
+  };
   for (const g of KELOMPOK_NILAI) {
     if (g.k === "kehadiran") continue;
-    hasil.per[g.k] = rataRata((lembar.kolom || []).filter(k => k.kelompok === g.k).map(k => isi[k.id]));
+    hasil.per[g.k] = rataRata((lembar.kolom || []).filter(k => k.kelompok === g.k).map(angkaNilai));
   }
-  hasil.harian = rataRata((lembar.kolom || []).filter(k => k.kelompok === "tugas" || k.kelompok === "uh").map(k => isi[k.id]));
+  hasil.harian = rataRata((lembar.kolom || []).filter(k => k.kelompok === "tugas" || k.kelompok === "uh").map(angkaNilai));
   const h = (lembar.hadir || {})[idSantri];
   if (h) {
     // isinya dari database bisa string/HTML (rules cuma ngecek bentuk petanya), jadi dipaksa jadi angka >= 0
@@ -413,9 +419,18 @@ function layarNilai() {
           delete n[k.id];
         }
       } else {
-        // ganti nama masih ngirim daftar utuh (jarang, dan urutan kolom harus tetap)
+        // ganti nama: kolom lama dibuang lalu yang baru ditambah, bukan ngirim daftar utuh,
+        // biar kolom yang baru ditambah dari HP lain nggak ketimpa. Dua kali kirim karena satu kolom
+        // dokumen cuma bisa satu arrayRemove/arrayUnion per tulis. Akibatnya kolom yang diganti
+        // namanya pindah ke paling belakang di kelompoknya.
+        const lamaK = salin(k);
+        if (nama.trim() === k.label) return;
         k.label = nama.trim();
-        perubahan.push([["kolom"], lembar.kolom]);
+        lembar.kolom = [...lembar.kolom.filter(x => x !== k), k];
+        kirimNilaiTertunda();
+        simpanNilaiSebagian(mp.id, lembar, [[["kolom"], buangDariDaftar(lamaK)]]);
+        simpanNilaiSebagian(mp.id, lembar, [[["kolom"], tambahKeDaftar(salin(k))]]);
+        return tampilkan(true);
       }
       kirimNilaiTertunda();
       simpanNilaiSebagian(mp.id, lembar, perubahan);
