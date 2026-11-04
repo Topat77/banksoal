@@ -393,7 +393,7 @@ function htmlIsiBarisKeputusan(s, no, tahun, status) {
     if (k.fase === "terkunci") ket = `Terkunci: sudah diproses di ${k.sesudah}. Batalkan keputusan tahun ${k.sesudah} dulu.`;
     // kelas 9 Paket B: lulus (keluar), lulus & lanjut ke kelas 10 di sini, atau tidak lulus
     const lanjut = akhir && a.jenjang === "Paket B";
-    const pilihan = akhir ? [["lulus", "Lulus"], ...(lanjut ? [["lanjut", "Lulus, lanjut ke kelas 10"]] : []), ["tinggal", "Tidak lulus"]] : [["naik", "Naik kelas"], ["tinggal", "Tidak naik"]];
+    const pilihan = akhir ? [["lulus", "Lulus, keluar"], ...(lanjut ? [["lanjut", "Lulus, lanjut ke kelas 10"]] : []), ["tinggal", "Tidak lulus"]] : [["naik", "Naik kelas"], ["tinggal", "Tidak naik"]];
     const mati = k.fase === "terkunci" || status === "menyimpan";
     // I'dad & lulusan kelas 9 yang lanjut: kelas tujuan dipilih per siswa (nggak ditebak)
     const pilihKelas = tujuanDipilihPerSiswa(a.jenjang, a.kelas) ? pilihanKelasTujuan(a.jenjang, a.kelas) : null;
