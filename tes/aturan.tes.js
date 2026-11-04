@@ -42,7 +42,7 @@ vm.runInContext([
       "amankanSoal", "amankanSalinan", "amankanDok", "aman", "arah", "potong"].map(n => ambilFungsi(alat, n)),
   ambilFungsi(soalJs, "kartuSoal"),
   ambilKonstanta(cadanganJs, "JENIS_PULIHKAN"), ambilFungsi(cadanganJs, "rencanaPulihkan"),
-  ambilFungsi(baca("js/toko.js"), "simpanNilaiSebagian"),
+  ambilFungsi(baca("js/simpan.js"), "simpanNilaiSebagian"),
   baca("js/aturan.js"),
   "this.ekspor = { buatAturan, pasangDiJalur, rapikanSoal, galatPanjangSoal, salin, tambahKeDaftar, buangDariDaftar, samaIsi, ukuranDok, BATAS_DOK, amankanDok, kartuSoal, rencanaPulihkan, simpanNilaiSebagian };"
 ].join("\n"), ctx);
@@ -50,14 +50,14 @@ const { buatAturan, pasangDiJalur, rapikanSoal, galatPanjangSoal, salin, tambahK
   ukuranDok, BATAS_DOK, amankanDok, kartuSoal, rencanaPulihkan, simpanNilaiSebagian } = ctx.ekspor;
 
 // fungsi dari layar lain yang logikanya murni (global yang dibutuhin dipalsuin lewat ctx)
-const aiJs = baca("js/ai.js"), nilaiJs = baca("js/nilai.js"), cetakJs = baca("js/cetak.js"), tokoJs = baca("js/toko.js");
+const aiJs = baca("js/ai.js"), nilaiJs = baca("js/nilai.js"), santriJs = baca("js/santri.js"), cetakJs = baca("js/cetak.js"), tokoJs = baca("js/toko.js"), simpanJs = baca("js/simpan.js");
 vm.runInContext([
   "let hitungId = 0;", ambilFungsi(alat, "buatId"),
   ambilFungsi(aiJs, "bacaJawabanAI"),
   ...["KELOMPOK_NILAI", "BOBOT_BAWAAN"].map(n => ambilKonstanta(nilaiJs, n)),
   ...["jenisMapel", "bobotUntuk", "rataRata", "hitungNilai"].map(n => ambilFungsi(nilaiJs, n)),
   ...["angkaAcak", "kocok", "kelompokkan", "acakPilihanSoal", "acakItems", "siapkanLembar"].map(n => ambilFungsi(cetakJs, n)),
-  ambilKonstanta(tokoJs, "sudahDiingatkanUkuran"), ...["tanpaId", "muatDiDok"].map(n => ambilFungsi(tokoJs, n)),
+  ambilKonstanta(simpanJs, "sudahDiingatkanUkuran"), ...["tanpaId", "muatDiDok"].map(n => ambilFungsi(simpanJs, n)),
   "this.ekspor2 = { bacaJawabanAI, hitungNilai, angkaAcak, kocok, siapkanLembar, muatDiDok };"
 ].join("\n"), ctx);
 const { bacaJawabanAI, hitungNilai, angkaAcak, kocok, siapkanLembar, muatDiDok } = ctx.ekspor2;
@@ -299,7 +299,7 @@ grup("Wali kelas per tahun ajaran");
   vm.createContext(wk);
   vm.runInContext([
     ...["adalahObjek", "salin", "pasangDiJalur", "samaIsi"].map(n => alat.includes(`function ${n}(`) ? ambilFungsi(alat, n) : ambilKonstanta(alat, n)),
-    ambilKonstanta(tokoJs, "kunciTahunWali"), ambilFungsi(tokoJs, "waliKelas"), ambilFungsi(tokoJs, "simpanWali"),
+    ambilKonstanta(tokoJs, "kunciTahunWali"), ambilFungsi(tokoJs, "waliKelas"), ambilFungsi(simpanJs, "simpanWali"),
     "const toko = { wali: {}, backend: { ubahSebagian: (j, p) => { kiriman.push([j, p]); return Promise.resolve(); } } }; const kiriman = [];",
     "function berubah() {} function gagalSimpan() {} function uidSaya() { return 'tu'; }",
     "this.ekspor = { toko, kiriman, waliKelas, simpanWali };"
@@ -587,9 +587,9 @@ grup("Naik kelas & riwayat kelas santri");
     ambilFungsi(baca("js/grup.js"), "idKelas"), ambilFungsi(baca("js/grup.js"), "hurufRombel"),
     ambilKonstanta(baca("js/grup.js"), "JENJANG_IDAD"),
     "const KELAS_SD = [], KELAS_SMP = [], KELAS_SMA = [], KELAS_IDAD = [];", ambilKonstanta(baca("js/kurikulum.js"), "KELAS_PER_JENJANG"),
-    ambilFungsi(nilaiJs, "bandingKelas"), ambilFungsi(tokoJs, "simpanSantri"),
+    ambilFungsi(santriJs, "bandingKelas"), ambilFungsi(simpanJs, "simpanSantri"),
     "const toko = { santri: [], backend: { tulis: () => Promise.resolve() } }; function berubah() {} function gagalSimpan() {} function pasangDiDaftar(d, x) { const i = d.findIndex(y => y.id === x.id); if (i >= 0) d[i] = x; else d.push(x); }",
-    ambilFungsi(tokoJs, "tanpaId"),
+    ambilFungsi(simpanJs, "tanpaId"),
     ambilFungsi(nilaiJs, "santriLembar"), ambilFungsi(nilaiJs, "jumlahNilaiTakTerbaca"),
     baca("js/naikkelas.js"),
     "this.ekspor = { toko, tingkatAkhir, tebakKelasTujuan, tahunBerikut, kelasSantriDi, santriKelasDi, kelasDiTahun, terapkanNaikKelas, keluarkanSantri, aktifkanLagiSantri, keputusanTahun, bisaDiputuskan, ubahKeputusan, tujuanTebakan, simpanSantri, santriLembar, jumlahNilaiTakTerbaca, batalkanNaikKelas, hurufRombel, tingkatKelas, jenjangTujuan, tujuanDipilihPerSiswa, pindahkanKelas };"
@@ -817,7 +817,7 @@ grup("Panel keputusan naik kelas (lembar nilai Genap)");
     // kelas yang ada (buat pilihan kelas tujuan per siswa) & hitungan keputusan (pengingat urutan, admin.js)
     "function daftarKelas() { return [...F.adaMapel].map(x => { const [jenjang, kelas] = x.split('|'); return { jenjang, kelas }; }); }",
     "function hitungKeputusanKelas() { return { total: 0, sudah: 0 }; }",
-    ambilFungsi(nilaiJs, "bandingKelas"), ambilFungsi(tokoJs, "simpanSantri"), ambilFungsi(tokoJs, "tanpaId"),
+    ambilFungsi(santriJs, "bandingKelas"), ambilFungsi(simpanJs, "simpanSantri"), ambilFungsi(simpanJs, "tanpaId"),
     // tiruan browser & layar lain: dialog, backend, DOM, timer
     "const F = { peran: 'kurikulum', sekarang: { semester: 'Ganjil', tahun: '2026/2027' }, adaMapel: new Set(['Paket B|8A1']), dialog: [], jawab: () => Promise.resolve(true), tulis: () => Promise.resolve(), tulisan: [], timer: [], digambar: [], elemen: {}, fokus: false };",
     "const toko = { santri: [], backend: { tulis: (j, d) => { F.tulisan.push([j, d]); return F.tulis(j, d); } } };",
@@ -833,9 +833,9 @@ grup("Panel keputusan naik kelas (lembar nilai Genap)");
     "function gambarBarisKeputusanId(p, id) { F.digambar.push(id); }",
     baca("js/naikkelas.js"),
     "let panelKeputusan = null;",
-    ambilKonstanta(nilaiJs, "TEKS_STATUS_KEPUTUSAN"),
-    ...["noAbsen", "panelKeputusanBoleh", "rapikanTujuan", "labelHasilKeputusan", "htmlIsiBarisKeputusan", "pengingatUrutanNaik", "htmlPanelKeputusan"].map(n => ambilFungsi(nilaiJs, n)),
-    "async " + ambilFungsi(nilaiJs, "putuskanSantri"),   // ambilFungsi nggak bawa kata async
+    ambilKonstanta(santriJs, "TEKS_STATUS_KEPUTUSAN"),
+    ...["noAbsen", "panelKeputusanBoleh", "rapikanTujuan", "labelHasilKeputusan", "htmlIsiBarisKeputusan", "pengingatUrutanNaik", "htmlPanelKeputusan"].map(n => ambilFungsi(santriJs, n)),
+    "async " + ambilFungsi(santriJs, "putuskanSantri"),   // ambilFungsi nggak bawa kata async
     "this.ekspor = { F, toko, navigator, pasangPanel: p => { panelKeputusan = p; }, ubahKeputusan, keluarkanSantri, panelKeputusanBoleh, rapikanTujuan, labelHasilKeputusan, htmlIsiBarisKeputusan, htmlPanelKeputusan, putuskanSantri };"
   ].join("\n"), pk);
   const P = pk.ekspor, F = P.F;
