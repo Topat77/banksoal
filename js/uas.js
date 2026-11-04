@@ -52,7 +52,7 @@ function htmlKartuUAS(mp, sem) {
       <h2>UAS bersama <small>${aman(namaGrup(mp))}</small></h2>
       ${tandaStatusUAS(u)}
     </div>
-    <p class="info">Satu UAS untuk semua kelas: ${aman(kelas)}. Koordinator: <b>${aman(namaKoordinator(gid) || "belum ditunjuk TU")}</b>${saya ? " (kamu)" : ""}.</p>`;
+    <p class="info">Satu UAS untuk semua kelas: ${aman(kelas)}. Koordinator: <b>${aman(namaKoordinator(gid) || "belum ditunjuk TU")}</b>${saya ? " (Anda)" : ""}.</p>`;
   if (u) {
     h += `<p class="info">${(u.butir || []).length} soal${usulan.length ? ` · ${usulan.length} usulan soal menunggu` : ""}</p>`;
     h += `<div class="baris-tombol"><button class="tombol-kedua" id="bukaUAS">Buka UAS</button></div>`;
@@ -64,7 +64,7 @@ function htmlKartuUAS(mp, sem) {
   } else if (!g || !koor) {
     h += `<p class="info">TU belum menunjuk koordinator untuk grup ini.</p>`;
   } else {
-    h += `<p class="info">Belum disusun koordinator. Nanti kamu bisa mengusulkan soal di sini.</p>`;
+    h += `<p class="info">Belum disusun koordinator. Nanti Anda bisa mengusulkan soal di sini.</p>`;
   }
   return h + `</section>`;
 }
@@ -100,7 +100,7 @@ function htmlTombolUAS(u, jumlah) {
   if (kur && u.status === "dikunci") h += `<button class="tombol-kedua" id="bukaKunciUAS">Buka kunci</button>`;
   if (anggota && !saya && u.status !== "dikunci") {
     h += `<button class="tombol-kedua" id="usulkan">Usulkan soal dari modul</button>
-      <button class="tombol-kedua tombol-ai" id="usulAI">${IKON_AI}<span>Usulkan soal pakai AI</span></button>`;
+      <button class="tombol-kedua tombol-ai" id="usulAI">${IKON_AI}<span>Usulkan soal menggunakan AI</span></button>`;
   }
   return h;
 }
@@ -109,8 +109,8 @@ function htmlKetUAS(u) {
   const saya = sayaKoordinator(posisi.uasGrup);
   const kur = sayaKurikulum();
   let h = "";
-  if (saya && u.status === "diajukan") h += `<p class="info">Sudah diajukan. Selama menunggu TU, soalnya nggak bisa diubah. Tarik kembali kalau masih ada yang mau diganti.</p>`;
-  if (!saya && !kur && u.status !== "dikunci") h += `<p class="info">Yang menyusun UAS ini koordinator. Kamu bisa mengusulkan soal dari modulmu atau modul yang dibagikan.</p>`;
+  if (saya && u.status === "diajukan") h += `<p class="info">Sudah diajukan. Selama menunggu TU, soalnya tidak bisa diubah. Tarik kembali jika masih ada yang ingin diganti.</p>`;
+  if (!saya && !kur && u.status !== "dikunci") h += `<p class="info">Yang menyusun UAS ini koordinator. Anda bisa mengusulkan soal dari modul Anda atau modul yang dibagikan.</p>`;
   if (!kur) h += `<p class="info">Cetak soal UAS dilakukan TU setelah UAS dikunci.</p>`;
   return h;
 }
@@ -124,7 +124,7 @@ function htmlUsulanUAS(u) {
   // usulan: koordinator & TU lihat semua, guru lain lihat punyanya sendiri
   const tampil = saya || kur ? usulan : usulan.filter(milikSaya);
   if (tampil.length) {
-    h += `<h2 class="subjudul">${saya || kur ? "Usulan soal dari guru" : "Usulan kamu"} <small>${tampil.length} soal</small></h2>`;
+    h += `<h2 class="subjudul">${saya || kur ? "Usulan soal dari guru" : "Usulan Anda"} <small>${tampil.length} soal</small></h2>`;
     if (saya && u.status === "draf") h += `<p class="info">Terima buat memasukkan soal ke UAS, atau tolak.</p>`;
     tampil.forEach((x, i) => {
       if (!x.salinan || !x.salinan.soal) return;
@@ -156,13 +156,13 @@ function pasangAlurUAS(mp, u) {
   };
 
   klik("ajukanUAS", async () => {
-    if (!(await tanyaYakin(`Ajukan ${u.nama} ke TU?\n\nSetelah diajukan, soalnya nggak bisa diubah sampai kamu tarik kembali atau TU mengembalikannya.`, { ya: "Ajukan" }))) return;
+    if (!(await tanyaYakin(`Ajukan ${u.nama} ke TU?\n\nSetelah diajukan, soalnya tidak bisa diubah sampai Anda tarik kembali atau TU mengembalikannya.`, { ya: "Ajukan" }))) return;
     ganti({ status: "diajukan", diajukan: Date.now() });
   });
   klik("tarikUAS", () => ganti({ status: "draf" }));
   klik("kembalikanUAS", () => ganti({ status: "draf" }));
   klik("kunciUAS", async () => {
-    if (!(await tanyaYakin(`Kunci ${u.nama}?\n\nSoalnya jadi final untuk semua kelas di grup ini dan nggak bisa diubah koordinator lagi.`, { ya: "Kunci UAS" }))) return;
+    if (!(await tanyaYakin(`Kunci ${u.nama}?\n\nSoalnya jadi final untuk semua kelas di grup ini dan tidak bisa diubah koordinator lagi.`, { ya: "Kunci UAS" }))) return;
     ganti({ status: "dikunci", dikunci: Date.now(), dikunciOleh: uidSaya(), namaPengunci: namaSaya() });
   });
   klik("bukaKunciUAS", async () => {

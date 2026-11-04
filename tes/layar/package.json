@@ -1,0 +1,12 @@
+{
+  "name": "banksoal-tes-layar",
+  "private": true,
+  "description": "Tes tampilan Bank Soal di browser beneran (mode coba, tanpa Firebase)",
+  "scripts": {
+    "tes": "node jalankan.js",
+    "susur": "node susur.js"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

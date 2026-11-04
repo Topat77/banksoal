@@ -12,8 +12,8 @@ function layarLainnya() {
       <h2>Profil</h2>
       <form id="formProfil">
         <label>Nama yang tampil <input name="nama" value="${aman(s.nama || "")}" required maxlength="100" placeholder="Ustadzah Aminah"></label>
-        <p class="info">Muncul di modul dan ujian yang kamu buat, dan di daftar pengampu.</p>
-        <p class="info"><b>Sapaan:</b> ${sapaanPengguna(s) ? SAPAAN[sapaanPengguna(s)] : "belum diatur"} · diatur TU di halaman Guru, karena ngaruh ke kelas putra/putri yang boleh diajar.</p>
+        <p class="info">Muncul di modul dan ujian yang Anda buat, dan di daftar pengampu.</p>
+        <p class="info"><b>Sapaan:</b> ${sapaanPengguna(s) ? SAPAAN[sapaanPengguna(s)] : "belum diatur"} · diatur TU di halaman Guru, karena berpengaruh ke kelas putra/putri yang boleh diajar.</p>
         <div class="baris-tombol">
           <button type="submit" class="tombol-utama">Simpan</button>
           <span class="tersimpan" id="tersimpanProfil" role="status"></span>
@@ -29,7 +29,7 @@ function layarLainnya() {
         <form id="formLembaga">
           <label>Nama lembaga <input name="nama" value="${aman(toko.lembaga.nama || KONFIG.namaLembaga || "")}" placeholder="PKBM ..."></label>
           <label>Lama ujian bawaan <input name="waktu" value="${aman(toko.lembaga.waktu || "")}" placeholder="60 menit"></label>
-          <p class="info">Dipakai di kop lembar soal semua ustadz. Masih bisa diganti tiap mau nyetak.</p>
+          <p class="info">Dipakai di kop lembar soal semua ustadz. Masih bisa diganti tiap ingin mencetak.</p>
           <div class="baris-tombol">
             <button type="submit" class="tombol-utama">Simpan</button>
             <span class="tersimpan" id="tersimpanLembaga" role="status"></span>
@@ -58,7 +58,7 @@ function layarLainnya() {
   let teksPasang;
   if (sudahTerpasang()) teksPasang = `<p class="info">Aplikasi sudah terpasang di perangkat ini.</p>`;
   else if (diIPhone()) teksPasang = `<p class="info">Di iPhone: buka lewat Safari, ketuk tombol <b>Bagikan</b> (kotak dengan panah ke atas), lalu pilih <b>Tambahkan ke Layar Utama</b>.</p>`;
-  else teksPasang = `<p class="info">Pasang biar Bank Soal muncul di layar HP kayak aplikasi biasa, dan tetap bisa dibuka tanpa sinyal.</p>
+  else teksPasang = `<p class="info">Pasang agar Bank Soal muncul di layar HP seperti aplikasi biasa, dan tetap bisa dibuka tanpa sinyal.</p>
       <div class="baris-tombol"><button class="tombol-kedua" id="pasang">Pasang di perangkat ini</button></div>
       <p class="info" id="pesanPasang" role="status"></p>`;
   h += `
@@ -71,8 +71,8 @@ function layarLainnya() {
     <section class="bagian">
       <h2>Data</h2>
       <p class="info">${coba
-        ? "Mode coba: semua data contoh tersimpan di perangkat ini saja dan nggak dikirim ke mana-mana."
-        : "Soal tersimpan online, jadi bisa dibuka dari HP atau laptop mana pun pakai akun Google yang sama. Tanpa sinyal pun tetap bisa dipakai; perubahan dikirim otomatis waktu ada sinyal lagi."}</p>
+        ? "Mode coba: semua data contoh tersimpan di perangkat ini saja dan tidak dikirim ke mana-mana."
+        : "Soal tersimpan online, jadi bisa dibuka dari HP atau laptop mana pun menggunakan akun Google yang sama. Tanpa sinyal pun tetap bisa dipakai; perubahan dikirim otomatis waktu ada sinyal lagi."}</p>
       <div class="baris-tombol">
         <button class="tombol-kedua" id="keluar">${coba ? "Ganti akun contoh" : "Keluar"}</button>
         ${coba ? `<button class="tombol-teks merah" id="resetCoba">Kembalikan data contoh</button>` : ""}

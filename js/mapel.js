@@ -31,7 +31,7 @@ function layarMapel() {
   html += `<button class="chip chip-tambah" id="semesterLain">+ Semester lain</button></div>`;
 
   if (kur && !ampu) {
-    html += `<p class="info">Kamu melihat mapel ini sebagai admin: semua modul kelihatan, termasuk yang belum dibagikan, tapi nggak bisa diubah dari sini.</p>`;
+    html += `<p class="info">Anda melihat mapel ini sebagai admin: semua modul terlihat, termasuk yang belum dibagikan, tetapi tidak bisa diubah dari sini.</p>`;
   }
 
   html += `
@@ -61,14 +61,14 @@ function layarMapel() {
     const lain = semuaModul.filter(m => !milikSaya(m));
 
     if (ampu) {
-      html += `<h2 class="subjudul">Modul kamu <small>${milik.length} modul</small></h2>`;
+      html += `<h2 class="subjudul">Modul Anda <small>${milik.length} modul</small></h2>`;
       if (milik.length === 0) html += `<p class="kosong">Belum ada modul ajar di semester ini.</p>`;
       else html += `<div class="daftar">${milik.map((m, i) => barisModul(m, i + 1, false)).join("")}</div>`;
       html += `<button class="tombol-utama" id="tambah">+ Tambah modul ajar</button>`;
       if (milik.length) html += `<div class="aksi-teks"><button class="tombol-teks" id="salinSemua">Salin modul semester ini ke tahun ajaran lain</button>
         <button class="tombol-teks" id="keModulLama">Pakai modul lama saya (semester lalu / kelas lain)</button></div>`;
       // semester baru masih kosong: tawarin pakai lagi modul lama, biar nggak mulai dari nol
-      else html += `<div class="pemberitahuan"><p><b>Pakai lagi modul lama?</b> Modul yang pernah kamu bikin di ${aman(mp.nama)} (kelas ini semester lalu, atau kelas lain) bisa disalin ke ${aman(namaSemester(sem))} lengkap dengan soalnya, tinggal diubah seperlunya.</p>
+      else html += `<div class="pemberitahuan"><p><b>Pakai lagi modul lama?</b> Modul yang pernah Anda buat di ${aman(mp.nama)} (kelas ini semester lalu, atau kelas lain) bisa disalin ke ${aman(namaSemester(sem))} lengkap dengan soalnya, tinggal diubah seperlunya.</p>
         <button class="tombol-kedua" id="keModulLama">Pilih modul lama</button></div>`;
     }
 
@@ -79,7 +79,7 @@ function layarMapel() {
 
       if (segrup.length) {
         html += `<h2 class="subjudul">Dari kelas lain · ${aman(namaGrup(mp))} <small>${modulLuar.length} modul</small></h2>`;
-        html += `<p class="info">Grup ${aman(namaGrup(mp))}: ${aman(segrup.map(x => x.kelas).join(", "))}. Modul yang dibagikan di kelas-kelas ini bisa kamu lihat, cetak, dan soalnya dipakai buat sumatif.</p>`;
+        html += `<p class="info">Grup ${aman(namaGrup(mp))}: ${aman(segrup.map(x => x.kelas).join(", "))}. Modul yang dibagikan di kelas-kelas ini bisa Anda lihat, cetak, dan soalnya dipakai untuk sumatif.</p>`;
         if (modulLuar.length) html += `<div class="daftar">${modulLuar.map(m => barisModul(m, undefined, !milikSaya(m), true)).join("")}</div>`;
       }
     } else {
@@ -99,7 +99,7 @@ function layarMapel() {
     html += htmlTabNilai(mp, sem);
   } else {
     html += htmlKartuUAS(mp, sem);
-    html += `<p class="info">Ujian sumatif disusun dari soal-soal modul semester ini: modul kamu sendiri dan modul yang dibagikan pengampu lain, termasuk dari kelas lain di grupnya.</p>`;
+    html += `<p class="info">Ujian sumatif disusun dari soal-soal modul semester ini: modul Anda sendiri dan modul yang dibagikan pengampu lain, termasuk dari kelas lain di grupnya.</p>`;
     const milik = semuaSum.filter(milikSaya);
     const lain = semuaSum.filter(s => !milikSaya(s));
     const barisSum = (s, denganNama, denganKelas) => htmlBaris({
@@ -115,7 +115,7 @@ function layarMapel() {
       html += `<button class="tombol-utama" id="tambah">+ Buat ujian sumatif</button>`;
       const luar = sumatifGrup(mp.id).filter(x => samaSemester(x, sem));
       html += `<h2 class="subjudul">Dibagikan guru lain <small>${luar.length} ujian</small></h2>`;
-      if (luar.length === 0) html += `<p class="info">Belum ada ujian sumatif yang dibagikan di ${aman(namaGrup(mp))}. Ujian yang dibagikan bisa dilihat lalu disalin jadi ujianmu sendiri.</p>`;
+      if (luar.length === 0) html += `<p class="info">Belum ada ujian sumatif yang dibagikan di ${aman(namaGrup(mp))}. Ujian yang dibagikan bisa dilihat lalu disalin jadi ujian Anda sendiri.</p>`;
       else html += `<div class="daftar">${luar.map(s => barisSum(s, !milikSaya(s), true)).join("")}</div>`;
     }
     if (kur && lain.length) {

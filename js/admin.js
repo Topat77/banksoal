@@ -29,7 +29,7 @@ function indukLayarTU() {
 // menu TU yang menyala buat layar sekarang
 function kelompokLayarTU() {
   const L = posisi.layar;
-  if (L === "beranda" || L === "pilihMapel") return "beranda";
+  if (L === "beranda") return "beranda";
   if (L === "cari") return "cari";
   if (L === "lainnya") return "lainnya";
   if (["akun", "formGuru", "pantauGuru"].includes(L)) return "guru";
@@ -334,15 +334,32 @@ function layarKelasSiswa() {
   const semua = daftarKelas();
   const BAGIAN = [["putra", "Putra (A)", x => kelasPutra(x.kelas)], ["putri", "Putri (B)", x => kelasPutri(x.kelas)],
     ["lain", "Lainnya", x => !hurufRombel(x.kelas)]];
+  const keluar = toko.santri.filter(santriKeluar);
   const ada = BAGIAN.filter(([k, , cocok]) => k !== "lain" || semua.some(cocok));
-  const pilih = ada.some(b => b[0] === posisi.bagianSiswa) ? posisi.bagianSiswa : "putra";
-  const cocok = ada.find(b => b[0] === pilih)[2];
+  const arsip = posisi.bagianSiswa === "arsip" && keluar.length > 0;
+  const pilih = arsip ? "arsip" : ada.some(b => b[0] === posisi.bagianSiswa) ? posisi.bagianSiswa : "putra";
+  const cocok = arsip ? () => false : ada.find(b => b[0] === pilih)[2];
   jejak.textContent = `Tahun ajaran ${tahun}`;
 
   let h = `<div class="pilih-kelompok" role="group" aria-label="Putra atau putri">${ada.map(([k, label, f]) => {
     const n = semua.filter(f).reduce((x, kl) => x + santriKelas(kl.jenjang, kl.kelas).length, 0);
     return `<button class="${k === pilih ? "aktif" : ""}" data-bagian="${k}" aria-pressed="${k === pilih}">${label} <small>${n} siswa</small></button>`;
   }).join("")}</div>`;
+  if (keluar.length) h += `<div class="aksi-teks"><button class="tombol-teks" data-bagian="${arsip ? "putra" : "arsip"}">${arsip ? "‹ Kembali ke daftar kelas" : `Arsip siswa keluar (${keluar.length} siswa: lulus &amp; pindah sekolah)`}</button></div>`;
+
+  // arsip: siswa yang udah lulus / pindah sekolah, dipisah dari kelas. TU boleh hapus kapan aja.
+  if (arsip) {
+    const urut = (a, c) => String((c.keluar || {}).tahun || "").localeCompare(String((a.keluar || {}).tahun || "")) || (a.nama || "").localeCompare(c.nama || "", "id");
+    h += `<p class="info">Siswa yang sudah keluar. Datanya disimpan terpisah dari kelas, rapor lamanya masih bisa dibuka di halaman Rapor (pilih tahun ajarannya).</p>`;
+    for (const [st, label] of [["pindah", "Pindah sekolah"], ["lulus", "Lulus"]]) {
+      const daftar = keluar.filter(s => s.status === st).sort(urut);
+      if (daftar.length) h += `<h2 class="subjudul">${label} <small>${daftar.length} siswa</small></h2><div class="daftar-akun">${daftar.map(htmlKartuKeluar).join("")}</div>`;
+    }
+    isi.innerHTML = h;
+    isi.querySelectorAll("[data-bagian]").forEach(b => b.onclick = () => pergi("kelasSiswa", { bagianSiswa: b.dataset.bagian }));
+    pasangAksiKeluar(() => tampilkan(true));
+    return;
+  }
 
   // naik kelas (setelah rapat pleno): semester Genap ada pengingat & hitungan per kelas
   const semNaik = semesterNaikKelas();

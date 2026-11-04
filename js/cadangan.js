@@ -5,10 +5,33 @@
 //  soal, ujian sumatif, lembar nilai, santri, dan pengaturan.
 // =====================================================
 // paket gratis nggak punya backup otomatis, jadi TU diingetin tiap 2 minggu
-const BATAS_HARI_CADANGAN = 14;
+const BATAS_HARI_CADANGAN = 30;   // cadangan otomatis tiap bulan (lihat cadanganOtomatis)
 
+// ====== CADANGAN OTOMATIS TIAP BULAN ======
+// Paket gratis nggak punya server yang jalan sendiri, jadi cadangannya dibikin waktu TU buka aplikasi:
+// kalau cadangan terakhir (dari perangkat TU mana pun) udah 30 hari lebih, file .json langsung diunduh.
+// Di HP file cuma bisa disimpan setelah tombol dipencet, jadi di HP cukup muncul pemberitahuan.
+let cadanganOtomatisDicoba = false;
+function bisaUnduhOtomatis() {
+  return !matchMedia("(pointer: coarse)").matches;
+}
+function perluCadangan() {
+  const hari = hariSejakCadangan();
+  const adaIsi = toko.mapel.length > 0 || toko.santri.length > 0;
+  return adaIsi && (hari === null || hari >= BATAS_HARI_CADANGAN);
+}
+function cadanganOtomatis() {
+  if (cadanganOtomatisDicoba || !sayaKurikulum() || !isiCadanganSiap() || !perluCadangan() || !bisaUnduhOtomatis()) return;
+  if (!navigator.onLine && toko.backend.mode !== "coba") return;
+  cadanganOtomatisDicoba = true;   // sekali per buka aplikasi, biar kalau gagal nggak ngulang terus
+  unduhCadangan(null, null, { otomatis: true }).then(jadi => {
+    if (jadi) kabar("Cadangan bulanan sudah diunduh otomatis ke folder Download. Simpan file-nya di Google Drive atau flashdisk.");
+  });
+}
+
+// isi mapel diambil langsung dari server (isiLengkap), jadi cukup daftar mapel, grup & santri yang udah kebaca
 function isiCadanganSiap() {
-  return toko.mapel.every(m => isiMapelSiap(m.id));
+  return dataDasarSiap();
 }
 
 function hariSejakCadangan() {
@@ -24,8 +47,8 @@ async function isiLengkap() {
   const hasil = { mapel: {}, grup: {} };
   await Promise.all([
     ...toko.mapel.map(async m => {
-      const [modul, sumatif] = await Promise.all([ambil(`mapel/${m.id}/modul`), ambil(`mapel/${m.id}/sumatif`)]);
-      hasil.mapel[m.id] = { modul: urutIsi(modul), sumatif: urutIsi(sumatif) };
+      const [modul, sumatif, nilai] = await Promise.all([ambil(`mapel/${m.id}/modul`), ambil(`mapel/${m.id}/sumatif`), ambil(`mapel/${m.id}/nilai`)]);
+      hasil.mapel[m.id] = { modul: urutIsi(modul), sumatif: urutIsi(sumatif), nilai };
     }),
     ...toko.grup.map(async g => {
       const [uas, usulan] = await Promise.all([ambil(`grup/${g.id}/uas`), ambil(`grup/${g.id}/usulan`)]);
@@ -36,8 +59,7 @@ async function isiLengkap() {
 }
 
 function dataCadangan(lengkap) {
-  const isi = (id) => toko.isi[id] || {};
-  const dariMapel = (id) => lengkap.mapel[id] || { modul: [], sumatif: [] };
+  const dariMapel = (id) => lengkap.mapel[id] || { modul: [], sumatif: [], nilai: [] };
   const dariGrup = (id) => lengkap.grup[id] || { uas: [], usulan: [] };
   return {
     aplikasi: KONFIG.namaAplikasi,
@@ -53,21 +75,21 @@ function dataCadangan(lengkap) {
       ...salin(m),
       modul: salin(dariMapel(m.id).modul),
       sumatif: salin(dariMapel(m.id).sumatif),
-      nilai: salin(isi(m.id).nilai || [])   // lembar nilai udah dimuat semua semester
+      nilai: salin(dariMapel(m.id).nilai || [])
     })),
     // grup mapel + UAS bersama & usulan soalnya
     grup: toko.grup.map(g => ({ ...salin(g), uas: salin(dariGrup(g.id).uas), usulan: salin(dariGrup(g.id).usulan) }))
   };
 }
 
-async function unduhCadangan(tombol, pesan) {
+async function unduhCadangan(tombol, pesan, { otomatis = false } = {}) {
   wajibKurikulum();
+  // otomatis: gagal diam aja (dicoba lagi waktu buka berikutnya), pemberitahuan di beranda tetap muncul
+  const lapor = (teks) => { if (otomatis) console.warn("Cadangan otomatis:", teks); else if (pesan) pesan.textContent = teks; else kabar(teks); };
   if (!isiCadanganSiap()) {
-    const teks = "Data masih dimuat, tunggu sebentar lalu coba lagi.";
-    if (pesan) pesan.textContent = teks; else kabar(teks);
+    lapor("Data masih dimuat, tunggu sebentar lalu coba lagi.");
     return false;
   }
-  const lapor = (teks) => { if (pesan) pesan.textContent = teks; else kabar(teks); };
   if (!navigator.onLine && toko.backend.mode !== "coba") {
     lapor("Unduh cadangan butuh internet: isi semua semester diambil langsung dari server.");
     return false;
@@ -78,7 +100,7 @@ async function unduhCadangan(tombol, pesan) {
     let lengkap;
     try { lengkap = await isiLengkap(); } catch (err) {
       console.warn("Gagal ambil data cadangan:", err);
-      lapor("Gagal ngambil data dari server (sinyal putus atau jatah harian habis). Coba lagi nanti.");
+      lapor("Gagal mengambil data dari server (sinyal putus atau jatah harian habis). Coba lagi nanti.");
       return false;
     }
     if (pesan) pesan.textContent = "";
@@ -104,7 +126,7 @@ function htmlBagianCadangan() {
   return `
     <section class="bagian">
       <h2>Cadangan data</h2>
-      <p class="info">Unduh semua isi aplikasi (akun, mapel, modul, soal, ujian, nilai, dan siswa) jadi satu file. Simpan di Google Drive atau flashdisk, biar kalau ada yang kehapus nggak sengaja, datanya masih ada. Firebase versi gratis nggak nyimpen cadangan otomatis, jadi ini satu-satunya cadangan. Saran: unduh tiap 2 minggu dan sebelum ujian.</p>
+      <p class="info">Unduh semua isi aplikasi (akun, mapel, modul, soal, ujian, nilai, dan siswa) jadi satu file. Simpan di Google Drive atau flashdisk, agar jika ada yang terhapus tidak sengaja, datanya masih ada. Firebase versi gratis tidak menyimpan cadangan otomatis, jadi ini satu-satunya cadangan. Di laptop, cadangan diunduh otomatis tiap bulan waktu TU buka aplikasi; di HP muncul pengingat. Tetap disarankan unduh sendiri sebelum ujian.</p>
       <p class="info"><b>${terakhir}</b>${hari !== null && hari >= BATAS_HARI_CADANGAN ? ` Sudah ${hari} hari, sebaiknya unduh lagi.` : ""}</p>
       <div class="baris-tombol">
         <button class="tombol-kedua" id="unduhCadangan">Unduh cadangan (.json)</button>
@@ -112,7 +134,7 @@ function htmlBagianCadangan() {
         <input type="file" id="fileCadangan" accept="application/json,.json" hidden>
         <span class="info" id="pesanCadangan" role="status"></span>
       </div>
-      <p class="info kecil"><b>Pulihkan</b> cuma ngembaliin data yang <b>hilang</b> (kehapus). Data yang masih ada nggak ditimpa, jadi aman. Akun guru dan <b>lembar nilai</b> nggak ikut dipulihkan: akun tinggal disetujui lagi kalau gurunya login, nilainya masih ada di file cadangan (buka file .json-nya buat nyalin ulang).</p>
+      <p class="info kecil"><b>Pulihkan</b> hanya mengembalikan data yang <b>hilang</b> (terhapus). Data yang masih ada tidak ditimpa, jadi aman. Akun guru dan <b>lembar nilai</b> tidak ikut dipulihkan: akun tinggal disetujui lagi jika gurunya login, nilainya masih ada di file cadangan (buka file .json-nya buat menyalin ulang).</p>
     </section>`;
 }
 
@@ -201,16 +223,16 @@ function pasangPulihkanCadangan() {
     let lengkap;
     pesan.textContent = "Mengecek data yang masih ada di server...";
     try { lengkap = await isiLengkap(); } catch (err) {
-      console.warn("Gagal ambil data buat pulihkan:", err);
+      console.warn("Gagal ambil data untuk pulihkan:", err);
       pesan.textContent = "";
-      return kabar("Gagal ngecek data di server (sinyal putus atau jatah harian habis). Coba lagi nanti.");
+      return kabar("Gagal memeriksa data di server (sinyal putus atau jatah harian habis). Coba lagi nanti.");
     }
     pesan.textContent = "";
     const r = rencanaPulihkan(c, lengkap);
     const ringkas = Object.entries(JENIS_PULIHKAN).filter(([k]) => r[k].length).map(([k, nama]) => `• ${r[k].length} ${nama}`);
     const tanggal = c.dibuat ? new Date(c.dibuat).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "tanpa tanggal";
-    if (!ringkas.length) return kabar(`Semua isi cadangan ${tanggal} masih ada di aplikasi. Nggak ada yang perlu dipulihkan.`);
-    if (!(await tanyaYakin(`Cadangan ${tanggal}.\n\nYang hilang dan bakal dipulihkan:\n${ringkas.join("\n")}\n\nData yang masih ada nggak ditimpa. Lembar nilai nggak ikut dipulihkan. Lanjut?`, { ya: "Pulihkan" }))) return;
+    if (!ringkas.length) return kabar(`Semua isi cadangan ${tanggal} masih ada di aplikasi. Tidak ada yang perlu dipulihkan.`);
+    if (!(await tanyaYakin(`Cadangan ${tanggal}.\n\nYang hilang dan akan dipulihkan:\n${ringkas.join("\n")}\n\nData yang masih ada tidak ditimpa. Lembar nilai tidak ikut dipulihkan. Lanjut?`, { ya: "Pulihkan" }))) return;
 
     input.disabled = true;
     if (tombolPilih) tombolPilih.disabled = true;
@@ -219,7 +241,7 @@ function pasangPulihkanCadangan() {
       const h = await pulihkanCadangan(r);
       pesan.textContent = `${h.ditulis} data dipulihkan${h.sudahAda ? `, ${h.sudahAda} dilewati karena ternyata masih ada` : ""}.`;
       if (h.gagal.length) {
-        kabar(`${h.gagal.length} data gagal dipulihkan (mungkin isinya melebihi batas, atau internet putus):\n${h.gagal.slice(0, 5).join("\n")}${h.gagal.length > 5 ? "\n..." : ""}\n\nYang lain udah dipulihkan. Coba ulangi pulihkan sekali lagi; yang udah balik nggak bakal dobel.`);
+        kabar(`${h.gagal.length} data gagal dipulihkan (mungkin isinya melebihi batas, atau internet putus):\n${h.gagal.slice(0, 5).join("\n")}${h.gagal.length > 5 ? "\n..." : ""}\n\nYang lain sudah dipulihkan. Coba ulangi pulihkan sekali lagi; yang sudah kembali tidak akan dobel.`);
       }
     } finally {
       input.disabled = false;

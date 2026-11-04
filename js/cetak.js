@@ -359,7 +359,7 @@ function layarCetak() {
       ${pakaiKopResmi()
         ? `<p class="info">Pakai kop asesmen resmi PKBM Imam Syafi'i, kertas F4.</p><input id="sekolah" type="hidden" value="${aman(lembagaAwal)}">`
         : `<label>Nama lembaga di kop <input id="sekolah" value="${aman(lembagaAwal)}" placeholder="PKBM ..."></label>`}
-      ${pakaiKopAsesmen() ? `<p class="info kecil">Footer dan nomor halaman cuma muncul di Chrome atau Edge terbaru, dan nomor halamannya butuh "Background graphics" dicentang di dialog cetak. Di browser lain, pakai Unduh Word.</p>` : ""}
+      ${pakaiKopAsesmen() ? `<p class="info kecil">Footer dan nomor halaman hanya muncul di Chrome atau Edge terbaru, dan nomor halamannya butuh "Background graphics" dicentang di dialog cetak. Di browser lain, gunakan Unduh Word.</p>` : ""}
       <label>Lama ujian <input id="waktu" value="${aman(waktuAwal)}" placeholder="60 menit"></label>
       ${pakaiKopAsesmen() && !jenisTetap ? `<label>Judul kop
         <select id="jenisKop">
@@ -391,7 +391,7 @@ function layarCetak() {
         <button class="tombol-utama" id="print">Cetak / PDF</button>
         <button class="tombol-kedua" id="word">Unduh Word</button>
       </div>
-      <p class="info">Mau jadi PDF? Di jendela cetak, pilih tujuan "Simpan sebagai PDF". File Word bisa diedit lagi, misalnya buat ganti kop.</p>
+      <p class="info">Ingin menyimpan sebagai PDF? Di jendela cetak, pilih tujuan "Simpan sebagai PDF". File Word bisa diedit lagi, misalnya untuk mengganti kop.</p>
     </div>
     <div id="lembar"></div>
     </div>`;

@@ -47,7 +47,6 @@ const daftarLayar = {
   bobot: "layarBobot",
   aiSoal: "layarAISoal",
   daftarUAS: "layarDaftarUAS",
-  pilihMapel: "layarPilihMapel",
   formGuru: "formGuru",
   aiGenerator: "layarAIGenerator",
   modulLama: "layarModulLama",
@@ -86,7 +85,7 @@ isi.addEventListener("change", tandaiKotor);
 async function bolehTinggalkan() {
   if (!formKotor) return true;
   const ok = await tanyaYakin("Isian di layar ini belum disimpan. Tinggalkan dan buang isiannya?",
-    { bahaya: true, ya: "Buang isian", tidak: "Lanjut ngisi" });
+    { bahaya: true, ya: "Buang isian", tidak: "Lanjut mengisi" });
   if (ok) formKotor = false;
   return ok;
 }
@@ -100,6 +99,20 @@ class DataHilang extends Error {}
 function butuh(x) {
   if (!x) throw new DataHilang();
   return x;
+}
+
+// TU: isi mapel yang dibutuhin layar ini dimuat dulu (lihat mintaIsiMapel di toko.js)
+const LAYAR_ISI_SEMUA_TU = new Set(["pantauGuru", "cari", "rapor", "raporCetak"]);
+function mintaIsiLayarTU() {
+  if (LAYAR_ISI_SEMUA_TU.has(posisi.layar)) return mintaIsiSemua();
+  const ids = [];
+  const mp = posisi.mapelId && cariMapel(posisi.mapelId);
+  if (mp) ids.push(mp.id, ...mapelSegrup(mp).map(x => x.id));   // modul kelas lain di grup ikut kelihatan
+  const edit = posisi.layar === "formMapel" && posisi.mapelEditId && cariMapel(posisi.mapelEditId);
+  if (edit) ids.push(edit.id);
+  if (posisi.uasGrup) ids.push(...mapelGrup(posisi.uasGrup).map(x => x.id));
+  if (posisi.layar === "mapelNamaTU") ids.push(...toko.mapel.filter(m => m.jenjang === jenjangAktif() && m.nama === posisi.namaMapelTU).map(m => m.id));
+  mintaIsiMapel(ids);
 }
 
 function tampilkan(tetapDiTempat = false) {
@@ -126,6 +139,7 @@ function tampilkan(tetapDiTempat = false) {
   // semester yang lagi dibuka (dan semester UAS-nya) ikut dimuat kalau belum
   pastikanSemester(semAktif());
   if (posisi.uasGrup && posisi.uasSem) pastikanSemester(dariKunciSemester(posisi.uasSem));
+  if (sayaKurikulum()) { mintaIsiLayarTU(); cadanganOtomatis(); }
 
   try {
     window[daftarLayar[posisi.layar] || "layarBeranda"]();
@@ -400,7 +414,7 @@ function gambarStatus() {
     setTimeout(() => {
       const p = isi.querySelector(".pembuka");
       if (toko.status !== "memuat" || !p || p.querySelector(".pembuka-lama")) return;
-      p.insertAdjacentHTML("beforeend", `<p class="pembuka-lama">Kok lama ya. Cek sinyal dulu, lalu <button type="button" class="tombol-teks" id="muatUlangPembuka">muat ulang</button>.</p>`);
+      p.insertAdjacentHTML("beforeend", `<p class="pembuka-lama">Memuat terlalu lama. Periksa sinyal, lalu <button type="button" class="tombol-teks" id="muatUlangPembuka">muat ulang</button>.</p>`);
       document.getElementById("muatUlangPembuka").onclick = () => location.reload();
     }, 15000);
     return;
@@ -452,7 +466,7 @@ function gambarStatus() {
             Masuk dengan Google
           </button>
           <p class="info tengah" id="pesanMasuk" role="status"></p>
-          <p class="info tengah">Dibuka dari WhatsApp dan tombolnya nggak jalan? Ketuk titik tiga di pojok kanan atas, lalu pilih <b>Buka di Chrome</b>.</p>`;
+          <p class="info tengah">Dibuka dari WhatsApp dan tombolnya tidak jalan? Ketuk titik tiga di pojok kanan atas, lalu pilih <b>Buka di Chrome</b>.</p>`;
     }
     h += `</div>`;
     h += `</div>`;
@@ -481,9 +495,9 @@ function gambarStatus() {
   // status "menunggu": sudah daftar, belum disetujui / ditolak / dinonaktifkan
   const peran = toko.saya ? toko.saya.peran : "menunggu";
   const teks = {
-    menunggu: ["Tinggal menunggu persetujuan", "Akunmu sudah terdaftar. Admin (TU) perlu menyetujuinya dulu. Setelah disetujui, halaman ini otomatis berubah, nggak perlu dibuka ulang."],
-    ditolak: ["Akun belum bisa dipakai", "Permintaan akunmu ditolak oleh admin (TU). Kalau ini keliru, hubungi admin (TU)."],
-    nonaktif: ["Akun dinonaktifkan", "Akunmu sedang dinonaktifkan oleh admin (TU). Hubungi admin (TU) kalau perlu diaktifkan lagi."]
+    menunggu: ["Menunggu persetujuan", "Akun Anda sudah terdaftar. Admin (TU) perlu menyetujuinya dulu. Setelah disetujui, halaman ini otomatis berubah, tidak perlu dibuka ulang."],
+    ditolak: ["Akun belum bisa dipakai", "Permintaan akun Anda ditolak oleh admin (TU). Jika ini keliru, hubungi admin (TU)."],
+    nonaktif: ["Akun dinonaktifkan", "Akun Anda sedang dinonaktifkan oleh admin (TU). Hubungi admin (TU) jika perlu diaktifkan lagi."]
   }[peran] || ["Akun belum bisa dipakai", "Hubungi admin (TU)."];
 
   isi.innerHTML = `
@@ -501,7 +515,7 @@ function gambarStatus() {
 function pesanGagalMasuk(err) {
   const kode = (err && err.code) || "";
   if (kode.includes("popup-closed") || kode.includes("cancelled-popup")) return "Jendela Google ditutup sebelum selesai. Coba lagi.";
-  if (kode.includes("network")) return "Nggak ada sinyal. Masuk pertama kali butuh internet.";
+  if (kode.includes("network")) return "Tidak ada sinyal. Masuk pertama kali butuh internet.";
   if (kode.includes("unauthorized-domain")) return "Alamat web ini belum didaftarkan di Firebase (Authorized domains).";
   return "Gagal masuk. " + (err && err.message ? err.message : "");
 }

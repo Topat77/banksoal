@@ -13,6 +13,7 @@ function fileKurang() {
     "js/aturan.js": typeof buatAturan === "function",
     "js/coba.js": typeof buatBackendCoba === "function",
     "js/toko.js": typeof mulaiAplikasi === "function",
+    "js/simpan.js": typeof simpanModul === "function",
     "js/grup.js": typeof idGrup === "function",
     "js/layar.js": typeof tampilkan === "function",
     "js/mapel.js": typeof layarMapel === "function",
@@ -31,6 +32,8 @@ function fileKurang() {
     "js/kurikulum.js": typeof layarAkun === "function",
     "js/cadangan.js": typeof unduhCadangan === "function",
     "js/nilai.js": typeof layarNilai === "function",
+    "js/santri.js": typeof layarSantri === "function",
+    "js/bobot.js": typeof layarBobot === "function",
     "js/rapor.js": typeof layarRapor === "function",
     "js/naikkelas.js": typeof ubahKeputusan === "function",
     "js/admin.js": typeof layarMapelTU === "function",
@@ -58,7 +61,7 @@ async function jalankan() {
     toko.status = "gagal";
     toko.pesanGagal = navigator.onLine
       ? "Aplikasi gagal tersambung ke server. Coba muat ulang halaman ini."
-      : "Nggak ada sinyal, dan aplikasi belum pernah dibuka di perangkat ini. Sambungkan internet dulu sekali, setelah itu bisa dipakai tanpa sinyal.";
+      : "Tidak ada sinyal, dan aplikasi belum pernah dibuka di perangkat ini. Sambungkan internet dulu sekali, setelah itu bisa dipakai tanpa sinyal.";
     tampilkan();
   }
 }
@@ -76,7 +79,7 @@ function dalamBingkaiLain() {
 
 if (dalamBingkaiLain()) {
   document.getElementById("isi").innerHTML =
-    `<div class="kosong">Bank Soal cuma bisa dibuka langsung di tab browser.</div>`;
+    `<div class="kosong">Bank Soal hanya bisa dibuka langsung di tab browser.</div>`;
 } else {
   jalankan();
 }
