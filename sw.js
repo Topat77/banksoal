@@ -13,12 +13,12 @@
 // =====================================================
 
 
-const VERSI = "banksoal-v56";
+const VERSI = "banksoal-v58";
 const INTI = [
   "./", "index.html", "style.css", "manifest.webmanifest",
   "ikon-192.png", "ikon-512.png", "ikon-maskable-512.png", "ikon-apple-180.png",
   "js/konfig.js", "js/alat.js", "js/datasoal.js", "js/dialog.js", "js/aturan.js", "js/coba.js", "js/toko.js", "js/simpan.js", "js/grup.js",
-  "js/layar.js", "js/mapel.js", "js/saya.js", "js/cari.js", "js/menupilih.js", "js/beranda.js", "js/modul.js", "js/soal.js", "js/sumatif.js", "js/uas.js", "js/ai.js", "js/kop.js", "js/docx.js", "js/cetak.js", "js/kurikulum.js", "js/cadangan.js", "js/nilai.js", "js/santri.js", "js/bobot.js", "js/rapor.js", "js/naikkelas.js", "js/admin.js", "js/menuguru.js",
+  "js/layar.js", "js/mapel.js", "js/saya.js", "js/cari.js", "js/menupilih.js", "js/beranda.js", "js/modul.js", "js/soal.js", "js/sumatif.js", "js/uas.js", "js/ai.js", "js/kop.js", "js/docx.js", "js/cetak.js", "js/kurikulum.js", "js/cadangan.js", "js/nilai.js", "js/santri.js", "js/bobot.js", "js/rapor.js", "js/naikkelas.js", "js/admin.js", "js/menuguru.js", "js/panduan.js",
   "js/firebase.js", "js/mulai.js"
 ];
 const LUAR_TETAP = [/^https:\/\/www\.gstatic\.com\/firebasejs\//, /^https:\/\/fonts\.(googleapis|gstatic)\.com\//];

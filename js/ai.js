@@ -303,6 +303,7 @@ function layarAISoal() {
   isi.innerHTML = `
     <div class="layar-ai">
       ${jatahAIHabis() ? `<p class="pemberitahuan-kecil">Jatah AI gratis hari ini sudah habis. AI bisa dipakai lagi ${aman(teksResetAI())}.</p>` : ""}
+      ${htmlPetunjukAI(keModul ? "modul" : bahan.usul ? "usul" : "ujian")}
       ${coba ? `<p class="pemberitahuan-kecil">Mode coba: soal yang keluar di sini <b>contoh tiruan</b>, bukan buatan AI sungguhan. AI aslinya jalan setelah Firebase disambungkan.</p>` : ""}
       <section class="bagian">
         <h2>Bahan untuk AI</h2>

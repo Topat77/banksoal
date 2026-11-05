@@ -580,7 +580,7 @@ main > .tombol-utama, main > .tombol-kedua, .modul-isi > .tombol-kedua, form > .
 .beranda { display: flex; flex-direction: column; gap: 20px; }
 .beranda .subjudul { margin-top: 4px; }
 
-/* panduan mulai: cuma muncul kalau belum ada mapel sama sekali */
+/* kartu panduan (sambutan pertama masuk, panduan.js) */
 .panduan {
   display: flex; flex-direction: column; gap: 16px;
   padding: 22px 22px 18px;
@@ -608,6 +608,28 @@ main > .tombol-utama, main > .tombol-kedua, .modul-isi > .tombol-kedua, form > .
 }
 .panduan li strong { font-size: 1.0625rem; }
 .panduan li span { font-size: 1rem; color: var(--tinta-redup); }
+
+/* sambutan pertama masuk: 3 langkah, satu per satu */
+.sambutan { gap: 10px; border-color: var(--hijau); }
+.sambutan h2:focus { outline: none; }
+.sambutan p { margin: 0; font-size: 1.0625rem; line-height: 1.55; }
+.sambutan-kepala { display: flex; align-items: center; gap: 12px; }
+.sambutan-bawah { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 6px; }
+.titik-langkah { display: inline-flex; gap: 6px; }
+.titik-langkah span { width: 8px; height: 8px; border-radius: 50%; background: var(--garis-tebal); }
+.titik-langkah span.aktif { width: 22px; border-radius: 4px; background: var(--hijau); }
+
+/* layar Panduan (dari menu Saya) & petunjuk di layar AI */
+.layar-panduan { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
+.layar-panduan > .info { margin: 0; }
+.langkah-panduan { margin: 0; padding: 4px 16px 16px 40px; display: flex; flex-direction: column; gap: 8px; font-size: 1rem; line-height: 1.55; }
+.topik-panduan .langkah-panduan { border-top: 1px solid var(--garis); padding-top: 12px; }
+.petunjuk-ai { background: var(--hijau-muda); border-radius: var(--sudut); }
+.petunjuk-ai > summary { padding: 12px 16px; min-height: 48px; display: flex; align-items: center; cursor: pointer; list-style: none; }
+.petunjuk-ai > summary::-webkit-details-marker { display: none; }
+.petunjuk-ai > summary::after { content: "▾"; color: var(--tinta-redup); margin-left: auto; }
+.petunjuk-ai[open] > summary::after { content: "▴"; }
+.petunjuk-ai .langkah-panduan { padding-top: 0; }
 
 /* ringkasan angka buat kurikulum */
 .ringkasan { display: flex; flex-direction: column; gap: 12px; }

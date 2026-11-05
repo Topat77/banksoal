@@ -38,6 +38,13 @@ function layarLainnya() {
       </section>` + htmlBagianCadangan();
   }
 
+  h += `
+    <section class="bagian">
+      <h2>Panduan</h2>
+      <p class="info">${kur ? "Cara mengelola akun guru, mapel, siswa, dan rapor." : "Cara membuat modul, menambah soal, mencetak, dan mengisi nilai."}</p>
+      <div class="baris-tombol"><button class="tombol-kedua" id="kePanduan">Buka panduan</button></div>
+    </section>`;
+
   const pilih = pilihanTema();
   h += `
     <section class="bagian">
@@ -101,6 +108,7 @@ function layarLainnya() {
       document.getElementById("tersimpanLembaga").textContent = "Tersimpan";
     };
   }
+  klik("kePanduan", () => pergi("panduan"));
   document.getElementById("keluar").onclick = async () => {
     if (!coba && !(await tanyaYakin("Keluar dari akun ini?", { ya: "Keluar" }))) return;
     toko.backend.keluar();

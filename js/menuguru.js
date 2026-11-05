@@ -11,13 +11,14 @@ function indukLayarGuru() {
   const L = posisi.layar;
   if (L === "mapel" || L === "aiGenerator" || L === "cari") return "mapelGuru";
   if (L === "nilai" && posisi.dariSiswaGuru) return "siswaGuru";
+  if (L === "panduan") return "lainnya";
   return null;
 }
 // menu guru yang menyala buat layar sekarang
 function kelompokLayarGuru() {
   const L = posisi.layar;
   if (L === "beranda") return "beranda";
-  if (L === "lainnya") return "lainnya";
+  if (L === "lainnya" || L === "panduan") return "lainnya";
   if (L === "siswaGuru" || L === "nilai" || L === "santri") return "siswa";
   return "mapelGuru";
 }
