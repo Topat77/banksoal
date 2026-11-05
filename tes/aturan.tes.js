@@ -55,7 +55,7 @@ vm.runInContext([
   "let hitungId = 0;", ambilFungsi(alat, "buatId"),
   ambilFungsi(aiJs, "bacaJawabanAI"),
   ...["KELOMPOK_NILAI", "BOBOT_BAWAAN"].map(n => ambilKonstanta(nilaiJs, n)),
-  ...["jenisMapel", "bobotUntuk", "rataRata", "hitungNilai"].map(n => ambilFungsi(nilaiJs, n)),
+  ...["jenisMapel", "bobotUntuk", "rataRata", "nilaiSah", "hitungNilai"].map(n => ambilFungsi(nilaiJs, n)),
   ...["angkaAcak", "kocok", "kelompokkan", "acakPilihanSoal", "acakItems", "siapkanLembar"].map(n => ambilFungsi(cetakJs, n)),
   ambilKonstanta(simpanJs, "sudahDiingatkanUkuran"), ...["tanpaId", "muatDiDok"].map(n => ambilFungsi(simpanJs, n)),
   "this.ekspor2 = { bacaJawabanAI, hitungNilai, angkaAcak, kocok, siapkanLembar, muatDiDok };"

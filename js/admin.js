@@ -236,7 +236,7 @@ function persenNilaiTerisi(mp, sem) {
   let isiSel = 0;
   for (const s of santri) for (const k of kolom) {
     const v = ((lembar.nilai || {})[s.id] || {})[k.id];
-    if (typeof v === "number" && !Number.isNaN(v)) isiSel++;
+    if (nilaiSah(v)) isiSel++;
   }
   return isiSel / (santri.length * kolom.length);
 }

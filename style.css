@@ -1838,6 +1838,11 @@ body.ada-dialog { overflow: hidden; }
 :root[data-huruf="besar"] .nav-bawah,
 :root[data-huruf="besar"] .samping,
 :root[data-huruf="besar"] .dialog { zoom: 1.15; }
+/* menu bawah ikut 1,15× lebih tinggi, jadi bar Simpan naik juga biar nggak ketutup.
+   Kalau browser ikut ngezoom jarak ini (karena di dalam #isi), bar-nya cuma agak lebih tinggi, nggak ketutup. */
+@media (max-width: 999px) {
+  :root[data-huruf="besar"] .bawah-draf { bottom: calc(1.15 * (45px + 1.5 * var(--tulisan-nav)) + env(safe-area-inset-bottom, 0px)); }
+}
 .huruf-besar-contoh { font-size: 1.15em; }
 @media print { :root[data-huruf="besar"] #isi { zoom: 1; } }
 

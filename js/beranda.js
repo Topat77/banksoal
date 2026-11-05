@@ -359,7 +359,7 @@ function progresMapel(mp, uid, sem) {
   const santri = santriLembar(mp, sem).filter(s => !santriKeluar(s));
   // tiap kolom nilai: berapa siswa yang udah diisi
   const kolom = (lembar ? lembar.kolom || [] : []).map(k => ({
-    k, isi: santri.filter(s => typeof ((lembar.nilai || {})[s.id] || {})[k.id] === "number").length
+    k, isi: santri.filter(s => nilaiSah(((lembar.nilai || {})[s.id] || {})[k.id])).length
   }));
   // kolom wajib (Tugas, UH, UTS, UAS yang bobotnya > 0) yang belum dibikin dihitung kosong,
   // biar 1 kolom Tugas yang udah penuh nggak kelihatan 100%. Kehadiran (kalau dibobot) juga dihitung.
