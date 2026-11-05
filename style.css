@@ -224,7 +224,7 @@ main {
 
 /* ---- menu bawah (HP) ---- */
 /* tulisan menu ikut ukuran font HP, tapi dibatasi 16px: 5 tombol harus muat di HP 360px.
-   Tinggi menu = 44px + 1,5 × tulisan (dipakai juga .bawah-draf biar nggak ketutup) */
+   Tinggi menu = 45px (44px + garis atas 1px) + 1,5 × tulisan (dipakai juga .bawah-draf biar nggak ketutup) */
 :root { --tulisan-nav: min(.8125rem, 16px); }
 .nav-bawah {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
@@ -1332,7 +1332,7 @@ textarea:dir(rtl), input:dir(rtl) {
 .pesan-draf { margin: 0; font-size: .9375rem; font-weight: 600; color: var(--merah); }
 .pesan-draf:empty { display: none; }
 .bawah-draf { position: sticky; bottom: 0; padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(transparent, var(--kertas) 30%); }
-@media (max-width: 999px) { .bawah-draf { bottom: calc(44px + 1.5 * var(--tulisan-nav) + env(safe-area-inset-bottom, 0px)); padding-bottom: 10px; } }
+@media (max-width: 999px) { .bawah-draf { bottom: calc(45px + 1.5 * var(--tulisan-nav) + env(safe-area-inset-bottom, 0px)); padding-bottom: 10px; } }
 
 /* =====================================================
    PANEL JENJANG (admin): Paket B dan Paket C dipisah
