@@ -11,9 +11,9 @@ const LAYAR = {
     ['formMapel', { mapelEditId: 'bindo7', dariMapel: false, dariMapelTU: true, namaMapelTU: 'Bahasa Indonesia' }], ['formMapel', { mapelEditId: null, dariMapel: false }],
     ['santri', { dariNilai: false }], ['rapor'], ['raporCetak', { kelasRapor: 'Paket B|7A1', raporSantri: null }], ['bobot'], ['daftarUAS'], ['mapelTU'], ['mapelNamaTU', { namaMapelTU: 'Bahasa Indonesia' }], ['pantauGuru'], ['kelasSiswa', { bagianSiswa: 'putra' }], ['kelasSiswa', { bagianSiswa: 'putri' }], ['kelasSiswa', { bagianSiswa: 'arsip' }],
     ['mapel', { mapelId: 'bindo7', tab: 'modul' }], ['mapel', { mapelId: 'bindo7', tab: 'sumatif' }], ['mapel', { mapelId: 'bindo7', tab: 'nilai' }],
-    ['nilai', { mapelId: 'bindo7', dariNilai: true }], ['lainnya'], ['cari'],
+    ['nilai', { mapelId: 'bindo7', dariNilai: true }], ['lainnya'], ['panduan'], ['cari'],
   ],
-  'u-hasan': [['beranda'], ['mapelGuru'], ['siswaGuru'], ['nilai', { mapelId: 'bindo7', dariSiswaGuru: true }], ['lainnya'], ['nilai', { mapelId: 'bindo7' }], ['mapel', { mapelId: 'bindo7', tab: 'modul' }]],
+  'u-hasan': [['beranda'], ['mapelGuru'], ['siswaGuru'], ['nilai', { mapelId: 'bindo7', dariSiswaGuru: true }], ['lainnya'], ['panduan'], ['nilai', { mapelId: 'bindo7' }], ['mapel', { mapelId: 'bindo7', tab: 'modul' }]],
   'u-yusuf': [['beranda'], ['mapelGuru'], ['siswaGuru'], ['mapel', { mapelId: 'bindo7a2', tab: 'modul' }]],
   'u-aminah': [
     ['beranda'], ['aiGenerator'], ['cari'], ['lainnya'],

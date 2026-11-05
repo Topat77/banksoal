@@ -17,6 +17,30 @@ async function fitur() {
     await browser.close();
   }
 
+  // ---------- sambutan pertama masuk & layar Panduan ----------
+  {
+    console.log("\nSambutan pertama masuk (sekali per akun per perangkat) & Panduan");
+    const { browser, page, galat } = await buka({ hp: true });
+    await masuk(page, "u-hasan");
+    boleh("guru: sambutan muncul", await page.$("#sambutan"));
+    for (let i = 0; i < 3; i++) { await page.click("#lanjutSambutan"); await page.waitForTimeout(100); }
+    tolak("habis Mulai: sambutan hilang", await page.$("#sambutan"));
+    await ke(page, "beranda");
+    tolak("nggak muncul lagi buat akun ini", await page.$("#sambutan"));
+    await masuk(page, "u-kur");
+    boleh("akun lain (TU): sambutan tetap muncul", await page.$("#sambutan"));
+    tolak("TU: panel Mulai dari sini lama udah nggak ada", await page.$(".panduan:not(.sambutan)"));
+    await page.click("#lewatiSambutan"); await page.waitForTimeout(100);
+    tolak("Lewati: sambutan hilang", await page.$("#sambutan"));
+    await ke(page, "panduan");
+    boleh("Panduan TU ada topiknya", (await page.$$(".topik-panduan")).length > 0);
+    harap("tombol ‹ Panduan balik ke Saya", await page.evaluate(() => layarInduk()), "lainnya");
+    await page.click("#ulangSambutan"); await page.waitForTimeout(300);
+    boleh("sambutan bisa ditampilkan lagi", await page.$("#sambutan"));
+    harap("nggak ada error", galatBersih(galat), []);
+    await browser.close();
+  }
+
   // ---------- putra / putri: ustadzah nggak boleh di kelas A ----------
   {
     console.log("\nUstadzah nggak bisa ngajar / jadi wali kelas putra (A)");

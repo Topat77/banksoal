@@ -226,6 +226,9 @@ function layarBeranda() {
       ${ILUSTRASI_SAMBUT}
     </section>`;
 
+  // sambutan pertama masuk (panduan.js): 3 langkah, sekali per akun per perangkat
+  h += htmlSambutan();
+
   // data belum kebaca: kerangka, bukan "belum ditugaskan" / angka 0 / panduan mulai
   if (!dataDasarSiap()) h += htmlKerangka();
   else if (kur) h += htmlBerandaTU(sem);
@@ -265,6 +268,7 @@ function layarBeranda() {
     };
   });
   pasangAktivitas();
+  pasangSambutan();
 }
 
 // ringkasan beranda TU: dihitung dari data kalau isi semua mapel udah dimuat (lalu disimpan di
@@ -325,19 +329,7 @@ function htmlBerandaTU(sem) {
   // ---- kelengkapan & aktivitas ----
   if (r) h += htmlKelengkapan(sem, r.kelengkapan);
   h += htmlAktivitas(6, r && !r.segar ? r.aktivitas : []);
-
-  if (toko.mapel.length === 0) {
-    h += `
-      <section class="panduan">
-        <h2>Mulai dari sini</h2>
-        <ol>
-          <li><strong>Setujui akun guru</strong><span>Minta ustadz dan ustadzah masuk menggunakan akun Google masing-masing, lalu setujui di halaman Guru.</span></li>
-          <li><strong>Tambah mapel dan pengampunya</strong><span>Misalnya Bahasa Indonesia Paket B kelas 7A1, diampu Ustadz Hasan.</span></li>
-          <li><strong>Isi daftar siswa tiap kelas</strong><span>No. absen, NIS, dan nama. Paling cepat: salin dari Excel lalu tempel di tabel.</span></li>
-          <li><strong>Pantau isinya</strong><span>Lihat modul, soal, dan nilai yang sudah diisi tiap guru, lalu cetak rapor.</span></li>
-        </ol>
-      </section>`;
-  }
+  // panduan "Mulai dari sini" udah pindah ke sambutan TU (panduan.js)
   return h;
 }
 

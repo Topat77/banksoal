@@ -55,7 +55,8 @@ const daftarLayar = {
   mapelTU: "layarMapelTU",
   mapelNamaTU: "layarMapelNamaTU",
   pantauGuru: "layarPantauGuru",
-  kelasSiswa: "layarKelasSiswa"
+  kelasSiswa: "layarKelasSiswa",
+  panduan: "layarPanduan"
 };
 
 // layar yang nggak boleh digambar ulang sendiri waktu data berubah
