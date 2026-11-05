@@ -90,17 +90,17 @@ function lembarBaru(mapel, sem) {
   };
 }
 
+// batas 0–100 cuma dicek di kotak isian (rules nggak ngecek angkanya), jadi angka di luar itu
+// dari database (misal ditulis langsung) dianggap kosong. Dipakai juga pantauan TU & progres
+// beranda, biar yang kelihatan "terisi" sama dengan yang ikut dihitung di rapor.
+function nilaiSah(v) { return typeof v === "number" && v >= 0 && v <= 100; }
+
 // nilai satu santri di satu lembar (mapel: buat nentuin bobot sesuai jenisnya)
 function hitungNilai(lembar, idSantri, mapel) {
   const hasil = { per: {}, harian: null, akhir: null, hadir: null };
   if (!lembar) return hasil;
   const isi = (lembar.nilai || {})[idSantri] || {};
-  // batas 0–100 cuma dicek di kotak isian (rules nggak ngecek angkanya), jadi angka di luar itu
-  // dari database (misal ditulis langsung) dibuang, biar nilai akhir di rapor nggak kacau
-  const angkaNilai = (k) => {
-    const v = isi[k.id];
-    return typeof v === "number" && v >= 0 && v <= 100 ? v : null;
-  };
+  const angkaNilai = (k) => nilaiSah(isi[k.id]) ? isi[k.id] : null;
   for (const g of KELOMPOK_NILAI) {
     if (g.k === "kehadiran") continue;
     hasil.per[g.k] = rataRata((lembar.kolom || []).filter(k => k.kelompok === g.k).map(angkaNilai));
@@ -409,12 +409,14 @@ function layarNilai() {
       if (nama === null) return;
       const perubahan = [];
       if (!nama.trim()) {
-        const terisi = Object.values(lembar.nilai).filter(n => n[k.id] !== undefined).length;
+        // n bisa null kalau datanya rusak (rules cuma ngecek bentuk petanya)
+        const terisi = Object.values(lembar.nilai || {}).filter(n => n && n[k.id] !== undefined).length;
         if (!(await tanyaYakin(`Hapus kolom "${k.label}"?${terisi ? `\n\n${terisi} nilai di kolom ini ikut terhapus.` : ""}`, { bahaya: true, ya: "Hapus kolom" }))) return;
         // dibuang dari daftar (bukan ngirim daftar utuh), biar kolom baru dari perangkat lain nggak ikut hilang
         perubahan.push([["kolom"], buangDariDaftar(salin(k))]);
         lembar.kolom = lembar.kolom.filter(x => x.id !== k.id);
-        for (const [sid, n] of Object.entries(lembar.nilai)) {
+        for (const [sid, n] of Object.entries(lembar.nilai || {})) {
+          if (!n || typeof n !== "object") continue;
           if (n[k.id] !== undefined) perubahan.push([["nilai", sid, k.id], undefined]);
           delete n[k.id];
         }
@@ -423,13 +425,15 @@ function layarNilai() {
         // biar kolom yang baru ditambah dari HP lain nggak ketimpa. Dua kali kirim karena satu kolom
         // dokumen cuma bisa satu arrayRemove/arrayUnion per tulis. Akibatnya kolom yang diganti
         // namanya pindah ke paling belakang di kelompoknya.
+        // Yang baru DITAMBAH DULU, baru yang lama dibuang: kalau kiriman kedua gagal, kolomnya
+        // cuma dobel (angkanya tetap kelihatan), bukan hilang dari tabel.
         const lamaK = salin(k);
         if (nama.trim() === k.label) return;
         k.label = nama.trim();
         lembar.kolom = [...lembar.kolom.filter(x => x !== k), k];
         kirimNilaiTertunda();
-        simpanNilaiSebagian(mp.id, lembar, [[["kolom"], buangDariDaftar(lamaK)]]);
         simpanNilaiSebagian(mp.id, lembar, [[["kolom"], tambahKeDaftar(salin(k))]]);
+        simpanNilaiSebagian(mp.id, lembar, [[["kolom"], buangDariDaftar(lamaK)]]);
         return tampilkan(true);
       }
       kirimNilaiTertunda();
