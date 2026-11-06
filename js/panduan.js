@@ -150,7 +150,7 @@ const TOPIK_PANDUAN = {
     { judul: "Menyimpan cadangan data", langkah: [
       "Buka menu <b>Saya</b>, lalu tekan <b>Unduh cadangan (.json)</b>.",
       "Simpan filenya di tempat yang aman, misalnya Google Drive.",
-      "Lakukan sebulan sekali. Beranda akan mengingatkan Anda."
+      "Lakukan seminggu sekali. Beranda akan mengingatkan Anda."
     ] }
   ]
 };

@@ -4,12 +4,12 @@
 //  Admin bisa baca semuanya, jadi file ini lengkap: akun, mapel, modul,
 //  soal, ujian sumatif, lembar nilai, santri, dan pengaturan.
 // =====================================================
-// paket gratis nggak punya backup otomatis, jadi TU diingetin tiap 2 minggu
-const BATAS_HARI_CADANGAN = 30;   // cadangan otomatis tiap bulan (lihat cadanganOtomatis)
+// paket gratis nggak punya backup otomatis, jadi TU diingetin tiap minggu
+const BATAS_HARI_CADANGAN = 7;   // cadangan otomatis tiap minggu (lihat cadanganOtomatis)
 
-// ====== CADANGAN OTOMATIS TIAP BULAN ======
+// ====== CADANGAN OTOMATIS TIAP MINGGU ======
 // Paket gratis nggak punya server yang jalan sendiri, jadi cadangannya dibikin waktu TU buka aplikasi:
-// kalau cadangan terakhir (dari perangkat TU mana pun) udah 30 hari lebih, file .json langsung diunduh.
+// kalau cadangan terakhir (dari perangkat TU mana pun) udah 7 hari lebih, file .json langsung diunduh.
 // Di HP file cuma bisa disimpan setelah tombol dipencet, jadi di HP cukup muncul pemberitahuan.
 let cadanganOtomatisDicoba = false;
 function bisaUnduhOtomatis() {
@@ -178,7 +178,7 @@ function htmlBagianCadangan() {
   return `
     <section class="bagian">
       <h2>Cadangan data</h2>
-      <p class="info">Unduh semua isi aplikasi (akun, mapel, modul, soal, ujian, nilai, dan siswa) jadi satu file. Simpan di Google Drive atau flashdisk, agar jika ada yang terhapus tidak sengaja, datanya masih ada. Firebase versi gratis tidak menyimpan cadangan otomatis, jadi ini satu-satunya cadangan. Di laptop, cadangan diunduh otomatis tiap bulan waktu TU buka aplikasi; di HP muncul pengingat. Tetap disarankan unduh sendiri sebelum ujian.</p>
+      <p class="info">Unduh semua isi aplikasi (akun, mapel, modul, soal, ujian, nilai, dan siswa) jadi satu file. Simpan di Google Drive atau flashdisk, agar jika ada yang terhapus tidak sengaja, datanya masih ada. Firebase versi gratis tidak menyimpan cadangan otomatis, jadi ini satu-satunya cadangan. Di laptop, cadangan diunduh otomatis tiap minggu waktu TU buka aplikasi; di HP muncul pengingat. Tetap disarankan unduh sendiri sebelum ujian.</p>
       <p class="info">File cadangan dikunci kata sandi, agar isinya tidak dapat dibaca orang lain. Catat kata sandinya. Jika lupa, cadangan tidak dapat dipulihkan.</p>
       <p class="info"><b>${terakhir}</b>${hari !== null && hari >= BATAS_HARI_CADANGAN ? ` Sudah ${hari} hari, sebaiknya unduh lagi.` : ""}</p>
       <div class="baris-tombol">
