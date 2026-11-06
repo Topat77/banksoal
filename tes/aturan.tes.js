@@ -427,7 +427,7 @@ grup("Data admin (pengaturan, kelas, siswa, grup, mapel): cuma TU yang boleh nul
   // Hasan sengaja dipilih: pengampu bi7a & kelas k7a, koordinator g-bi7. Tetap nggak boleh.
   const data = {
     "pengaturan/lembaga": { nama: "PKBM" }, "pengaturan/bobot": { umum: { tugas: 100 } },
-    "kelas/k7a": { pengampu: ["hasan"], nama: "7A" }, "santri/sa1": { nama: "Siswa", kelasId: "k7a" },
+    "kelas/k7a": { pengampu: ["hasan"], kelas: "7A1" }, "santri/sa1": { nama: "Siswa", kelasId: "k7a" },
     "grup/g-bi7": { pengampu: ["hasan", "aminah"], koordinator: "aminah" },
     "mapel/bi7a": { pengampu: ["hasan", "yusuf"], grup: "g-bi7" }
   };
@@ -444,6 +444,38 @@ grup("Data admin (pengaturan, kelas, siswa, grup, mapel): cuma TU yang boleh nul
   tolak("ustadz bikin mapel baru", bolehTulis("mapel/x9", null, { pengampu: ["hasan"], grup: "g9" }, akun.hasan));
   tolak("TU nggak boleh masukin dirinya jadi pengampu", bolehTulis("mapel/x9", null, { pengampu: ["tu"], grup: "g9" }, akun.tu));
   boleh("TU bikin mapel buat guru", bolehTulis("mapel/x9", null, { pengampu: ["hasan"], grup: "g9" }, akun.tu));
+}
+
+// =====================================================
+grup("Data admin: isi pengaturan, kelas, grup, mapel dicek bentuknya");
+{
+  const tu = akun.tu;
+  tolak("pengaturan dengan id asing", bolehTulis("pengaturan/lain", null, { nama: "x" }, tu));
+  tolak("pengaturan 61 kolom", bolehTulis("pengaturan/lembaga", null, Object.fromEntries(banyak(61, 0).map((_, i) => [`k${i}`, i])), tu));
+  boleh("wali kelas biasa", bolehTulis("pengaturan/wali", null, { tahun: {} }, tu));
+  boleh("TU hapus pengaturan", bolehTulis("pengaturan/lembaga", { nama: "x" }, null, tu));
+  tolak("kelas: kolom asing", bolehTulis("kelas/k9", null, { jenjang: "Paket B", kelas: "7A1", pengampu: [], admin: true }, tu));
+  tolak("kelas: pengampu bukan daftar", bolehTulis("kelas/k9", null, { jenjang: "Paket B", kelas: "7A1", pengampu: "hasan" }, tu));
+  boleh("kelas: bentuk dari sinkronGrup", bolehTulis("kelas/k9", null, { jenjang: "Paket B", kelas: "7A1", pengampu: ["hasan"] }, tu));
+  boleh("kelas lama dengan kolom versi dulu tetap bisa diubah", bolehTulis("kelas/k9", { kolomLama: 1, pengampu: [] }, { kolomLama: 1, pengampu: ["hasan"] }, tu));
+  tolak("grup: kolom asing", bolehTulis("grup/g9", null, { nama: "B. Indonesia", pengampu: [], koordinator: null, x: 1 }, tu));
+  tolak("grup: koordinator bukan teks", bolehTulis("grup/g9", null, { nama: "B. Indonesia", pengampu: [], koordinator: 5 }, tu));
+  boleh("grup: bentuk dari sinkronGrup", bolehTulis("grup/g9", null, { nama: "B. Indonesia", jenjang: "Paket B", tingkat: 7, pengampu: ["hasan"], koordinator: null }, tu));
+  tolak("mapel: 21 pengampu", bolehTulis("mapel/x9", null, { pengampu: banyak(21, "hasan"), grup: "g9" }, tu));
+  tolak("mapel: pengampu bukan daftar", bolehTulis("mapel/x9", null, { pengampu: "hasan", grup: "g9" }, tu));
+}
+
+// =====================================================
+grup("Peran akun: cuma nilai yang dikenal, TU nggak bisa ngubah / hapus akunnya sendiri");
+{
+  const p = db["pengguna/hasan"], saya = db["pengguna/tu"];
+  tolak("TU kasih peran asing", bolehTulis("pengguna/hasan", p, { ...p, peran: "superadmin" }, akun.tu));
+  boleh("TU nonaktifkan guru", bolehTulis("pengguna/hasan", p, { ...p, peran: "nonaktif" }, akun.tu));
+  boleh("TU jadiin guru admin", bolehTulis("pengguna/hasan", p, { ...p, peran: "kurikulum" }, akun.tu));
+  tolak("TU turunin peran sendiri", bolehTulis("pengguna/tu", saya, { ...saya, peran: "ustadz" }, akun.tu));
+  boleh("TU ubah kolom lain di profil sendiri", bolehTulis("pengguna/tu", saya, { ...saya, terakhirMasuk: 5 }, akun.tu));
+  tolak("TU hapus akun sendiri", bolehTulis("pengguna/tu", saya, null, akun.tu));
+  boleh("TU hapus akun lain", bolehTulis("pengguna/baru", db["pengguna/baru"], null, akun.tu));
 }
 
 // =====================================================

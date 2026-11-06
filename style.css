@@ -1701,6 +1701,11 @@ label.pilih-peran .menu-pilih { min-width: 160px; }
 }
 .dialog-pesan { margin: 0; font-size: 1.0625rem; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
 .dialog-isian { width: 100%; }
+.dialog-sandi { display: flex; gap: .5rem; align-items: center; }
+.dialog-sandi .dialog-isian { flex: 1; min-width: 0; }
+.dialog-sandi .tombol-teks { flex: none; min-height: 44px; }
+.dialog-galat:empty { display: none; }
+.dialog-galat { color: var(--merah); margin: 0; }
 .dialog-tombol { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
 .dialog-tombol button { flex: 1 1 140px; }
 .tombol-bahaya {

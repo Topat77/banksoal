@@ -84,14 +84,24 @@ function buatAturan(ambilDok, cekAdminAwal) {
   const kosongPeta = (d, k) => !ada(d, k) || d[k] === null || (jenisPeta(d[k]) && Object.keys(d[k]).length === 0);
   const lembarKosong = (b) => kosongPeta(b, "nilai") && kosongPeta(b, "hadir");
   // profil akun: ukuran cuma dicek kalau kolomnya berubah, biar profil lama tetap bisa di-update
+  const nilaiKolom = (d, k) => ada(d, k) ? d[k] : null;
+  const PERAN_SAH = ["menunggu", "ustadz", "kurikulum", "ditolak", "nonaktif"];
   const berubahKolom = (lama, b, k) => !lama || ada(lama, k) !== ada(b, k) || !sama(lama[k], b[k]);
   const profilValid = (lama, b) =>
     kolomDikenal(lama, b, ["nama", "email", "foto", "peran", "sapaan", "nip",
       "dibuat", "terakhirMasuk", "diubah", "diubahOleh"]) &&
     (!berubahKolom(lama, b, "nama") || (typeof b.nama === "string" && b.nama.length <= 100)) &&
     (!berubahKolom(lama, b, "nip") || teksAtauKosong(b, "nip", 30)) &&
-    (!berubahKolom(lama, b, "foto") || teks(b, "foto", 2000));
-  const nilaiKolom = (d, k) => ada(d, k) ? d[k] : null;
+    (!berubahKolom(lama, b, "foto") || teks(b, "foto", 2000)) &&
+    (!berubahKolom(lama, b, "peran") || PERAN_SAH.includes(nilaiKolom(b, "peran")));
+  const pengaturanValid = (id, b) => ["lembaga", "bobot", "wali"].includes(id) && Object.keys(b).length <= 60;
+  const kelasValid = (lama, b) =>
+    kolomDikenal(lama, b, ["jenjang", "kelas", "pengampu"]) &&
+    teks(b, "jenjang", 50) && teks(b, "kelas", 50) && daftar(b, "pengampu", 300);
+  const grupValid = (lama, b) =>
+    kolomDikenal(lama, b, ["nama", "jenjang", "tingkat", "pengampu", "koordinator"]) &&
+    teks(b, "nama", 200) && teks(b, "jenjang", 50) && daftar(b, "pengampu", 300) &&
+    teksAtauKosong(b, "koordinator", 128);
   // nama pembuat / pengubah wajib sama dengan nama di profil sendiri (dicek cuma kalau berubah)
   const namaAsli = (auth, lama, b, k) =>
     !ada(b, k) || !berubahKolom(lama, b, k) || b[k] === nilaiKolom(profil(auth) || {}, "nama");
@@ -146,15 +156,19 @@ function buatAturan(ambilDok, cekAdminAwal) {
            (["menunggu", "ustadz", "kurikulum"].includes(lama.peran) || kolomDikenal(lama, baru, ["terakhirMasuk"])) &&
            baru.peran === lama.peran && baru.email === lama.email &&
            sama(nilaiKolom(baru, "sapaan"), nilaiKolom(lama, "sapaan")) &&
-           sama(nilaiKolom(baru, "nip"), nilaiKolom(lama, "nip"))) || kurikulum(auth));
+           sama(nilaiKolom(baru, "nip"), nilaiKolom(lama, "nip"))) ||
+          // TU nggak boleh ngubah peran akunnya sendiri
+          (kurikulum(auth) && (auth.uid !== b[1] || sama(nilaiKolom(baru, "peran"), nilaiKolom(lama, "peran")))));
       }
-      return kurikulum(auth);
+      // TU nggak boleh hapus akunnya sendiri
+      return kurikulum(auth) && auth.uid !== b[1];
     }
-    if (b[0] === "pengaturan" && b.length === 2) return kurikulum(auth);
+    if (b[0] === "pengaturan" && b.length === 2) return kurikulum(auth) && (baru === null || pengaturanValid(b[1], baru));
     // admin nggak boleh jadi pengampu (admin bukan guru)
     if (b[0] === "mapel" && b.length === 2) {
       if (!kurikulum(auth)) return false;
-      return baru === null || !(Array.isArray(baru.pengampu) && baru.pengampu.includes(auth.uid));
+      return baru === null || (daftar(baru, "pengampu", 20) &&
+        !(Array.isArray(baru.pengampu) && baru.pengampu.includes(auth.uid)));
     }
 
     // lembar nilai: cuma pengampu mapelnya yang boleh ngisi angka. Admin: lihat,
@@ -168,7 +182,7 @@ function buatAturan(ambilDok, cekAdminAwal) {
     }
     // santri & kelas: diisi, diubah, dihapus admin; ustadz cuma lihat
     if (b[0] === "santri" && b.length === 2) return kurikulum(auth);
-    if (b[0] === "kelas" && b.length === 2) return kurikulum(auth);
+    if (b[0] === "kelas" && b.length === 2) return kurikulum(auth) && (baru === null || kelasValid(lama, baru));
 
     if (b[0] === "mapel" && (b[2] === "modul" || b[2] === "sumatif") && b.length === 4) {
       if (!aktif(auth)) return false;
@@ -182,7 +196,7 @@ function buatAturan(ambilDok, cekAdminAwal) {
     }
 
     // grup mapel: cuma admin
-    if (b[0] === "grup" && b.length === 2) return kurikulum(auth);
+    if (b[0] === "grup" && b.length === 2) return kurikulum(auth) && (baru === null || grupValid(lama, baru));
     // UAS bersama: koordinator selama draf / diajukan, admin kapan saja
     if (b[0] === "grup" && b[2] === "uas" && b.length === 4) {
       if (!aktif(auth)) return false;

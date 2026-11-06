@@ -38,14 +38,46 @@ function tampilDialog(o, selesai) {
   pesan.dir = "auto";
   kotak.appendChild(pesan);
 
-  let isian = null;
+  let isian = null, lihat = null, galat = null;
   if (o.jenis === "minta") {
     isian = document.createElement("input");
     isian.className = "dialog-isian";
     isian.value = o.nilaiAwal || "";
     isian.setAttribute("aria-label", String(o.pesan ?? ""));
     isian.autocomplete = "off";
-    kotak.appendChild(isian);
+    if (o.sandi) {
+      // kata sandi: disembunyikan, tapi bisa dilihat biar nggak perlu diketik dua kali
+      isian.type = "password";
+      isian.autocomplete = o.sandiBaru ? "new-password" : "current-password";
+      const baris = document.createElement("div");
+      baris.className = "dialog-sandi";
+      lihat = document.createElement("button");
+      lihat.type = "button";
+      lihat.className = "tombol-teks";
+      lihat.textContent = "Lihat";
+      lihat.setAttribute("aria-pressed", "false");
+      lihat.onclick = () => {
+        const tampak = isian.type === "password";
+        isian.type = tampak ? "text" : "password";
+        lihat.textContent = tampak ? "Sembunyikan" : "Lihat";
+        lihat.setAttribute("aria-pressed", String(tampak));
+        isian.focus();
+      };
+      baris.append(isian, lihat);
+      kotak.appendChild(baris);
+      if (o.catatan) {
+        const c = document.createElement("p");
+        c.className = "info kecil";
+        c.textContent = o.catatan;
+        kotak.appendChild(c);
+      }
+      galat = document.createElement("p");
+      galat.className = "info kecil dialog-galat";
+      galat.setAttribute("role", "alert");
+      kotak.appendChild(galat);
+    } else {
+      kotak.appendChild(isian);
+    }
   }
 
   const tombol = document.createElement("div");
@@ -90,7 +122,11 @@ function tampilDialog(o, selesai) {
     if (typeof aturRiwayat === "function") aturRiwayat();
     selesai(hasil);
   }
-  const jawabYa = () => tutup(o.jenis === "minta" ? isian.value : o.jenis === "kabar" ? undefined : true);
+  const jawabYa = () => {
+    // kata sandi wajib diisi: kotaknya tetap terbuka
+    if (o.sandi && !isian.value) { galat.textContent = "Kata sandi belum diisi."; isian.focus(); return; }
+    tutup(o.jenis === "minta" ? isian.value : o.jenis === "kabar" ? undefined : true);
+  };
   const jawabTidak = () => tutup(o.jenis === "minta" ? null : o.jenis === "kabar" ? undefined : false);
 
   function tombolKeyboard(e) {
@@ -99,7 +135,7 @@ function tampilDialog(o, selesai) {
       e.preventDefault(); jawabYa();
     } else if (e.key === "Tab") {
       // fokus nggak boleh keluar dari kotak dialog
-      const bisa = [isian, tidak, lain, ya].filter(Boolean);
+      const bisa = [isian, lihat, tidak, lain, ya].filter(Boolean);
       const i = bisa.indexOf(document.activeElement);
       e.preventDefault();
       bisa[(i + (e.shiftKey ? bisa.length - 1 : 1)) % bisa.length].focus();
@@ -113,7 +149,7 @@ function tampilDialog(o, selesai) {
 
   // dialog hapus: fokus awal ke Batal, biar Enter nggak langsung menghapus
   (isian || (o.bahaya && tidak) || ya).focus();
-  if (isian) isian.select();
+  if (isian && !o.sandi) isian.select();
 }
 
 function tanyaYakin(pesan, o = {}) {
@@ -129,4 +165,9 @@ function kabar(pesan) {
 }
 function minta(pesan, nilaiAwal = "", o = {}) {
   return bukaDialog({ jenis: "minta", pesan, nilaiAwal, ya: o.ya, tidak: o.tidak, bahaya: !!o.bahaya });
+}
+// kata sandi (wajib diisi, ada tombol Lihat). null kalau dibatalkan.
+//   const sandi = await mintaSandi("Buat kata sandi cadangan", { baru: true, catatan: "..." });
+function mintaSandi(pesan, o = {}) {
+  return bukaDialog({ jenis: "minta", sandi: true, sandiBaru: !!o.baru, catatan: o.catatan, pesan, ya: o.ya, tidak: o.tidak });
 }

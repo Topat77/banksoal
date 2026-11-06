@@ -156,7 +156,21 @@ service cloud.firestore {
           'dibuat', 'terakhirMasuk', 'diubah', 'diubahOleh'])
         && (!berubah('nama') || (isi().nama is string && isi().nama.size() <= 100))
         && (!berubah('nip') || teksAtauKosong('nip', 30))
-        && (!berubah('foto') || teks('foto', 2000));
+        && (!berubah('foto') || teks('foto', 2000))
+        && (!berubah('peran') || isi().get('peran', null) in ['menunggu', 'ustadz', 'kurikulum', 'ditolak', 'nonaktif']);
+    }
+    // pengaturan: cuma tiga dokumen yang dipakai aplikasi, ukurannya dibatasi
+    function pengaturanValid(id) {
+      return id in ['lembaga', 'bobot', 'wali'] && isi().size() <= 60;
+    }
+    function kelasValid() {
+      return kolomDikenal(['jenjang', 'kelas', 'pengampu'])
+        && teks('jenjang', 50) && teks('kelas', 50) && daftar('pengampu', 300);
+    }
+    function grupValid() {
+      return kolomDikenal(['nama', 'jenjang', 'tingkat', 'pengampu', 'koordinator'])
+        && teks('nama', 200) && teks('jenjang', 50) && daftar('pengampu', 300)
+        && teksAtauKosong('koordinator', 128);
     }
 
     // ---------- akun ----------
@@ -187,15 +201,19 @@ service cloud.firestore {
           && request.resource.data.email == resource.data.email
           && request.resource.data.get('sapaan', null) == resource.data.get('sapaan', null)
           && request.resource.data.get('nip', null) == resource.data.get('nip', null))
-        || kurikulum());
+        // TU nggak boleh ngubah peran akunnya sendiri (biar nggak ngunci diri kalau admin satu-satunya)
+        || (kurikulum() && (request.auth.uid != uid
+              || request.resource.data.get('peran', null) == resource.data.get('peran', null))));
 
-      allow delete: if kurikulum();
+      // TU nggak boleh hapus akunnya sendiri
+      allow delete: if kurikulum() && request.auth.uid != uid;
     }
 
-    // ---------- pengaturan (lembaga: nama & lama ujian; bobot: bobot nilai per jenis mapel) ----------
+    // ---------- pengaturan (lembaga: nama & lama ujian; bobot: bobot nilai per jenis mapel; wali kelas) ----------
     match /pengaturan/{id} {
       allow read: if aktif();
-      allow write: if kurikulum();
+      allow create, update: if kurikulum() && pengaturanValid(id);
+      allow delete: if kurikulum();
     }
 
     // ---------- kelas ----------
@@ -203,7 +221,8 @@ service cloud.firestore {
     // Diperbarui otomatis dari perangkat admin; dipakai aturan santri di bawah.
     match /kelas/{idKelas} {
       allow read: if aktif();
-      allow write: if kurikulum();
+      allow create, update: if kurikulum() && kelasValid();
+      allow delete: if kurikulum();
     }
 
     // ---------- santri ----------
@@ -220,7 +239,8 @@ service cloud.firestore {
     match /mapel/{idMapel} {
       allow read: if aktif();
       // admin nggak boleh jadi pengampu (admin bukan guru)
-      allow write: if kurikulum()
+      allow create, update: if kurikulum()
+        && daftar('pengampu', 20)
         && !(request.auth.uid in request.resource.data.get('pengampu', []));
       allow delete: if kurikulum();
 
@@ -286,7 +306,8 @@ service cloud.firestore {
     // Diperbarui otomatis dari perangkat admin; koordinator dipilih admin.
     match /grup/{idGrup} {
       allow read: if aktif();
-      allow write: if kurikulum();
+      allow create, update: if kurikulum() && grupValid();
+      allow delete: if kurikulum();
 
       // UAS bersama satu grup per semester. Disusun koordinator (selama masih draf / diajukan),
       // lalu diperiksa, dikunci, dan dicetak admin. Yang udah dikunci cuma bisa diubah admin.
