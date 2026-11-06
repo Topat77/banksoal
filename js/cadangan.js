@@ -82,6 +82,51 @@ function dataCadangan(lengkap) {
   };
 }
 
+// ====== KUNCI FILE CADANGAN PAKAI KATA SANDI ======
+// File cadangan isinya data siswa & nilai, jadi dikunci (AES-GCM, kunci dari kata sandi lewat PBKDF2).
+// Semuanya jalan di browser (Web Crypto), kata sandinya nggak disimpan di mana pun: lupa = file nggak bisa dibuka.
+// File cadangan lama yang belum dikunci tetap bisa dipulihkan.
+const ULANG_KUNCI = 310000;   // putaran PBKDF2 (saran OWASP buat SHA-256)
+const CATATAN_SANDI = "Catat kata sandi ini. Jika lupa, cadangan tidak dapat dipulihkan.";
+function keBase64(bita) {
+  let s = "";
+  for (let i = 0; i < bita.length; i += 0x8000) s += String.fromCharCode.apply(null, bita.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function dariBase64(teks) {
+  const s = atob(teks);
+  const bita = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) bita[i] = s.charCodeAt(i);
+  return bita;
+}
+async function kunciDariSandi(sandi, garam, ulang) {
+  const bahan = await crypto.subtle.importKey("raw", new TextEncoder().encode(sandi), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt: garam, iterations: ulang, hash: "SHA-256" },
+    bahan, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+// teks JSON → isi file terkunci. Yang kebaca tanpa sandi cuma nama aplikasi & tanggal.
+async function kunciCadangan(teks, sandi, dibuat) {
+  const garam = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const kunci = await kunciDariSandi(sandi, garam, ULANG_KUNCI);
+  const sandiIsi = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, kunci, new TextEncoder().encode(teks)));
+  return { aplikasi: KONFIG.namaAplikasi, terkunci: 1, dibuat, ulang: ULANG_KUNCI, garam: keBase64(garam), iv: keBase64(iv), isi: keBase64(sandiIsi) };
+}
+function cadanganTerkunci(c) {
+  return adalahObjek(c) && c.terkunci === 1 && typeof c.isi === "string" && typeof c.garam === "string" && typeof c.iv === "string";
+}
+// isi file terkunci → teks JSON aslinya, atau null kalau kata sandinya salah / file rusak
+async function bukaCadangan(c, sandi) {
+  try {
+    const ulang = Number.isInteger(c.ulang) && c.ulang > 0 && c.ulang <= 10000000 ? c.ulang : ULANG_KUNCI;
+    const kunci = await kunciDariSandi(sandi, dariBase64(c.garam), ulang);
+    const asli = await crypto.subtle.decrypt({ name: "AES-GCM", iv: dariBase64(c.iv) }, kunci, dariBase64(c.isi));
+    return new TextDecoder().decode(asli);
+  } catch {
+    return null;
+  }
+}
+
 async function unduhCadangan(tombol, pesan, { otomatis = false } = {}) {
   wajibKurikulum();
   // otomatis: gagal diam aja (dicoba lagi waktu buka berikutnya), pemberitahuan di beranda tetap muncul
@@ -94,6 +139,12 @@ async function unduhCadangan(tombol, pesan, { otomatis = false } = {}) {
     lapor("Unduh cadangan butuh internet: isi semua semester diambil langsung dari server.");
     return false;
   }
+  // ditanya sebelum ambil data, jadi kalau dibatalkan nggak ada jatah baca yang kepakai
+  const sandi = await mintaSandi(otomatis
+    ? "Cadangan bulanan siap diunduh. Buat kata sandi untuk mengunci file cadangan."
+    : "Buat kata sandi untuk mengunci file cadangan.",
+    { baru: true, catatan: CATATAN_SANDI, ya: "Unduh", tidak: otomatis ? "Nanti" : "Batal" });
+  if (sandi === null) return false;
   if (tombol) tombol.disabled = true;
   try {
     if (pesan) pesan.textContent = "Mengambil semua data dari server...";
@@ -106,12 +157,13 @@ async function unduhCadangan(tombol, pesan, { otomatis = false } = {}) {
     if (pesan) pesan.textContent = "";
     const data = dataCadangan(lengkap);
     const tanggal = new Date().toLocaleDateString("sv-SE");   // 2026-10-24
-    const berkas = new File([JSON.stringify(data, null, 1)], `cadangan-banksoal-${tanggal}.json`, { type: "application/json" });
+    const terkunci = await kunciCadangan(JSON.stringify(data), sandi, data.dibuat);
+    const berkas = new File([JSON.stringify(terkunci)], `cadangan-banksoal-${tanggal}.json`, { type: "application/json" });
     const jadi = await berikanFile(berkas);
     if (!jadi) return false;
     simpanLembaga({ ...toko.lembaga, cadanganTerakhir: Date.now(), cadanganOleh: namaSaya() });
     const totalSoal = data.mapel.reduce((a, m) => a + m.modul.reduce((x, y) => x + jumlahSoal(y), 0), 0);
-    if (pesan) pesan.textContent = `Tersimpan: ${data.mapel.length} mapel, ${totalSoal} soal, ${data.santri.length} siswa. Simpan file-nya di Google Drive atau flashdisk.`;
+    if (pesan) pesan.textContent = `Tersimpan: ${data.mapel.length} mapel, ${totalSoal} soal, ${data.santri.length} siswa. File dikunci kata sandi. Simpan file-nya di Google Drive atau flashdisk.`;
     return true;
   } finally {
     if (tombol) tombol.disabled = false;
@@ -127,6 +179,7 @@ function htmlBagianCadangan() {
     <section class="bagian">
       <h2>Cadangan data</h2>
       <p class="info">Unduh semua isi aplikasi (akun, mapel, modul, soal, ujian, nilai, dan siswa) jadi satu file. Simpan di Google Drive atau flashdisk, agar jika ada yang terhapus tidak sengaja, datanya masih ada. Firebase versi gratis tidak menyimpan cadangan otomatis, jadi ini satu-satunya cadangan. Di laptop, cadangan diunduh otomatis tiap bulan waktu TU buka aplikasi; di HP muncul pengingat. Tetap disarankan unduh sendiri sebelum ujian.</p>
+      <p class="info">File cadangan dikunci kata sandi, agar isinya tidak dapat dibaca orang lain. Catat kata sandinya. Jika lupa, cadangan tidak dapat dipulihkan.</p>
       <p class="info"><b>${terakhir}</b>${hari !== null && hari >= BATAS_HARI_CADANGAN ? ` Sudah ${hari} hari, sebaiknya unduh lagi.` : ""}</p>
       <div class="baris-tombol">
         <button class="tombol-kedua" id="unduhCadangan">Unduh cadangan (.json)</button>
@@ -134,7 +187,7 @@ function htmlBagianCadangan() {
         <input type="file" id="fileCadangan" accept="application/json,.json" hidden>
         <span class="info" id="pesanCadangan" role="status"></span>
       </div>
-      <p class="info kecil"><b>Pulihkan</b> hanya mengembalikan data yang <b>hilang</b> (terhapus). Data yang masih ada tidak ditimpa, jadi aman. Akun guru dan <b>lembar nilai</b> tidak ikut dipulihkan: akun tinggal disetujui lagi jika gurunya login, nilainya masih ada di file cadangan (buka file .json-nya buat menyalin ulang).</p>
+      <p class="info kecil"><b>Pulihkan</b> hanya mengembalikan data yang <b>hilang</b> (terhapus). Data yang masih ada tidak ditimpa, jadi aman. Akun guru dan <b>lembar nilai</b> tidak ikut dipulihkan: akun tinggal disetujui lagi jika gurunya login, nilainya masih tersimpan di file cadangan.</p>
     </section>`;
 }
 
@@ -214,6 +267,19 @@ function pasangPulihkanCadangan() {
     if (!f) return;
     let c;
     try { c = JSON.parse(await f.text()); } catch { c = null; }
+    if (cadanganTerkunci(c)) {
+      let pesanSandi = "Isi kata sandi file cadangan ini.";
+      for (;;) {
+        const sandi = await mintaSandi(pesanSandi, { ya: "Buka" });
+        if (sandi === null) return;
+        const teks = await bukaCadangan(c, sandi);
+        if (teks !== null) {
+          try { c = JSON.parse(teks); } catch { c = null; }
+          break;
+        }
+        pesanSandi = "Kata sandi salah. Coba lagi.";
+      }
+    }
     if (!adalahObjek(c) || typeof c.versiCadangan !== "number" || !Array.isArray(c.mapel)) {
       return kabar("File ini bukan file cadangan Bank Soal. Pilih file cadangan-banksoal-....json yang dulu diunduh.");
     }

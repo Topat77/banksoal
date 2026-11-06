@@ -119,6 +119,27 @@ async function fitur() {
       const { browser, page } = await buka(opsi);
       let unduh = 0; page.on("download", () => unduh++);
       await masuk(page, "u-kur"); await page.waitForTimeout(1500);
+      // laptop: muncul kotak kata sandi dulu (file cadangan dikunci), baru keunduh
+      const kotakSandi = await page.$(".dialog-sandi input");
+      harap(`${nama}: kotak kata sandi muncul`, !!kotakSandi, !!harus);
+      if (kotakSandi) {
+        boleh("kata sandi tersembunyi", await kotakSandi.evaluate(e => e.type === "password"));
+        await page.click(".dialog-sandi .tombol-teks");
+        boleh("tombol Lihat nampilin kata sandi", await kotakSandi.evaluate(e => e.type === "text"));
+        await kotakSandi.fill("rahasia-tes");
+        const tungguUnduh = page.waitForEvent("download");
+        await page.click('.dialog [data-dialog="ya"]');
+        const berkas = await tungguUnduh;
+        const isi = JSON.parse(require("fs").readFileSync(await berkas.path(), "utf8"));
+        boleh("file cadangan terkunci (data siswa nggak kebaca)", isi.terkunci === 1 && !("santri" in isi));
+        const buka = await page.evaluate(async (c) => {
+          const salah = await bukaCadangan(c, "salah");
+          const benar = JSON.parse(await bukaCadangan(c, "rahasia-tes"));
+          return { salah, siswa: Array.isArray(benar.santri) && benar.santri.length > 0 };
+        }, isi);
+        harap("kata sandi salah → nggak kebuka", buka.salah, null);
+        boleh("kata sandi benar → isinya utuh", buka.siswa);
+      }
       harap(nama, unduh, harus);
       if (!harus) boleh("HP: tombol unduh cadangan muncul di beranda", await page.$("#cadanganBeranda"));
       await browser.close();

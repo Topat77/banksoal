@@ -247,7 +247,7 @@ test("data admin (pengaturan, kelas, siswa, grup, mapel): ustadz nggak bisa nuli
   const db = hasan();   // pengampu bi7a & kelas k7a, koordinator g-bi7
   await assertFails(tulis(db, "pengaturan/lembaga", { nama: "PKBM" }));
   await assertFails(tulis(db, "pengaturan/bobot", { umum: { tugas: 100 } }));
-  await assertFails(tulis(db, "kelas/k7a", { pengampu: ["hasan"], nama: "7A" }));
+  await assertFails(tulis(db, "kelas/k7a", { pengampu: ["hasan"], kelas: "7A1" }));
   await assertFails(tulis(db, "kelas/k9", { pengampu: ["hasan"] }));
   await assertFails(hapus(db, "kelas/k7a"));
   await assertFails(tulis(db, "santri/sa1", { nama: "Ganti", kelasId: "k7a" }));
@@ -272,12 +272,39 @@ test("data admin: akun menunggu juga nggak bisa nulis", async () => {
 test("data admin: TU boleh nulis, tapi nggak boleh jadi pengampu", async () => {
   const db = tu();
   await assertSucceeds(tulis(db, "pengaturan/lembaga", { nama: "PKBM" }));
-  await assertSucceeds(tulis(db, "kelas/k7a", { pengampu: ["hasan"], nama: "7A" }));
+  await assertSucceeds(tulis(db, "kelas/k7a", { pengampu: ["hasan"], kelas: "7A1" }));
   await assertSucceeds(tulis(db, "santri/sa9", { nama: "Baru", kelasId: "k7a" }));
   await assertSucceeds(tulis(db, "grup/g-bi7", { pengampu: ["hasan", "aminah"], koordinator: "aminah" }));
   await assertSucceeds(tulis(db, "mapel/x9", { pengampu: ["hasan"], grup: "g-bi7" }));
   await assertFails(tulis(db, "mapel/x8", { pengampu: ["tu"], grup: "g-bi7" }));
   await assertSucceeds(hapus(db, "santri/sa1"));
+});
+
+test("data admin: isi pengaturan, kelas, grup, mapel dicek bentuknya", async () => {
+  const db = tu();
+  await assertFails(tulis(db, "pengaturan/lain", { nama: "x" }));
+  await assertFails(tulis(db, "pengaturan/lembaga", Object.fromEntries(banyak(61, 0).map((_, i) => [`k${i}`, i]))));
+  await assertSucceeds(tulis(db, "pengaturan/wali", { tahun: {} }));
+  await assertFails(tulis(db, "kelas/k9", { jenjang: "Paket B", kelas: "7A1", pengampu: [], admin: true }));
+  await assertFails(tulis(db, "kelas/k9", { jenjang: "Paket B", kelas: "7A1", pengampu: "hasan" }));
+  await assertSucceeds(tulis(db, "kelas/k9", { jenjang: "Paket B", kelas: "7A1", pengampu: ["hasan"] }));
+  await assertFails(tulis(db, "grup/g9", { nama: "B. Indonesia", pengampu: [], koordinator: null, x: 1 }));
+  await assertFails(tulis(db, "grup/g9", { nama: "B. Indonesia", pengampu: [], koordinator: 5 }));
+  await assertSucceeds(tulis(db, "grup/g9", { nama: "B. Indonesia", jenjang: "Paket B", tingkat: 7, pengampu: ["hasan"], koordinator: null }));
+  await assertFails(tulis(db, "mapel/x9", { pengampu: banyak(21, "hasan"), grup: "g-bi7" }));
+  await assertFails(tulis(db, "mapel/x9", { pengampu: "hasan", grup: "g-bi7" }));
+});
+
+test("peran akun: cuma nilai yang dikenal, TU nggak bisa ngubah / hapus akunnya sendiri", async () => {
+  const p = { nama: "Ustadz Hasan", email: "hasan@x", peran: "ustadz", nip: "123", terakhirMasuk: 1, kolomLama: "x" };
+  await assertFails(tulis(tu(), "pengguna/hasan", { ...p, peran: "superadmin" }));
+  await assertSucceeds(tulis(tu(), "pengguna/hasan", { ...p, peran: "nonaktif" }));
+  await assertSucceeds(tulis(tu(), "pengguna/hasan", { ...p, peran: "kurikulum" }));
+  const saya = { nama: "Admin TU", email: ADMIN_AWAL, peran: "kurikulum" };
+  await assertFails(tulis(tu(), "pengguna/tu", { ...saya, peran: "ustadz" }));
+  await assertSucceeds(tulis(tu(), "pengguna/tu", { ...saya, terakhirMasuk: 5 }));
+  await assertFails(hapus(tu(), "pengguna/tu"));
+  await assertSucceeds(hapus(tu(), "pengguna/baru"));
 });
 
 // ustadz cuma langganan yang terkait dirinya (hemat kuota baca): query ini harus diterima rules
