@@ -42,6 +42,7 @@ Gak ada build step / npm. Semua file JS dimuat pakai `<script>` biasa dengan uru
 | `sw.js` | service worker: file aplikasi ambil dari internet dulu, SDK Firebase & font pakai simpanan |
 | `css/` | gaya, dipecah 4 file yang dimuat berurutan di `index.html`: `dasar` → `komponen` → `halaman` → `menu` (yang belakang boleh nimpa yang depan, jadi urutannya jangan diubah) |
 | `firestore.rules` | aturan akses database |
+| `android/` | resep APK (PWABuilder / TWA, package `io.github.topat77.banksoal`): cara bikin ulang & pengaturannya di `android/README.md`. APK cuma bungkus situs, jadi perubahan kode nggak perlu APK baru. **Kunci APK (keystore + password) jangan pernah masuk repo** |
 | `tes/` | tes Node, nggak dimuat aplikasi |
 
 Peran akun:
