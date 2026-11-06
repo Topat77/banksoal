@@ -13,7 +13,7 @@
 // =====================================================
 
 
-const VERSI = "banksoal-v61";
+const VERSI = "banksoal-v62";
 const INTI = [
   "./", "index.html", "css/dasar.css", "css/komponen.css", "css/halaman.css", "css/menu.css", "manifest.webmanifest",
   "ikon-192.png", "ikon-512.png", "ikon-maskable-512.png", "ikon-apple-180.png",
