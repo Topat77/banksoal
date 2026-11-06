@@ -16,7 +16,7 @@ function layarAkun() {
   jejak.textContent = "Akun guru & staf TU yang boleh memakai aplikasi";
   if (!toko.penggunaSiap) return tampilMemuat("Guru");
 
-  const semua = [...toko.pengguna].sort((a, b) => (a.nama || "").localeCompare(b.nama || "", "id"));
+  const semua = [...toko.pengguna].sort(bandingNama);
   const menunggu = semua.filter(p => p.peran === "menunggu").sort((a, b) => (b.dibuat || 0) - (a.dibuat || 0));
   const aktif = semua.filter(p => PERAN_AKTIF.includes(p.peran));
   const lain = semua.filter(p => p.peran === "ditolak" || p.peran === "nonaktif");
@@ -319,7 +319,7 @@ function formMapel() {
 
   // admin (kurikulum) bukan guru, jadi nggak bisa dipilih jadi pengampu
   const calon = toko.pengguna.filter(p => p.peran === "ustadz")
-    .sort((a, b) => (a.nama || "").localeCompare(b.nama || "", "id"));
+    .sort(bandingNama);
   const pilihPengampu = calon.length ? calon.map(p => `
       <label class="centang">
         <input type="checkbox" name="pengampu" value="${aman(p.id)}" data-sapaan-pengampu="${aman(sapaanPengguna(p) || "")}" ${(m.pengampu || []).includes(p.id) ? "checked" : ""}>

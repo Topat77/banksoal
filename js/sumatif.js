@@ -139,7 +139,6 @@ function layarSumatif() {
   judul.textContent = sum.nama;
   jejak.textContent = judulUjian(mp, sum);
   tombolKembali.hidden = false;
-  if (!uas) catatTerakhir("sumatif", mp.id, sum.id);
 
   const daftar = butirSumatif(mp.id, sum);
   const jumlahPG = daftar.filter(x => x.soal.jenis === "PG").length;
