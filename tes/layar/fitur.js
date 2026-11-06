@@ -116,7 +116,7 @@ async function fitur() {
   {
     console.log("\nCadangan otomatis");
     for (const [nama, opsi, harus] of [["laptop: langsung keunduh", { hp: false }, 1], ["HP: nunggu tombol dipencet", { hp: true, sentuh: true }, 0]]) {
-      const { browser, page } = await buka(opsi);
+      const { browser, page } = await buka({ ...opsi, sandiManual: true });
       let unduh = 0; page.on("download", () => unduh++);
       await masuk(page, "u-kur"); await page.waitForTimeout(1500);
       // laptop: muncul kotak kata sandi dulu (file cadangan dikunci), baru keunduh

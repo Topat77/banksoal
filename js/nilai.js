@@ -202,7 +202,7 @@ function modeIsiNilai() {
 // kolom yang lagi diisi di mode satu kolom: yang dipilih, atau kolom pertama yang belum lengkap
 function kolomNilaiDipilih(kolom, lembar, santri) {
   if (posisi.kolomNilai === "hadir" || kolom.some(k => k.id === posisi.kolomNilai)) return posisi.kolomNilai;
-  const belum = kolom.find(k => santri.some(s => typeof ((lembar.nilai || {})[s.id] || {})[k.id] !== "number"));
+  const belum = kolom.find(k => santri.some(s => !nilaiSah(((lembar.nilai || {})[s.id] || {})[k.id])));
   posisi.kolomNilai = (belum || kolom[0] || { id: "hadir" }).id;
   return posisi.kolomNilai;
 }

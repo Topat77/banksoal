@@ -25,7 +25,7 @@ function cadanganOtomatis() {
   if (!navigator.onLine && toko.backend.mode !== "coba") return;
   cadanganOtomatisDicoba = true;   // sekali per buka aplikasi, biar kalau gagal nggak ngulang terus
   unduhCadangan(null, null, { otomatis: true }).then(jadi => {
-    if (jadi) kabar("Cadangan bulanan sudah diunduh otomatis ke folder Download. Simpan file-nya di Google Drive atau flashdisk.");
+    if (jadi) kabar("Cadangan mingguan sudah diunduh otomatis ke folder Download. Simpan file-nya di Google Drive atau flashdisk.");
   });
 }
 
@@ -87,7 +87,9 @@ function dataCadangan(lengkap) {
 // Semuanya jalan di browser (Web Crypto), kata sandinya nggak disimpan di mana pun: lupa = file nggak bisa dibuka.
 // File cadangan lama yang belum dikunci tetap bisa dipulihkan.
 const ULANG_KUNCI = 310000;   // putaran PBKDF2 (saran OWASP buat SHA-256)
-const CATATAN_SANDI = "Catat kata sandi ini. Jika lupa, cadangan tidak dapat dipulihkan.";
+function bisaKunciCadangan() { return !!(globalThis.crypto && crypto.subtle); }
+const PESAN_TANPA_KUNCI = "Cadangan tidak bisa dibuat atau dibuka dari alamat ini. Buka aplikasi lewat alamat resminya (https://topat77.github.io/banksoal/), lalu coba lagi.";
+const CATATAN_SANDI = "Gunakan kata sandi yang sama setiap kali, lalu catat di tempat aman. Jika lupa, cadangan tidak dapat dipulihkan.";
 function keBase64(bita) {
   let s = "";
   for (let i = 0; i < bita.length; i += 0x8000) s += String.fromCharCode.apply(null, bita.subarray(i, i + 0x8000));
@@ -135,13 +137,18 @@ async function unduhCadangan(tombol, pesan, { otomatis = false } = {}) {
     lapor("Data masih dimuat, tunggu sebentar lalu coba lagi.");
     return false;
   }
+  // kunci kata sandi butuh Web Crypto, yang cuma ada di alamat aman (https / localhost)
+  if (!bisaKunciCadangan()) {
+    lapor(PESAN_TANPA_KUNCI);
+    return false;
+  }
   if (!navigator.onLine && toko.backend.mode !== "coba") {
     lapor("Unduh cadangan butuh internet: isi semua semester diambil langsung dari server.");
     return false;
   }
   // ditanya sebelum ambil data, jadi kalau dibatalkan nggak ada jatah baca yang kepakai
   const sandi = await mintaSandi(otomatis
-    ? "Cadangan bulanan siap diunduh. Buat kata sandi untuk mengunci file cadangan."
+    ? "Cadangan mingguan siap diunduh. Buat kata sandi untuk mengunci file cadangan."
     : "Buat kata sandi untuk mengunci file cadangan.",
     { baru: true, catatan: CATATAN_SANDI, ya: "Unduh", tidak: otomatis ? "Nanti" : "Batal" });
   if (sandi === null) return false;
@@ -268,6 +275,7 @@ function pasangPulihkanCadangan() {
     let c;
     try { c = JSON.parse(await f.text()); } catch { c = null; }
     if (cadanganTerkunci(c)) {
+      if (!bisaKunciCadangan()) return kabar(PESAN_TANPA_KUNCI);
       let pesanSandi = "Isi kata sandi file cadangan ini.";
       for (;;) {
         const sandi = await mintaSandi(pesanSandi, { ya: "Buka" });

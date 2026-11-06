@@ -68,6 +68,8 @@ grup("Hitung nilai akhir");
   harap("isian kehadiran rusak jadi angka >= 0", JSON.stringify(rusak.hadir), JSON.stringify({ hadir: 0, sakit: 2, izin: 0 }));
   harap("nilai berupa teks nggak ikut dihitung", hitungNilai(lembarN({ k1: "80", k2: 60 }), "s1", umum).per.tugas, null);
   harap("nilai di luar 0–100 dari database dibuang (UH 1000 & 90 → 90)", hitungNilai(lembarN({ k2: 1000, k3: 90 }), "s1", umum).per.uh, 90);
+  harap("nilaiSah: 0, 100, 75,5 dihitung terisi", [0, 100, 75.5].every(nilaiSah), true);
+  harap("nilaiSah: 1000, -5, teks \"80\", NaN, null nggak dihitung terisi", [1000, -5, "80", NaN, null, undefined].some(nilaiSah), false);
   harap("nilai negatif dibuang", hitungNilai(lembarN({ k1: -5 }), "s1", umum).per.tugas, null);
   harap("belum ada nilai sama sekali → akhir kosong", hitungNilai(lembarN({}), "s1", umum).akhir, null);
   harap("lembar belum ada → akhir kosong", hitungNilai(null, "s1", umum).akhir, null);
