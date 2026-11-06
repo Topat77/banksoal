@@ -112,7 +112,7 @@ async function fitur() {
     await browser.close();
   }
 
-  // ---------- cadangan otomatis bulanan ----------
+  // ---------- cadangan otomatis mingguan ----------
   {
     console.log("\nCadangan otomatis");
     for (const [nama, opsi, harus] of [["laptop: langsung keunduh", { hp: false }, 1], ["HP: nunggu tombol dipencet", { hp: true, sentuh: true }, 0]]) {
