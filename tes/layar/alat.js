@@ -18,20 +18,22 @@ async function buka(opsi = {}) {
   page.on("pageerror", e => galat.push("PAGEERROR " + e.message));
   page.on("console", m => { if (m.type() === "error") galat.push("console " + m.text()); });
   // kotak dialog aplikasi (js/dialog.js) dijawab otomatis "ya"; pesannya dicatat di window.__dialog
-  await page.addInitScript(() => {
+  // opsi.sandiManual: kotak kata sandi nggak dijawab otomatis (tesnya ngisi sendiri)
+  await page.addInitScript((sandiManual) => {
     window.__dialog = [];
     new MutationObserver(() => {
       for (const k of document.querySelectorAll(".dialog-latar:not([data-dicatat])")) {
         k.dataset.dicatat = "1";
         window.__dialog.push(k.querySelector(".dialog-pesan").textContent);
+        if (sandiManual && k.querySelector(".dialog-sandi")) continue;
         setTimeout(() => {
           const i = k.querySelector(".dialog-isian"); if (i) i.value = "HAPUS";
           k.querySelector('[data-dialog="ya"]').click();
         }, 0);
       }
     }).observe(document, { childList: true, subtree: true });
-  });
-  await page.route("http://app.test/**", route => {
+  }, !!opsi.sandiManual);
+  await page.route("https://app.test/**", route => {
     let p = new URL(route.request().url()).pathname;
     if (p === "/") p = "/index.html";
     const f = path.join(ROOT, p);
@@ -41,7 +43,7 @@ async function buka(opsi = {}) {
     route.fulfill({ status: 200, body, contentType: TIPE[path.extname(p)] || "application/octet-stream" });
   });
   await page.route("https://fonts.googleapis.com/**", r => r.fulfill({ status: 200, body: "", contentType: "text/css" }));
-  await page.goto("http://app.test/");
+  await page.goto("https://app.test/");
   await page.waitForTimeout(300);
   return { browser, page, galat };
 }

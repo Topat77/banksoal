@@ -299,7 +299,7 @@ function htmlBerandaTU(sem) {
   if (uasDiajukan) h += `<div class="pemberitahuan"><p><b>${uasDiajukan} UAS bersama</b> sudah diajukan koordinator dan menunggu diperiksa.</p><button class="tombol-teks" id="keUASDiajukan">Periksa</button></div>`;
   const hariCadangan = hariSejakCadangan();
   if (perluCadangan()) {
-    h += `<div class="pemberitahuan"><p>${hariCadangan === null ? "<b>Cadangan data belum pernah diunduh.</b>" : `<b>Cadangan bulanan: terakhir diunduh ${hariCadangan} hari lalu.</b>`} ${bisaUnduhOtomatis() ? "Jika belum terunduh otomatis, tekan tombol ini." : "Tekan tombol ini untuk menyimpan file cadangannya."}</p><button class="tombol-teks" id="cadanganBeranda">Unduh cadangan</button></div>`;
+    h += `<div class="pemberitahuan"><p>${hariCadangan === null ? "<b>Cadangan data belum pernah diunduh.</b>" : `<b>Cadangan mingguan: terakhir diunduh ${hariCadangan} hari lalu.</b>`} ${bisaUnduhOtomatis() ? "Jika belum terunduh otomatis, tekan tombol ini." : "Tekan tombol ini untuk menyimpan file cadangannya."}</p><button class="tombol-teks" id="cadanganBeranda">Unduh cadangan</button></div>`;
   }
   const kelasKosong = daftarKelas().filter(x => santriKelas(x.jenjang, x.kelas).length === 0);
   if (kelasKosong.length) {

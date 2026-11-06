@@ -51,9 +51,9 @@ vm.runInContext([
   ...["jenisMapel", "bobotUntuk", "rataRata", "nilaiSah", "hitungNilai"].map(n => ambilFungsi(nilaiJs, n)),
   ...["angkaAcak", "kocok", "kelompokkan", "acakPilihanSoal", "acakItems", "siapkanLembar"].map(n => ambilFungsi(cetakJs, n)),
   ambilKonstanta(simpanJs, "sudahDiingatkanUkuran"), ...["tanpaId", "muatDiDok"].map(n => ambilFungsi(simpanJs, n)),
-  "this.ekspor2 = { bacaJawabanAI, hitungNilai, angkaAcak, kocok, siapkanLembar, muatDiDok };"
+  "this.ekspor2 = { bacaJawabanAI, hitungNilai, nilaiSah, angkaAcak, kocok, siapkanLembar, muatDiDok };"
 ].join("\n"), ctx);
-const { bacaJawabanAI, hitungNilai, angkaAcak, kocok, siapkanLembar, muatDiDok } = ctx.ekspor2;
+const { bacaJawabanAI, hitungNilai, nilaiSah, angkaAcak, kocok, siapkanLembar, muatDiDok } = ctx.ekspor2;
 
 // ---------- data contoh ----------
 const db = {
