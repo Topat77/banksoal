@@ -8,7 +8,7 @@
 //  (Paket B umum, Paket B diniah, Paket C umum, Paket C diniah),
 //  disimpan di pengaturan/bobot: { "Paket B": { umum, diniah }, ... }.
 //  Nilai akhir = gabungan rata-rata tiap kelompok sesuai bobotnya.
-//  Daftar siswa & panel naik kelas ada di santri.js.
+//  Daftar siswa ada di santri.js, panel naik kelas di keputusan.js.
 // =====================================================
 
 const KELOMPOK_NILAI = [

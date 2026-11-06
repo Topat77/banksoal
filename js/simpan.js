@@ -1,7 +1,7 @@
 // =====================================================
 //  simpan.js — semua fungsi tulis ke database (simpan… / hapus…)
 //  Perubahan langsung dipasang di `toko` (biar layar cepat), lalu dikirim ke backend.
-//  State & langganan datanya ada di toko.js.
+//  State datanya ada di toko.js, langganannya di langganan.js.
 // =====================================================
 
 // ====== TULIS DATA ======
@@ -221,7 +221,7 @@ function simpanSantri(santri, pantau) {
   if (!baru.dibuat) baru.dibuat = Date.now();
   baru.diubah = Date.now();
   pasangDiDaftar(toko.santri, baru);
-  toko.santri.sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
+  toko.santri.sort(bandingNama);
   const janji = Promise.resolve(toko.backend.tulis(`santri/${baru.id}`, tanpaId(baru)));
   if (typeof pantau === "function") pantau(janji);
   else janji.catch(gagalSimpan);

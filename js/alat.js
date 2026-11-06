@@ -39,6 +39,19 @@ function salin(x) {
   return x === undefined ? undefined : JSON.parse(JSON.stringify(x));
 }
 
+// urut nama A-Z (siswa, guru): dipakai langsung di .sort(bandingNama)
+function bandingNama(a, b) {
+  return (a.nama || "").localeCompare(b.nama || "", "id");
+}
+// No. Absen udah diisi? (0 dihitung terisi; kosong / belum ada = belum)
+function adaAbsen(x) {
+  return x.absen !== undefined && x.absen !== null && x.absen !== "";
+}
+// buat ngurut No. Absen: yang belum punya nomor ditaruh paling belakang
+function nomorAbsen(x) {
+  return adaAbsen(x) ? Number(x.absen) : Infinity;
+}
+
 // pasang aksi klik ke tombol, kalau tombolnya memang ada di layar
 // (banyak tombol cuma muncul buat peran / keadaan tertentu)
 function klik(id, f) {

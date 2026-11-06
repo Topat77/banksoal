@@ -84,12 +84,11 @@ function pindahkanKelas(s, kelasTujuan, sem) {
 }
 // santri yang ada di satu kelas pada tahun itu (yang udah lulus / pindah ikut, asal tercatat di tahun itu)
 function santriKelasDi(jenjang, kelas, tahun, semester) {
-  const nomor = (x) => x.absen === undefined || x.absen === null || x.absen === "" ? Infinity : Number(x.absen);
   return toko.santri
     .filter(s => s.aktif !== false || riwayatTahun(s, tahun))
     .map(s => ({ s, k: kelasSantriDi(s, tahun, semester) }))
     .filter(x => x.k.jenjang === jenjang && x.k.kelas === kelas)
-    .sort((a, c) => (nomor(a.k) - nomor(c.k)) || (a.s.nama || "").localeCompare(c.s.nama || "", "id"))
+    .sort((a, c) => (nomorAbsen(a.k) - nomorAbsen(c.k)) || bandingNama(a.s, c.s))
     .map(x => x.s);
 }
 // kelas yang punya santri di tahun itu (buat pilihan kelas di rapor)
@@ -155,7 +154,7 @@ function batalkanNaikKelas(s, tahun) {
   baru.riwayatKelas = riwayatSantri(s).filter(x => x.tahun !== tahun);
   baru.jenjang = r.jenjang;
   baru.kelas = r.kelas;
-  if (r.absen === undefined || r.absen === null || r.absen === "") delete baru.absen;
+  if (!adaAbsen(r)) delete baru.absen;
   else baru.absen = r.absen;
   if (santriKeluar(s) && s.keluar && s.keluar.tahun === tahun) {
     delete baru.status;

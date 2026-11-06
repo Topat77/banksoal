@@ -249,7 +249,7 @@ function layarPantauGuru() {
   if (!dataDasarSiap() || !toko.penggunaSiap) return tampilMemuat("Guru");
 
   const guru = toko.pengguna.filter(p => p.peran === "ustadz")
-    .sort((a, b) => (a.nama || "").localeCompare(b.nama || "", "id"));
+    .sort(bandingNama);
   const belumSiap = toko.mapel.some(m => !isiMapelSiap(m.id));
 
   let h = htmlSegmenGuru("pantauGuru");
@@ -349,7 +349,7 @@ function layarKelasSiswa() {
 
   // arsip: siswa yang udah lulus / pindah sekolah, dipisah dari kelas. TU boleh hapus kapan aja.
   if (arsip) {
-    const urut = (a, c) => String((c.keluar || {}).tahun || "").localeCompare(String((a.keluar || {}).tahun || "")) || (a.nama || "").localeCompare(c.nama || "", "id");
+    const urut = (a, c) => String((c.keluar || {}).tahun || "").localeCompare(String((a.keluar || {}).tahun || "")) || bandingNama(a, c);
     h += `<p class="info">Siswa yang sudah keluar. Datanya disimpan terpisah dari kelas, rapor lamanya masih bisa dibuka di halaman Rapor (pilih tahun ajarannya).</p>`;
     for (const [st, label] of [["pindah", "Pindah sekolah"], ["lulus", "Lulus"]]) {
       const daftar = keluar.filter(s => s.status === st).sort(urut);

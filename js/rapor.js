@@ -218,7 +218,7 @@ function htmlPilihWali(jenjang, kelas, tahun) {
   // kelas putra (rombel A): ustadzah tidak boleh jadi wali kelas
   const putra = kelasPutra(kelas);
   const guru = toko.pengguna.filter(p => p.peran === "ustadz" && !(putra && sapaanPengguna(p) === "ustadzah"))
-    .sort((a, c) => (a.nama || "").localeCompare(c.nama || "", "id"));
+    .sort(bandingNama);
   const akunLama = w && toko.pengguna.find(p => p.id === w.uid);
   const salah = w && putra && akunLama && sapaanPengguna(akunLama) === "ustadzah";
   // wali lama yang akunnya udah nonaktif / dihapus / ustadzah di kelas putra tetap kelihatan
