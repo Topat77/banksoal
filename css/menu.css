@@ -184,7 +184,7 @@ label.pilih-peran .menu-pilih { min-width: 160px; }
 .panel-kepala .tombol-teks { min-height: 32px; font-size: .875rem; }
 /* di HP tombol kecil tetap gampang dipencet jempol (min. 44px) */
 @media (max-width: 599px) {
-  .chip, .soal-aksi button, .panel-kepala .tombol-teks { min-height: 44px; }
+  .chip, .soal-aksi button, .panel-kepala .tombol-teks, .alur-modul button { min-height: 44px; }
 }
 
 /* ---- aktivitas terbaru ---- */
