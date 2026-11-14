@@ -462,7 +462,7 @@ function formMapel() {
       if (modul.length && (await minta(`Ketik HAPUS untuk memastikan.`, "", { bahaya: true, ya: "Hapus" })) !== "HAPUS") return;
       // dialog tadi bisa lama; kalau datanya ternyata belum siap, jangan lanjut
       if (!hapusMapelData(lama.id, isi)) { kabar("Data masih dimuat, coba lagi sebentar."); return; }
-      await hapusSisaKosong();
+      await hapusSisaKosong(lama);
       pergi("mapelTU", { mapelId: null });
     };
   }
