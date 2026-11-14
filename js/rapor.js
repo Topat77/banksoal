@@ -207,10 +207,15 @@ function layarRaporCetak() {
   const semua = santriKelasDi(jenjang, kelas, sem.tahun, sem.semester);
   const daftar = posisi.raporSantri ? semua.filter(s => s.id === posisi.raporSantri) : semua;
   if (daftar.length === 0) throw new DataHilang();
-  if (raporResmi(jenjang) && !muatIsianRapor({ jenjang, kelas }, sem).siap) {
+  const wIsian = raporResmi(jenjang) ? muatIsianRapor({ jenjang, kelas }, sem) : null;
+  if (wIsian && !wIsian.siap) {
     tombolKembali.hidden = false;
     return tampilMemuat("Rapor");
   }
+  // isian wali kelas gagal dimuat → capaian, ketidakhadiran, ekskul & catatan kosong. Kasih tahu sebelum dicetak.
+  const peringatanIsian = wIsian && wIsian.gagal
+    ? `<p class="pemberitahuan-kecil">Isian rapor dari wali kelas tidak dapat dimuat, jadi capaian kompetensi, ketidakhadiran, ekstrakurikuler, dan catatan masih kosong. Periksa sambungan internet, lalu buka rapor ini lagi sebelum mencetak.</p>`
+    : "";
 
   judul.textContent = posisi.raporSantri ? `Rapor ${daftar[0].nama}` : `Rapor ${kelas}`;
   jejak.textContent = `${kelas}, ${jenjang} · ${namaSemester(sem)}`;
@@ -220,6 +225,7 @@ function layarRaporCetak() {
     <div class="layar-cetak">
       <div class="panel-cetak jangan-cetak">
         <p class="info">${daftar.length} rapor${daftar.length > 1 ? ", tiap siswa satu halaman" : ""}.</p>
+        ${peringatanIsian}
         <div class="baris-tombol"><button class="tombol-utama" id="print">Cetak / PDF</button></div>
         <p class="info">Ingin menyimpan sebagai PDF? Di jendela cetak, pilih tujuan "Simpan sebagai PDF".</p>
       </div>

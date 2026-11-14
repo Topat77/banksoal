@@ -241,31 +241,37 @@ function hapusPengguna(uid) {
   berubah();
 }
 
-// khusus admin, dipanggil setelah mapel dihapus: grup mapel yang udah nggak punya mapel
-// (beserta UAS & usulannya) dan kelas yang udah nggak punya mapel maupun siswa ikut dihapus.
+// khusus admin, dipanggil setelah mapel dihapus: grup mapel ITU (beserta UAS & usulannya) kalau udah
+// nggak punya mapel lain, dan kelas mapel itu kalau udah nggak punya mapel maupun siswa, ikut dihapus.
+// Cuma punya mapel yang dihapus: grup/kelas lain yang kebetulan kosong dibiarkan.
 // Sengaja nggak lewat sinkron otomatis, biar ganti nama mapel nggak ngehapus riwayat UAS.
-async function hapusSisaKosong() {
+async function hapusSisaKosong(mapel) {
+  if (!adalahObjek(mapel)) return;
   const b = toko.backend;
-  const grupAda = new Set(toko.mapel.map(idGrup));
-  // grup yang dilewati (gagal diambil, atau ada UAS yang sudah dikunci di semester mana pun) dibiarkan utuh
-  const dilewati = new Set();
-  for (const g of toko.grup.filter(g => !grupAda.has(g.id))) {
-    let uas, usulan;
+  const gid = idGrup(mapel);
+  const g = toko.grup.find(x => x.id === gid);
+  if (g && !toko.mapel.some(m => idGrup(m) === gid)) {
+    // gagal diambil, atau ada UAS yang sudah dikunci di semester mana pun → grup dibiarkan utuh
+    let uas = null, usulan = null;
     try {
-      [uas, usulan] = await Promise.all([b.ambilKoleksi(`grup/${g.id}/uas`, []), b.ambilKoleksi(`grup/${g.id}/usulan`, [])]);
+      [uas, usulan] = await Promise.all([b.ambilKoleksi(`grup/${gid}/uas`, []), b.ambilKoleksi(`grup/${gid}/usulan`, [])]);
     } catch (err) {
       console.warn("Gagal ambil UAS grup, dilewati:", err);
-      dilewati.add(g.id); continue;
     }
-    if (uas.map(amankanDok).some(u => u.status === "dikunci")) { dilewati.add(g.id); continue; }
-    for (const u of uas) b.hapus(`grup/${g.id}/uas/${u.id}`).catch(gagalSimpan);
-    for (const u of usulan) b.hapus(`grup/${g.id}/usulan/${u.id}`).catch(gagalSimpan);
-    b.hapus(`grup/${g.id}`).catch(gagalSimpan);
+    if (uas && !uas.map(amankanDok).some(u => u.status === "dikunci")) {
+      for (const u of uas) b.hapus(`grup/${gid}/uas/${u.id}`).catch(gagalSimpan);
+      for (const u of usulan) b.hapus(`grup/${gid}/usulan/${u.id}`).catch(gagalSimpan);
+      b.hapus(`grup/${gid}`).catch(gagalSimpan);
+      toko.grup = toko.grup.filter(x => x.id !== gid);
+    }
   }
-  toko.grup = toko.grup.filter(g => grupAda.has(g.id) || dilewati.has(g.id));
-  const kelasAda = new Set([...toko.mapel.map(m => idKelas(m.jenjang, m.kelas)), ...toko.santri.map(s => idKelas(s.jenjang, s.kelas))]);
-  for (const k of toko.kelas.filter(k => !kelasAda.has(k.id))) b.hapus(`kelas/${k.id}`).catch(gagalSimpan);
-  toko.kelas = toko.kelas.filter(k => kelasAda.has(k.id));
+  const kid = idKelas(mapel.jenjang, mapel.kelas);
+  const kelasDipakai = toko.mapel.some(m => idKelas(m.jenjang, m.kelas) === kid) ||
+    toko.santri.some(s => idKelas(s.jenjang, s.kelas) === kid);
+  if (!kelasDipakai && toko.kelas.some(k => k.id === kid)) {
+    b.hapus(`kelas/${kid}`).catch(gagalSimpan);
+    toko.kelas = toko.kelas.filter(k => k.id !== kid);
+  }
   berubah();
 }
 

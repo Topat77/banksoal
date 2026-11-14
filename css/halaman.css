@@ -113,6 +113,8 @@ label.pilih-peran select { width: auto; padding: 8px 10px; font-size: 1.0625rem;
 .tabel-santri input.salah { border-color: var(--merah); background: var(--merah-muda); }
 .tabel-santri tr[data-id=""] input[data-f="nama"]::placeholder { color: var(--tinta-redup); opacity: .7; }
 @media (max-width: 560px) {
+  /* sejak ada kolom NISN, nama kejepit di HP: tabelnya dibiarin lebih lebar & digeser ke samping */
+  .tabel-santri { min-width: 560px; }
   .tabel-santri .kol-absen { width: 54px; }
   .tabel-santri .kol-nis { width: 104px; }
   .tabel-santri .kol-aksi { width: 40px; }

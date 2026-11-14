@@ -46,7 +46,9 @@ async function isiLengkap() {
   const ambil = (jalur) => toko.backend.ambilKoleksi(jalur, []);
   const hasil = { mapel: {}, grup: {}, rapor: [] };
   await Promise.all([
-    ambil("rapor").then(d => { hasil.rapor = d; }),   // isian rapor wali kelas
+    // isian rapor wali kelas. Kalau ditolak (misal rules baru belum di-Publish), cadangan tetap jalan
+    // tanpa isian rapor (null). Pulihkan tetap aman: buatKalauBelumAda nggak nimpa yang udah ada.
+    ambil("rapor").then(d => { hasil.rapor = d; }, e => { console.warn("Isian rapor tidak ikut dicadangkan", e); hasil.rapor = null; }),
     ...toko.mapel.map(async m => {
       const [modul, sumatif, nilai] = await Promise.all([ambil(`mapel/${m.id}/modul`), ambil(`mapel/${m.id}/sumatif`), ambil(`mapel/${m.id}/nilai`)]);
       hasil.mapel[m.id] = { modul: urutIsi(modul), sumatif: urutIsi(sumatif), nilai };
@@ -173,6 +175,8 @@ async function unduhCadangan(tombol, pesan, { otomatis = false } = {}) {
     simpanLembaga({ ...toko.lembaga, cadanganTerakhir: Date.now(), cadanganOleh: namaSaya() });
     const totalSoal = data.mapel.reduce((a, m) => a + m.modul.reduce((x, y) => x + jumlahSoal(y), 0), 0);
     if (pesan) pesan.textContent = `Tersimpan: ${data.mapel.length} mapel, ${totalSoal} soal, ${data.santri.length} siswa. File dikunci kata sandi. Simpan file-nya di Google Drive atau flashdisk.`;
+    // isian rapor ditolak server (rules baru belum di-Publish): kasih tahu TU, cadangannya tetap jadi (dialog antre)
+    if (lengkap.rapor === null) kabar("Cadangan sudah diunduh, tetapi isian rapor wali kelas tidak ikut karena tidak dapat dibaca dari server.");
     return true;
   } finally {
     if (tombol) tombol.disabled = false;
