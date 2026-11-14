@@ -343,7 +343,12 @@ function formMapel() {
           <label class="radio"><input type="radio" name="jenis" value="umum" ${jenisMapel(m) === "umum" ? "checked" : ""}> Umum</label>
           <label class="radio"><input type="radio" name="jenis" value="diniah" ${jenisMapel(m) === "diniah" ? "checked" : ""}> Diniah</label>
         </div>
-        <p class="info">Berpengaruh ke bobot penilaian (diatur di halaman Bobot nilai) dan bagian di rapor.</p>
+        <p class="info">Berpengaruh ke bobot penilaian (diatur di halaman Bobot nilai).</p>
+      </fieldset>
+      <fieldset>
+        <legend>Kelompok di rapor PKBM</legend>
+        <div class="kolom daftar-centang">${KELOMPOK_RAPOR.map(g => `<label class="radio"><input type="radio" name="rapor" value="${g.k}" ${kelompokRapor(m) === g.k ? "checked" : ""}> ${aman(g.label)}</label>`).join("")}</div>
+        <p class="info">Mapel diniah (MSU/MSW) tidak masuk rapor PKBM. Bahasa Arab di rapor PKBM biasanya masuk Muatan lokal.</p>
       </fieldset>
       <fieldset>
         <legend>Pengampu</legend>
@@ -379,11 +384,21 @@ function formMapel() {
 
   // mapel baru: jenis (diniah / umum) ditebak dari namanya, selama belum dipilih sendiri
   let jenisDipilih = !!lama;
-  form.querySelectorAll("[name=jenis]").forEach(r => r.addEventListener("change", () => { jenisDipilih = true; }));
+  let raporDipilih = !!(lama && lama.rapor);
+  form.querySelectorAll("[name=jenis]").forEach(r => r.addEventListener("change", () => { jenisDipilih = true; tebakRapor(); }));
+  form.querySelectorAll("[name=rapor]").forEach(r => r.addEventListener("change", () => { raporDipilih = true; }));
+  // kelompok rapor ikut ditebak dari nama & jenis, selama belum dipilih sendiri
+  function tebakRapor() {
+    if (raporDipilih) return;
+    const jenis = (form.querySelector("[name=jenis]:checked") || {}).value || "umum";
+    form.querySelector(`[name=rapor][value="${CSS.escape(tebakKelompokRapor(form.nama.value, jenis))}"]`).checked = true;
+  }
   form.nama.addEventListener("input", () => {
-    if (jenisDipilih) return;
-    const j = tebakJenis(form.nama.value);
-    form.querySelector(`[name=jenis][value="${CSS.escape(j)}"]`).checked = true;
+    if (!jenisDipilih) {
+      const j = tebakJenis(form.nama.value);
+      form.querySelector(`[name=jenis][value="${CSS.escape(j)}"]`).checked = true;
+    }
+    tebakRapor();
   });
 
   // ustadzah yang dicentang di kelas putra (rombel A) → tidak bisa disimpan
@@ -421,7 +436,7 @@ function formMapel() {
     const baru = simpanMapelData({
       ...(lama || {}),
       id: lama ? lama.id : buatId(),
-      nama, jenjang: f.get("jenjang"), kelas, jenis: f.get("jenis") || "umum",
+      nama, jenjang: f.get("jenjang"), kelas, jenis: f.get("jenis") || "umum", rapor: f.get("rapor") || "umum",
       pengampu, namaPengampu
     });
     pilihJenjang(baru.jenjang);   // daftar mapel langsung nunjukin jenjang mapel yang barusan disimpan

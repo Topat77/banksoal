@@ -81,8 +81,8 @@ function layarSantri() {
       h += `<p class="kosong">Daftar siswa kelas ini belum diisi admin (TU).</p>`;
     } else {
       h += `<div class="wadah-tabel-santri"><table class="tabel-santri lihat">
-          <thead><tr><th class="kol-absen">No. Absen</th><th class="kol-nis">NIS</th><th>Nama siswa</th></tr></thead>
-          <tbody id="badanSantri">${daftar.map(x => `<tr data-id="${aman(x.id)}"><td class="tengah">${aman(x.absen ?? "")}</td><td>${aman(x.nis || "")}</td><td>${aman(x.nama)}</td></tr>`).join("")}</tbody>
+          <thead><tr><th class="kol-absen">No. Absen</th><th class="kol-nis">NIS</th><th>Nama siswa</th><th class="kol-nis">NISN</th></tr></thead>
+          <tbody id="badanSantri">${daftar.map(x => `<tr data-id="${aman(x.id)}"><td class="tengah">${aman(x.absen ?? "")}</td><td>${aman(x.nis || "")}</td><td>${aman(x.nama)}</td><td>${aman(x.nisn || "")}</td></tr>`).join("")}</tbody>
         </table></div>`;
     }
     isi.innerHTML = h;
@@ -99,16 +99,17 @@ function layarSantri() {
       <td><input data-f="absen" type="number" inputmode="numeric" min="1" step="1" value="${x && adaAbsen(x) ? aman(x.absen) : ""}" aria-label="No. absen"></td>
       <td><input data-f="nis" inputmode="numeric" value="${x ? aman(x.nis || "") : ""}" aria-label="NIS"></td>
       <td><input data-f="nama" value="${x ? aman(x.nama) : ""}" aria-label="Nama siswa" placeholder="${x ? "" : "Nama siswa baru"}"></td>
+      <td><input data-f="nisn" inputmode="numeric" maxlength="20" value="${x ? aman(x.nisn || "") : ""}" aria-label="NISN"></td>
       <td class="kol-aksi">${x ? tombolHapus(x) : ""}</td>
     </tr>`;
 
   h += `
     <h2 class="subjudul">Siswa ${aman(labelKelas(jenjang, kelas))} <small id="jumlahSantri">${daftar.length} siswa</small></h2>
     ${htmlNamaWali(jenjang, kelas, semesterSekarang().tahun)}
-    <p class="info">Ketik langsung di tabel, tersimpan otomatis. Bisa juga salin 3 kolom dari Excel (No. Absen, NIS, Nama) lalu tempel di kotak pertama.</p>
+    <p class="info">Ketik langsung di tabel, tersimpan otomatis. Bisa juga salin kolom dari Excel (No. Absen, NIS, Nama, NISN) lalu tempel di kotak pertama. NISN dipakai di rapor.</p>
     <div class="wadah-tabel-santri">
       <table class="tabel-santri">
-        <thead><tr><th class="kol-absen">No. Absen</th><th class="kol-nis">NIS</th><th>Nama siswa</th><th class="kol-aksi"></th></tr></thead>
+        <thead><tr><th class="kol-absen">No. Absen</th><th class="kol-nis">NIS</th><th>Nama siswa</th><th class="kol-nis">NISN</th><th class="kol-aksi"></th></tr></thead>
         <tbody id="badanSantri">${daftar.map(htmlBarisSantri).join("")}${htmlBarisSantri(null).repeat(barisKosong)}</tbody>
       </table>
     </div>
@@ -154,7 +155,8 @@ function layarSantri() {
   const ambil = (tr) => ({
     absen: tr.querySelector('[data-f="absen"]').value.trim(),
     nis: tr.querySelector('[data-f="nis"]').value.trim(),
-    nama: tr.querySelector('[data-f="nama"]').value.trim().replace(/\s+/g, " ")
+    nama: tr.querySelector('[data-f="nama"]').value.trim().replace(/\s+/g, " "),
+    nisn: tr.querySelector('[data-f="nisn"]').value.trim()
   });
 
   // tandai No. Absen yang dobel
@@ -188,8 +190,8 @@ function layarSantri() {
         pesan.textContent = "Nama tidak boleh kosong. Jika ingin menghapus, gunakan tombol ×.";
         return;
       }
-      if (lama.nama === v.nama && (lama.nis || "") === v.nis && String(lama.absen ?? "") === String(absen)) return;
-      simpanSantri({ ...lama, nama: v.nama, nis: v.nis, absen });
+      if (lama.nama === v.nama && (lama.nis || "") === v.nis && (lama.nisn || "") === v.nisn && String(lama.absen ?? "") === String(absen)) return;
+      simpanSantri({ ...lama, nama: v.nama, nis: v.nis, nisn: v.nisn, absen });
       pesan.textContent = "Tersimpan";
     } else if (v.nama) {
       const kembar = toko.santri.find(x => x.jenjang === jenjang && x.kelas === kelas && x.aktif !== false && x.nama.toLowerCase() === v.nama.toLowerCase());
@@ -199,7 +201,7 @@ function layarSantri() {
         delete tr.dataset.menunggu;
         if (!lanjut || tr.dataset.id) return;
       }
-      const baru = simpanSantri({ id: buatId(), nama: v.nama, nis: v.nis, absen, jenjang, kelas, aktif: true });
+      const baru = simpanSantri({ id: buatId(), nama: v.nama, nis: v.nis, nisn: v.nisn, absen, jenjang, kelas, aktif: true });
       tr.dataset.id = baru.id;
       tr.querySelector('[data-f="nama"]').placeholder = "";
       tr.querySelector(".kol-aksi").innerHTML = tombolHapus(baru);
@@ -214,7 +216,7 @@ function layarSantri() {
     const teks = (e.clipboardData || window.clipboardData).getData("text");
     if (!/[\t\n]/.test(teks.trim())) return;   // cuma satu nilai: biarin tempel biasa
     e.preventDefault();
-    const urutanKolom = ["absen", "nis", "nama"];
+    const urutanKolom = ["absen", "nis", "nama", "nisn"];
     const mulaiKolom = urutanKolom.indexOf(input.dataset.f);
     let tr = input.closest("tr");
     const barisTeks = teks.replace(/\r/g, "").split("\n").filter(b => b.trim() !== "");

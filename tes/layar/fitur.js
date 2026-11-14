@@ -83,6 +83,55 @@ async function fitur() {
     await browser.close();
   }
 
+  // ---------- rapor format resmi Paket B ----------
+  {
+    console.log("\nRapor format resmi Paket B");
+    const { browser, page, galat } = await buka({ hp: false });
+    await page.clock.setFixedTime(new Date("2027-05-20T09:00:00"));   // semester Genap, keputusan naik kelas dicetak
+    await masuk(page, "u-kur");
+    // NISN diketik di Daftar siswa (kolom paling kanan)
+    await ke(page, "santri", { kelasSantri: "Paket B|7A1", dariNilai: false }, 600);
+    const sid = await page.$eval("#badanSantri tr[data-id]:not([data-id=''])", tr => tr.dataset.id);
+    await page.fill(`#badanSantri tr[data-id="${sid}"] [data-f="nisn"]`, "0111835670");
+    await page.press(`#badanSantri tr[data-id="${sid}"] [data-f="nisn"]`, "Tab"); await page.waitForTimeout(300);
+    harap("NISN tersimpan", await page.evaluate(id => toko.santri.find(s => s.id === id).nisn, sid), "0111835670");
+    // keputusan naik kelas siswa itu
+    await page.click("[data-keputusan] [data-hasil=naik]"); await page.waitForTimeout(600);
+    // satu mapel diniah dijadikan muatan lokal lewat form mapel
+    const arab = await page.evaluate(() => (toko.mapel.find(m => m.kelas === "7A1" && /arab/i.test(m.nama)) || {}).id);
+    if (arab) {
+      await ke(page, "formMapel", { mapelEditId: arab, dariMapel: false, dariMapelTU: false }, 500);
+      await page.check('[name="rapor"][value="mulok"]');
+      await page.evaluate(() => document.getElementById("form").requestSubmit()); await page.waitForTimeout(500);
+      harap("kelompok rapor tersimpan di mapel", await page.evaluate(id => cariMapel(id).rapor, arab), "mulok");
+    }
+    await ke(page, "rapor", { kelasRapor: "Paket B|7A1" }, 900);
+    boleh("ada pengaturan rapor (kepala sekolah, tanggal)", await page.$("#formAturRapor"));
+    await page.fill('#formAturRapor [name="kepala"]', "Kepala Contoh, S.Pd.I.");
+    await page.evaluate(() => document.getElementById("formAturRapor").requestSubmit()); await page.waitForTimeout(300);
+    await ke(page, "raporCetak", { kelasRapor: "Paket B|7A1", raporSantri: sid }, 900);
+    const r = await page.evaluate(() => {
+      const L = document.querySelector(".rapor-resmi");
+      return {
+        ada: !!L,
+        identitas: L.querySelector(".identitas-resmi").innerText.replace(/\s+/g, " "),
+        mapel: [...L.querySelectorAll(".tabel-rapor-resmi tbody tr:not(.kelompok) td:nth-child(2)")].map(t => t.textContent.trim()).filter(Boolean),
+        keputusan: (L.querySelector(".kotak-keputusan td") || {}).textContent || "",
+        kepala: L.querySelector(".ttd-kepala").textContent,
+        kaki: L.querySelector(".kaki-rapor").textContent
+      };
+    });
+    boleh("Paket B pakai rapor format resmi", r.ada);
+    boleh("identitas: kelas romawi VII A1, fase D, semester 2 (Genap), NISN", /VII A1/.test(r.identitas) && /Fase : D/.test(r.identitas) && /2 \(Genap\)/.test(r.identitas) && /0111835670/.test(r.identitas));
+    tolak("mapel diniah (MSU/MSW) nggak tercetak", r.mapel.some(n => /aqidah|fiqih/i.test(n)));
+    if (arab) boleh("muatan lokal tercetak \"Muatan Lokal (Bahasa Arab)\"", r.mapel.some(n => /^Muatan Lokal \(Bahasa Arab\)$/.test(n)));
+    boleh("keputusan: Naik ke kelas VIII (Delapan)", /Naik ke kelas VIII \(Delapan\)/.test(r.keputusan));
+    boleh("nama kepala sekolah dari pengaturan rapor", /Kepala Contoh/.test(r.kepala));
+    boleh("kaki halaman: nama | NISN … Paket B", /0111835670/.test(r.kaki) && /Paket B/.test(r.kaki));
+    harap("nggak ada error", galatBersih(galat), []);
+    await browser.close();
+  }
+
   // ---------- TU hemat kuota: isi mapel dimuat waktu dibuka ----------
   {
     console.log("\nTU: isi mapel baru dimuat waktu dibuka");
