@@ -91,6 +91,7 @@ function pasangData(peran) {
   // kelas mana dari dokumen kelas (kelas.wali), jadi nggak ikut baca dokumen ini
   if (!guru) langgananData.push(b.pantauDok("pengaturan/wali", d => {
     toko.wali = d || {};
+    toko.waliSiap = true;   // sengaja nggak di-set kalau gagal: jangan sampai wali di dokumen kelas jadi null
     sinkronGrup();   // wali kelas ikut dicatat di dokumen kelas (buat rules isian rapor)
     berubah();
   }, laporGagal("wali kelas")));
@@ -438,5 +439,6 @@ function hentikanData() {
   toko.lembaga = {};
   toko.bobot = {};
   toko.wali = {};
+  toko.waliSiap = false;
   peranTerpasang = null;
 }

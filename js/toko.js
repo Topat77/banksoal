@@ -15,6 +15,7 @@ const toko = {
   lembaga: {},        // { nama, waktu }
   bobot: {},          // bobot nilai per jenis mapel: { umum: {...}, diniah: {...} } (diatur admin)
   wali: {},           // wali kelas per tahun (cuma admin): { tahun: { "2026-2027": { idKelas: { uid, nama, nip } } } }
+  waliSiap: false,    // pengaturan/wali udah kebaca (sinkronGrup nunggu ini biar wali di kelas nggak ketimpa null)
   mapel: [],          // semua mapel
   mapelSiap: false,
   isi: {},            // id mapel → { modulSaya, modulBagi, modulSemua, sumatif, sumatifBagi, nilai, siap, tetangga }
