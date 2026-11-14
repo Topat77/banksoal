@@ -12,6 +12,8 @@ function indukLayarGuru() {
   if (L === "mapel" || L === "aiGenerator" || L === "cari") return "mapelGuru";
   if (L === "nilai" && posisi.dariSiswaGuru) return "siswaGuru";
   if (L === "panduan") return "lainnya";
+  if (L === "isianRapor") return "siswaGuru";
+  if (L === "isianSiswa") return "isianRapor";
   return null;
 }
 // menu guru yang menyala buat layar sekarang
@@ -19,7 +21,7 @@ function kelompokLayarGuru() {
   const L = posisi.layar;
   if (L === "beranda") return "beranda";
   if (L === "lainnya" || L === "panduan") return "lainnya";
-  if (L === "siswaGuru" || L === "nilai" || L === "santri") return "siswa";
+  if (["siswaGuru", "nilai", "santri", "isianRapor", "isianSiswa"].includes(L)) return "siswa";
   return "mapelGuru";
 }
 // induk layar sesuai peran (TU: admin.js, guru: di atas)
@@ -76,17 +78,26 @@ function layarSiswaGuru() {
   const diampu = mapelDiampu();
   const kelas = daftarKelas().filter(k => kelasDiajar().has(`${k.jenjang}|${k.kelas}`));
 
-  let h = `<p class="info">Kelas yang Anda ajar. Pilih mapel untuk mengisi nilai.</p>`;
+  // kelas yang diwalikan (format rapor PKBM): isian rapor diisi wali kelas
+  const kw = kelasWaliSaya();
+  let h = (kw || []).map(k => `
+    <section class="panel kelas-wali">
+      <div class="panel-kepala"><h2>Wali kelas ${aman(k.kelas)} <small>${aman(k.jenjang)}</small></h2></div>
+      <p class="info">Isi capaian kompetensi, ketidakhadiran, ekstrakurikuler, dan catatan untuk rapor ${aman(namaSemester(semesterSekarang()))}.</p>
+      <div class="baris-tombol"><button class="tombol-utama" data-isian-kelas="${aman(`${k.jenjang}|${k.kelas}`)}">Isi rapor kelas ${aman(k.kelas)}</button></div>
+    </section>`).join("");
+  h += `<p class="info">Kelas yang Anda ajar. Pilih mapel untuk mengisi nilai.</p>`;
   if (!kelas.length) h += `<p class="kosong">Anda belum mengajar di kelas mana pun.</p>`;
   for (const kl of kelas) {
     const kunci = `${kl.jenjang}|${kl.kelas}`;
     const siswa = santriKelas(kl.jenjang, kl.kelas);
-    const wali = waliKelas(tahun, idKelas(kl.jenjang, kl.kelas));
+    // guru nggak baca pengaturan wali kelas; yang ketahuan cuma kalau dia sendiri walinya (kelas.wali)
+    const sayaWali = (dataKelas(idKelas(kl.jenjang, kl.kelas)) || {}).wali === uidSaya();
     const mapel = diampu.filter(m => m.jenjang === kl.jenjang && m.kelas === kl.kelas).sort(urutMapelJenis);
     h += `
       <section class="panel kelas-guru">
         <div class="panel-kepala"><h2>Kelas ${aman(kl.kelas)} <small>${aman(kl.jenjang)}</small></h2><span class="info">${siswa.length} siswa</span></div>
-        <p class="info">Wali kelas: ${wali ? aman(wali.nama) : "belum dipilih"}</p>
+        ${sayaWali ? `<p class="info">Anda wali kelas ini.</p>` : ""}
         <div class="baris-tombol">${mapel.map(m =>
           `<button class="tombol-utama" data-isi-nilai="${aman(m.id)}">Isi nilai ${aman(m.nama)}</button>`).join("")}</div>
         <details class="kartu-kelas" data-kartu-kelas="${aman(kunci)}" ${posisi.kelasTerbuka === kunci ? "open" : ""}>
@@ -104,6 +115,11 @@ function layarSiswaGuru() {
     if (d.open) posisi.kelasTerbuka = d.dataset.kartuKelas;
     else if (posisi.kelasTerbuka === d.dataset.kartuKelas) posisi.kelasTerbuka = null;
   }));
+  isi.querySelectorAll("[data-isian-kelas]").forEach(b => b.onclick = () => {
+    const [jenjang, kelas] = b.dataset.isianKelas.split("|");
+    muatIsianRapor({ jenjang, kelas }, semesterSekarang(), true);   // ambil yang terbaru
+    pergi("isianRapor", { isianKelas: b.dataset.isianKelas, isianSem: null });
+  });
   isi.querySelectorAll("[data-isi-nilai]").forEach(b => b.onclick = () =>
     pergi("nilai", { mapelId: b.dataset.isiNilai, semester: null, dariSiswaGuru: true }));
 }

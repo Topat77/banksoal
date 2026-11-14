@@ -96,8 +96,28 @@ function buatAturan(ambilDok, cekAdminAwal) {
     (!berubahKolom(lama, b, "peran") || PERAN_SAH.includes(nilaiKolom(b, "peran")));
   const pengaturanValid = (id, b) => ["lembaga", "bobot", "wali"].includes(id) && Object.keys(b).length <= 60;
   const kelasValid = (lama, b) =>
-    kolomDikenal(lama, b, ["jenjang", "kelas", "pengampu"]) &&
-    teks(b, "jenjang", 50) && teks(b, "kelas", 50) && daftar(b, "pengampu", 300);
+    kolomDikenal(lama, b, ["jenjang", "kelas", "pengampu", "wali"]) &&
+    teks(b, "jenjang", 50) && teks(b, "kelas", 50) && daftar(b, "pengampu", 300) &&
+    teksAtauKosong(b, "wali", 128);
+  // guru di kelas ini: pengampu salah satu mapelnya, atau wali kelasnya
+  const guruKelas = (auth, idKelas) => {
+    const k = idKelas ? ambilDok(`kelas/${idKelas}`) : null;
+    return !!k && ((Array.isArray(k.pengampu) && k.pengampu.includes(auth.uid)) || (k.wali || null) === auth.uid);
+  };
+  const waliKelasDari = (auth, idKelas) => {
+    const k = typeof idKelas === "string" ? ambilDok(`kelas/${idKelas}`) : null;
+    return !!k && (k.wali || null) === auth.uid;
+  };
+  // isian rapor dari wali kelas: per siswa (jenis "santri") atau capaian bersama satu kelas (jenis "kelas")
+  const raporValid = (lama, b, auth) =>
+    kolomDikenal(lama, b, ["jenis", "kelasId", "santriId", "tahun", "semester", "capaian", "sakit", "izin", "alpa",
+      "ekskul", "catatan", "namaPengubah", "dibuat", "diubah", "diubahOleh"]) &&
+    semesterTetap(lama, b) && tetap(lama, b, "jenis") && tetap(lama, b, "kelasId") && tetap(lama, b, "santriId") &&
+    ["santri", "kelas"].includes(nilaiKolom(b, "jenis")) &&
+    teks(b, "kelasId", 100) && teksAtauKosong(b, "santriId", 100) &&
+    peta(b, "capaian", 40) && daftar(b, "ekskul", 10) && teksAtauKosong(b, "catatan", 1000) &&
+    angka(b, "sakit") && angka(b, "izin") && angka(b, "alpa") &&
+    teks(b, "namaPengubah", 100) && nilaiKolom(b, "diubahOleh") === auth.uid;
   const grupValid = (lama, b) =>
     kolomDikenal(lama, b, ["nama", "jenjang", "tingkat", "pengampu", "koordinator"]) &&
     teks(b, "nama", 200) && teks(b, "jenjang", 50) && daftar(b, "pengampu", 300) &&
@@ -127,9 +147,9 @@ function buatAturan(ambilDok, cekAdminAwal) {
     if (b[0] === "santri" && b.length === 2) {
       if (!aktif(auth)) return false;
       if (kurikulum(auth)) return true;
-      const k = d.kelasId ? ambilDok(`kelas/${d.kelasId}`) : null;
-      return !!k && Array.isArray(k.pengampu) && k.pengampu.includes(auth.uid);
+      return guruKelas(auth, d.kelasId);
     }
+    if (b[0] === "rapor" && b.length === 2) return aktif(auth) && (kurikulum(auth) || waliKelasDari(auth, d.kelasId));
     if (b[0] === "grup" && b.length === 2) return aktif(auth);
     if (b[0] === "grup" && (b[2] === "uas" || b[2] === "usulan") && b.length === 4) {
       return aktif(auth) && (kurikulum(auth) || anggotaGrup(auth, b[1]));
@@ -183,6 +203,14 @@ function buatAturan(ambilDok, cekAdminAwal) {
     // santri & kelas: diisi, diubah, dihapus admin; ustadz cuma lihat
     if (b[0] === "santri" && b.length === 2) return kurikulum(auth);
     if (b[0] === "kelas" && b.length === 2) return kurikulum(auth) && (baru === null || kelasValid(lama, baru));
+    // isian rapor: wali kelasnya atau admin; yang ngehapus cuma admin
+    if (b[0] === "rapor" && b.length === 2) {
+      if (!aktif(auth)) return false;
+      if (baru === null) return kurikulum(auth);
+      const kelasnya = lama ? lama.kelasId : nilaiKolom(baru, "kelasId");
+      return (kurikulum(auth) || waliKelasDari(auth, kelasnya)) && raporValid(lama, baru, auth) &&
+        namaAsli(auth, lama, baru, "namaPengubah");
+    }
 
     if (b[0] === "mapel" && (b[2] === "modul" || b[2] === "sumatif") && b.length === 4) {
       if (!aktif(auth)) return false;

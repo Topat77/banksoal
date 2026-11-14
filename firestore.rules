@@ -164,8 +164,29 @@ service cloud.firestore {
       return id in ['lembaga', 'bobot', 'wali'] && isi().size() <= 60;
     }
     function kelasValid() {
-      return kolomDikenal(['jenjang', 'kelas', 'pengampu'])
-        && teks('jenjang', 50) && teks('kelas', 50) && daftar('pengampu', 300);
+      return kolomDikenal(['jenjang', 'kelas', 'pengampu', 'wali'])
+        && teks('jenjang', 50) && teks('kelas', 50) && daftar('pengampu', 300)
+        && teksAtauKosong('wali', 128);
+    }
+    // guru di kelas ini: pengampu salah satu mapelnya, atau wali kelasnya (tahun ajaran sekarang)
+    function guruKelas(idKelas) {
+      let k = get(/databases/$(database)/documents/kelas/$(idKelas)).data;
+      return request.auth.uid in k.pengampu || k.get('wali', null) == request.auth.uid;
+    }
+    function waliKelasDari(idKelas) {
+      return idKelas is string
+        && get(/databases/$(database)/documents/kelas/$(idKelas)).data.get('wali', null) == request.auth.uid;
+    }
+    // isian rapor dari wali kelas: per siswa (jenis 'santri') atau capaian bersama satu kelas (jenis 'kelas')
+    function raporValid() {
+      return kolomDikenal(['jenis', 'kelasId', 'santriId', 'tahun', 'semester', 'capaian', 'sakit', 'izin', 'alpa',
+          'ekskul', 'catatan', 'namaPengubah', 'dibuat', 'diubah', 'diubahOleh'])
+        && semesterTetap() && tetap('jenis') && tetap('kelasId') && tetap('santriId')
+        && isi().get('jenis', null) in ['santri', 'kelas']
+        && teks('kelasId', 100) && teksAtauKosong('santriId', 100)
+        && peta('capaian', 40) && daftar('ekskul', 10) && teksAtauKosong('catatan', 1000)
+        && angka('sakit') && angka('izin') && angka('alpa')
+        && teks('namaPengubah', 100) && isi().get('diubahOleh', null) == request.auth.uid;
     }
     function grupValid() {
       return kolomDikenal(['nama', 'jenjang', 'tingkat', 'pengampu', 'koordinator'])
@@ -229,10 +250,20 @@ service cloud.firestore {
     // admin lihat semua; ustadz cuma santri di kelas yang dia ajar.
     // Yang ngisi, ngubah, ngehapus cuma admin.
     match /santri/{id} {
-      allow read: if aktif() && (
-        kurikulum()
-        || request.auth.uid in get(/databases/$(database)/documents/kelas/$(resource.data.kelasId)).data.pengampu);
+      allow read: if aktif() && (kurikulum() || guruKelas(resource.data.kelasId));
       allow write: if kurikulum();
+    }
+
+    // ---------- isian rapor (wali kelas) ----------
+    // Capaian kompetensi, ketidakhadiran, ekstrakurikuler & catatan. Diisi wali kelas
+    // (kelas/{id}.wali, dicatat dari perangkat admin) atau admin. Yang ngehapus cuma admin.
+    match /rapor/{id} {
+      allow read: if aktif() && (kurikulum() || waliKelasDari(resource.data.kelasId));
+      allow create: if aktif() && (kurikulum() || waliKelasDari(isi().get('kelasId', null)))
+        && raporValid() && namaAsli('namaPengubah');
+      allow update: if aktif() && (kurikulum() || waliKelasDari(resource.data.kelasId))
+        && raporValid() && namaAsli('namaPengubah');
+      allow delete: if kurikulum();
     }
 
     // ---------- mapel ----------

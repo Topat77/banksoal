@@ -373,3 +373,35 @@ grup("Peran akun: cuma nilai yang dikenal, TU nggak bisa ngubah / hapus akunnya 
   boleh("TU hapus akun lain", bolehTulis("pengguna/baru", db["pengguna/baru"], null, akun.tu));
 }
 
+
+// =====================================================
+grup("Isian rapor wali kelas (aturan.js = firestore.rules)");
+{
+  const isian = (o = {}) => ({ jenis: "santri", kelasId: "k7b", santriId: "sb1", ...sem, capaian: { mtk: "Mampu ..." },
+    sakit: 0, izin: 1, alpa: 0, ekskul: [{ kegiatan: "Pramuka", predikat: "B", keterangan: "" }], catatan: "Pertahankan.",
+    namaPengubah: "Ustadz Yusuf", diubahOleh: "yusuf", ...o });
+  const dariTU = (o = {}) => isian({ namaPengubah: "Admin TU", diubahOleh: "tu", ...o });
+  boleh("wali kelas (bukan pengampu) lihat siswa kelasnya", bolehBaca("santri/sb1", { nama: "Siswa B", kelasId: "k7b" }, akun.yusuf));
+  tolak("wali kelas nggak lihat siswa kelas lain", bolehBaca("santri/sa1", { nama: "Siswa A", kelasId: "k7a" }, akun.yusuf));
+  boleh("wali kelas bikin isian rapor kelasnya", bolehTulis("rapor/r2", null, isian(), akun.yusuf));
+  boleh("wali kelas baca isian rapor kelasnya", bolehBaca("rapor/r1", isian(), akun.yusuf));
+  boleh("wali kelas ubah isian buatan TU", bolehTulis("rapor/r1", dariTU(), isian({ sakit: 2 }), akun.yusuf));
+  boleh("TU bikin isian rapor", bolehTulis("rapor/r3", null, dariTU(), akun.tu));
+  tolak("pengampu (bukan wali) nggak baca isian rapor", bolehBaca("rapor/r1", isian(), akun.aminah));
+  tolak("pengampu (bukan wali) nggak nulis isian rapor", bolehTulis("rapor/r4", null, isian({ namaPengubah: "Ustadzah Aminah", diubahOleh: "aminah" }), akun.aminah));
+  tolak("wali 7B nggak nulis isian kelas 7A", bolehTulis("rapor/r5", null, isian({ kelasId: "k7a" }), akun.yusuf));
+  tolak("akun menunggu nggak baca isian rapor", bolehBaca("rapor/r1", isian(), akun.baru));
+  tolak("wali kelas nggak bisa hapus isian", bolehTulis("rapor/r1", isian(), null, akun.yusuf));
+  boleh("TU bisa hapus isian", bolehTulis("rapor/r1", isian(), null, akun.tu));
+  tolak("kolom asing ditolak", bolehTulis("rapor/x", null, isian({ kolomAneh: 1 }), akun.yusuf));
+  tolak("jenis asing ditolak", bolehTulis("rapor/x", null, isian({ jenis: "lain" }), akun.yusuf));
+  tolak("catatan > 1000 huruf ditolak", bolehTulis("rapor/x", null, isian({ catatan: "x".repeat(1001) }), akun.yusuf));
+  tolak("ekstrakurikuler > 10 ditolak", bolehTulis("rapor/x", null, isian({ ekskul: banyak(11, {}) }), akun.yusuf));
+  tolak("ketidakhadiran bukan angka ditolak", bolehTulis("rapor/x", null, isian({ sakit: "dua" }), akun.yusuf));
+  tolak("diubahOleh orang lain ditolak", bolehTulis("rapor/x", null, isian({ diubahOleh: "hasan" }), akun.yusuf));
+  tolak("ngaku nama guru lain ditolak", bolehTulis("rapor/x", null, isian({ namaPengubah: "Ustadz Hasan" }), akun.yusuf));
+  tolak("siswa nggak boleh dipindah lewat ubah", bolehTulis("rapor/r1", isian(), isian({ santriId: "sb9" }), akun.yusuf));
+  tolak("kelas nggak boleh dipindah lewat ubah (TU juga)", bolehTulis("rapor/r1", dariTU(), dariTU({ kelasId: "k7a" }), akun.tu));
+  boleh("TU nyatat wali kelas di dokumen kelas", bolehTulis("kelas/k7a", { pengampu: ["hasan"] }, { jenjang: "Paket B", kelas: "7A", pengampu: ["hasan"], wali: "hasan" }, akun.tu));
+  tolak("guru nggak bisa ngubah wali kelas", bolehTulis("kelas/k7b", db["kelas/k7b"], { ...db["kelas/k7b"], wali: "yusuf" }, akun.yusuf));
+}

@@ -44,8 +44,9 @@ function hariSejakCadangan() {
 // (Satu kali ambil = baca semua dokumen itu sekali; cuma waktu unduh / pulihkan.)
 async function isiLengkap() {
   const ambil = (jalur) => toko.backend.ambilKoleksi(jalur, []);
-  const hasil = { mapel: {}, grup: {} };
+  const hasil = { mapel: {}, grup: {}, rapor: [] };
   await Promise.all([
+    ambil("rapor").then(d => { hasil.rapor = d; }),   // isian rapor wali kelas
     ...toko.mapel.map(async m => {
       const [modul, sumatif, nilai] = await Promise.all([ambil(`mapel/${m.id}/modul`), ambil(`mapel/${m.id}/sumatif`), ambil(`mapel/${m.id}/nilai`)]);
       hasil.mapel[m.id] = { modul: urutIsi(modul), sumatif: urutIsi(sumatif), nilai };
@@ -78,7 +79,8 @@ function dataCadangan(lengkap) {
       nilai: salin(dariMapel(m.id).nilai || [])
     })),
     // grup mapel + UAS bersama & usulan soalnya
-    grup: toko.grup.map(g => ({ ...salin(g), uas: salin(dariGrup(g.id).uas), usulan: salin(dariGrup(g.id).usulan) }))
+    grup: toko.grup.map(g => ({ ...salin(g), uas: salin(dariGrup(g.id).uas), usulan: salin(dariGrup(g.id).usulan) })),
+    rapor: salin(lengkap.rapor || [])   // isian rapor wali kelas (capaian, ketidakhadiran, catatan)
   };
 }
 
@@ -208,7 +210,7 @@ function htmlBagianCadangan() {
 // =====================================================
 const JENIS_PULIHKAN = {
   pengaturan: "pengaturan", mapel: "mapel", santri: "siswa", grup: "grup mapel",
-  modul: "modul", sumatif: "ujian sumatif", uas: "UAS bersama", usulan: "usulan soal UAS"
+  modul: "modul", sumatif: "ujian sumatif", uas: "UAS bersama", usulan: "usulan soal UAS", rapor: "isian rapor"
 };
 
 // isi file cadangan → { jenis: [[jalur, isi dokumen], ...] }, cuma yang sekarang nggak ada.
@@ -244,14 +246,18 @@ function rencanaPulihkan(c, lengkap) {
     for (const x of daftar(uas)) if (!ada(grupAda && uasSekarang(g.id), x.id)) r.uas.push([`grup/${g.id}/uas/${x.id}`, tanpaId(x)]);
     for (const x of daftar(usulan)) if (!ada(grupAda && usulanSekarang(g.id), x.id)) r.usulan.push([`grup/${g.id}/usulan/${x.id}`, tanpaId(x)]);
   }
+  // isian rapor: yang udah ada di server nggak ditimpa (buatKalauBelumAda)
+  for (const x of daftar(c.rapor)) if (!ada(lengkap && lengkap.rapor, x.id)) r.rapor.push([`rapor/${x.id}`, tanpaId(x)]);
   return r;
 }
 
 // induk dulu (mapel, grup, ...), baru isinya (modul, nilai, UAS, ...)
 async function pulihkanCadangan(r) {
   const hasil = { ditulis: 0, sudahAda: 0, gagal: [] };
-  for (const tahap of [["pengaturan", "mapel", "santri", "grup"], ["modul", "sumatif", "uas", "usulan"]]) {
-    const tugas = tahap.flatMap(j => r[j]);
+  for (const tahap of [["pengaturan", "mapel", "santri", "grup"], ["modul", "sumatif", "uas", "usulan", "rapor"]]) {
+    // isian rapor dipulihkan atas nama TU yang memulihkan (rules: pengubahnya harus akun ini)
+    const tugas = tahap.flatMap(j => j === "rapor"
+      ? r[j].map(([jalur, isi]) => [jalur, { ...isi, namaPengubah: namaSaya(), diubahOleh: uidSaya() }]) : r[j]);
     const jadi = await Promise.allSettled(tugas.map(([jalur, isi]) => toko.backend.buatKalauBelumAda(jalur, isi)));
     jadi.forEach((x, i) => {
       if (x.status === "rejected") { console.warn("Gagal memulihkan", tugas[i][0], x.reason); hasil.gagal.push(tugas[i][0]); }

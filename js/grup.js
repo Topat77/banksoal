@@ -154,11 +154,15 @@ function jalankanSinkronGrup() {
     const id = idKelas(s.jenjang, s.kelas);
     if (s.kelasId !== id) b.tulis(`santri/${s.id}`, tanpaId({ ...s, kelasId: id })).catch(gagalSimpan);
   }
+  // wali kelas tahun ajaran sekarang ikut dicatat di dokumen kelas: dipakai rules buat isian rapor wali kelas
+  const tahun = semesterSekarang().tahun;
   for (const id of toko.kelasGagal ? [] : new Set([...petaKelas.keys(), ...toko.kelas.map(k => k.id)])) {
     const lama = dataKelas(id);
     const x = petaKelas.get(id);
-    const baru = x ? { jenjang: x.jenjang, kelas: x.kelas, pengampu: [...x.pengampu].sort() } : { ...tanpaId(lama), pengampu: [] };
-    if (!lama || JSON.stringify([lama.jenjang, lama.kelas, lama.pengampu]) !== JSON.stringify([baru.jenjang, baru.kelas, baru.pengampu])) {
+    const w = waliKelas(tahun, id);
+    const wali = w ? w.uid : null;
+    const baru = x ? { jenjang: x.jenjang, kelas: x.kelas, pengampu: [...x.pengampu].sort(), wali } : { ...tanpaId(lama), pengampu: [], wali };
+    if (!lama || JSON.stringify([lama.jenjang, lama.kelas, lama.pengampu, lama.wali || null]) !== JSON.stringify([baru.jenjang, baru.kelas, baru.pengampu, baru.wali])) {
       b.tulis(`kelas/${id}`, baru).catch(gagalSimpan);
     }
   }
