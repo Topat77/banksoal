@@ -2,7 +2,7 @@
 //  rapor.js — rapor santri per semester (khusus admin)
 //
 //  Nilai diambil dari lembar nilai tiap mapel di kelas santri itu.
-//  Bentuk rapor masih SEMENTARA (format resmi dari pondok menyusul).
+//  Paket B pakai format resmi PKBM (raporresmi.js). Paket C & I'dad masih format lama sampai formatnya dikirim sekolah.
 // =====================================================
 
 function mapelKelas(jenjang, kelas) {
@@ -98,7 +98,14 @@ function layarRapor() {
   const mapel = mapelKelas(jenjang, kelas);
   // wali tahun ajaran sekarang dipilih di menu Siswa; tahun lama dipilih di sini (buat rapor lama)
   h += sem.tahun === semesterSekarang().tahun ? htmlNamaWali(jenjang, kelas, sem.tahun) : htmlPilihWali(jenjang, kelas, sem.tahun);
-  h += `<p class="info">${mapel.length} mapel di kelas ini: ${mapel.map(m => `${aman(m.nama)} (${namaJenis(jenisMapel(m))})`).join(", ") || "belum ada"}. Bentuk rapor masih sementara, nanti disesuaikan dengan format resmi pondok.</p>`;
+  if (raporResmi(jenjang)) {
+    const masuk = mapel.filter(m => kelompokRapor(m) !== "tidak");
+    const tidak = mapel.filter(m => kelompokRapor(m) === "tidak");
+    h += `<p class="info">Format rapor PKBM tahun pelajaran 2025/2026. ${masuk.length} mapel masuk rapor: ${masuk.map(m => aman(m.nama)).join(", ") || "belum ada"}.${tidak.length ? ` Tidak masuk rapor PKBM: ${tidak.map(m => aman(m.nama)).join(", ")}.` : ""} Kelompok mapel di rapor diatur di form mapel.</p>`;
+    h += htmlPengaturanRapor(sem);
+  } else {
+    h += `<p class="info">${mapel.length} mapel di kelas ini: ${mapel.map(m => `${aman(m.nama)} (${namaJenis(jenisMapel(m))})`).join(", ") || "belum ada"}. Format rapor ${aman(jenjang)} menyusul dari sekolah, sementara ini masih format lama.</p>`;
+  }
 
   if (santri.length === 0) {
     h += `<p class="kosong">Belum ada siswa di kelas ini.</p><button class="tombol-kedua" id="keSantri">Isi daftar siswa</button>`;
@@ -121,6 +128,7 @@ function layarRapor() {
   isi.innerHTML = h;
   pasangPilihRapor();
   pasangPilihWali();
+  pasangPengaturanRapor(sem);
   isi.querySelectorAll(".baris[data-santri]").forEach(b => b.onclick = () => pergi("raporCetak", { raporSantri: b.dataset.santri }));
   klik("cetakKelas", () => pergi("raporCetak", { raporSantri: null }));
   klik("keSantri", () => pergi("santri", { kelasSantri: kunciKelas, dariNilai: false }));
@@ -153,8 +161,9 @@ function htmlTabelRapor(judulBagian, baris, mulai) {
 }
 
 function htmlLembarRapor(santri, sem) {
-  const r = nilaiRapor(santri, sem);
   const k = kelasSantriDi(santri, sem.tahun, sem.semester);
+  if (raporResmi(k.jenjang)) return htmlLembarRaporResmi(santri, sem);   // format resmi PKBM (raporresmi.js)
+  const r = nilaiRapor(santri, sem);
   const wali = waliKelas(sem.tahun, idKelas(k.jenjang, k.kelas));
   const tanggal = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
   let h = `<div class="kop${pakaiKopResmi() ? " ada-resmi" : ""}">
