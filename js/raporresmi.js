@@ -8,7 +8,7 @@
 //    Umum · Kokurikuler (pemberdayaan & keterampilan) · Muatan lokal. Mapel diniah (MSU/MSW) nggak ikut.
 //  - ekstrakurikuler, ketidakhadiran, keputusan naik kelas (semester Genap), catatan wali kelas
 //  - tanda tangan orang tua, wali kelas, kepala sekolah + kaki halaman
-//  Capaian, ketidakhadiran, ekstrakurikuler & catatan diisi wali kelas (isianRapor()).
+//  Capaian, ketidakhadiran, ekstrakurikuler & catatan diisi wali kelas (isianRapor(), isianrapor.js).
 // =====================================================
 
 // jenjang yang udah pakai format resmi
@@ -116,12 +116,6 @@ function pasangPengaturanRapor(sem) {
     simpanLembaga({ ...toko.lembaga, rapor });
     document.getElementById("tersimpanAturRapor").textContent = "Tersimpan";
   };
-}
-
-// ====== ISIAN WALI KELAS ======
-// capaian per mapel, ketidakhadiran, ekstrakurikuler, catatan. null = belum ada isian.
-function isianRapor(santri, sem) {
-  return null;
 }
 
 // ====== KEPUTUSAN (semester Genap) ======

@@ -102,6 +102,7 @@ function layarRapor() {
     const masuk = mapel.filter(m => kelompokRapor(m) !== "tidak");
     const tidak = mapel.filter(m => kelompokRapor(m) === "tidak");
     h += `<p class="info">Format rapor PKBM tahun pelajaran 2025/2026. ${masuk.length} mapel masuk rapor: ${masuk.map(m => aman(m.nama)).join(", ") || "belum ada"}.${tidak.length ? ` Tidak masuk rapor PKBM: ${tidak.map(m => aman(m.nama)).join(", ")}.` : ""} Kelompok mapel di rapor diatur di form mapel.</p>`;
+    h += `<div class="baris-tombol"><button class="tombol-kedua" id="keIsianRapor">Isian wali kelas (capaian, ketidakhadiran, catatan)</button></div>`;
     h += htmlPengaturanRapor(sem);
   } else {
     h += `<p class="info">${mapel.length} mapel di kelas ini: ${mapel.map(m => `${aman(m.nama)} (${namaJenis(jenisMapel(m))})`).join(", ") || "belum ada"}. Format rapor ${aman(jenjang)} menyusul dari sekolah, sementara ini masih format lama.</p>`;
@@ -129,8 +130,11 @@ function layarRapor() {
   pasangPilihRapor();
   pasangPilihWali();
   pasangPengaturanRapor(sem);
-  isi.querySelectorAll(".baris[data-santri]").forEach(b => b.onclick = () => pergi("raporCetak", { raporSantri: b.dataset.santri }));
-  klik("cetakKelas", () => pergi("raporCetak", { raporSantri: null }));
+  // isian wali kelas diambil ulang tiap rapor dibuka (bisa aja baru diubah dari HP wali kelas)
+  const segarkan = () => { if (raporResmi(jenjang)) muatIsianRapor({ jenjang, kelas }, sem, true); };
+  isi.querySelectorAll(".baris[data-santri]").forEach(b => b.onclick = () => { segarkan(); pergi("raporCetak", { raporSantri: b.dataset.santri }); });
+  klik("cetakKelas", () => { segarkan(); pergi("raporCetak", { raporSantri: null }); });
+  klik("keIsianRapor", () => { segarkan(); pergi("isianRapor", { isianKelas: kunciKelas, isianSem: kunciSem }); });
   klik("keSantri", () => pergi("santri", { kelasSantri: kunciKelas, dariNilai: false }));
 }
 
@@ -203,6 +207,10 @@ function layarRaporCetak() {
   const semua = santriKelasDi(jenjang, kelas, sem.tahun, sem.semester);
   const daftar = posisi.raporSantri ? semua.filter(s => s.id === posisi.raporSantri) : semua;
   if (daftar.length === 0) throw new DataHilang();
+  if (raporResmi(jenjang) && !muatIsianRapor({ jenjang, kelas }, sem).siap) {
+    tombolKembali.hidden = false;
+    return tampilMemuat("Rapor");
+  }
 
   judul.textContent = posisi.raporSantri ? `Rapor ${daftar[0].nama}` : `Rapor ${kelas}`;
   jejak.textContent = `${kelas}, ${jenjang} · ${namaSemester(sem)}`;

@@ -87,9 +87,11 @@ function pasangData(peran) {
   if (guru) pasangMapelGuru();
   else langgananData.push(b.pantauKoleksi("mapel", [], mapelMasuk, laporGagal("mapel")));
 
-  // wali kelas cuma dipakai rapor (admin), jadi guru nggak ikut baca
+  // pengaturan wali kelas cuma dipakai admin (rapor & dicatat ke dokumen kelas). Guru tahu dia wali
+  // kelas mana dari dokumen kelas (kelas.wali), jadi nggak ikut baca dokumen ini
   if (!guru) langgananData.push(b.pantauDok("pengaturan/wali", d => {
     toko.wali = d || {};
+    sinkronGrup();   // wali kelas ikut dicatat di dokumen kelas (buat rules isian rapor)
     berubah();
   }, laporGagal("wali kelas")));
 
@@ -419,6 +421,8 @@ function hentikanData() {
   toko.kelas = [];
   toko.kelasSiap = false;
   toko.kelasGagal = false;
+  toko.isianRapor = {};
+  toko.kelasWali = null;
   toko.isi = {};
   toko.mapel = [];
   toko.mapelSiap = false;

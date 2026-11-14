@@ -58,13 +58,15 @@ const daftarLayar = {
   mapelNamaTU: "layarMapelNamaTU",
   pantauGuru: "layarPantauGuru",
   kelasSiswa: "layarKelasSiswa",
-  panduan: "layarPanduan"
+  panduan: "layarPanduan",
+  isianRapor: "layarIsianRapor",
+  isianSiswa: "layarIsianSiswa"
 };
 
 // layar yang nggak boleh digambar ulang sendiri waktu data berubah
 // (lagi ngetik / milih sesuatu, nanti isiannya hilang)
 const LAYAR_DIAM = ["formSemester", "formModul", "formBacaan", "formSoal", "formSumatif",
-                    "pilihSoal", "cetak", "cari", "lainnya", "modulLama", "formMapel", "formGuru", "aiGenerator", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal"];
+                    "pilihSoal", "cetak", "cari", "lainnya", "modulLama", "formMapel", "formGuru", "aiGenerator", "formSoalUjian", "formSalin", "nilai", "santri", "bobot", "aiSoal", "isianRapor", "isianSiswa"];
 
 // layar yang lagi nampilin kerangka "memuat" (datanya belum kebaca): tetap digambar ulang
 // waktu data datang, walau layarnya ada di LAYAR_DIAM (belum ada isian yang bisa hilang)
@@ -79,7 +81,7 @@ function tampilMemuat(teksJudul) {
 // Form yang diketik lalu ditinggal lewat tombol ‹, menu, atau back HP: tanya dulu.
 // Pindah layar dari kode (misal habis Simpan) nggak ditanya.
 const LAYAR_FORM = ["formSemester", "formModul", "formBacaan", "formSoal", "formSumatif", "formSoalUjian",
-                    "formSalin", "formMapel", "formGuru", "bobot"];
+                    "formSalin", "formMapel", "formGuru", "bobot", "isianRapor", "isianSiswa"];
 let formKotor = false;
 let layarTerakhir = null;
 function tandaiKotor() { if (LAYAR_FORM.includes(posisi.layar)) formKotor = true; }

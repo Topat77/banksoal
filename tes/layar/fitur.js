@@ -132,6 +132,47 @@ async function fitur() {
     await browser.close();
   }
 
+  // ---------- isian rapor dari wali kelas ----------
+  {
+    console.log("\nIsian rapor wali kelas (Paket B)");
+    const { browser, page, galat } = await buka({ hp: true });
+    await masuk(page, "u-yusuf");
+    await ke(page, "siswaGuru", {}, 700);
+    tolak("bukan wali kelas: nggak ada tombol isi rapor", await page.$("[data-isian-kelas]"));
+    await masuk(page, "u-hasan");   // wali 7A1
+    await ke(page, "siswaGuru", {}, 700);
+    boleh("wali kelas: ada tombol Isi rapor kelas 7A1", await page.$('[data-isian-kelas="Paket B|7A1"]'));
+    await page.click('[data-isian-kelas="Paket B|7A1"]'); await page.waitForTimeout(700);
+    const kolom = await page.$eval('#formCapaian textarea', t => t.name);
+    await page.fill(`#formCapaian [name="${kolom}"]`, "Ananda sudah mampu memahami teks deskripsi.");
+    await page.click('#formCapaian [type=submit]'); await page.waitForTimeout(400);
+    const sid = await page.$eval("[data-isian-santri]", b => b.dataset.isianSantri);
+    await page.click(`[data-isian-santri="${sid}"]`); await page.waitForTimeout(500);
+    await page.fill('[name="sakit"]', "2");
+    await page.fill('[name="e_kegiatan"]', "Pramuka");
+    await page.fill('[name="e_predikat"]', "Baik");
+    await page.click("#tambahEkskul");
+    harap("tambah kegiatan: jadi 2 baris", await page.$$eval(".baris-ekskul", x => x.length), 2);
+    await page.fill('[name="catatan"]', "Pertahankan semangat belajarmu.");
+    await page.click('#formIsianSiswa [type=submit]'); await page.waitForTimeout(400);
+    harap("tersimpan di database (capaian kelas + 1 siswa)", await page.evaluate(() =>
+      toko.backend.ambilKoleksi("rapor", [["kelasId", "==", idKelas("Paket B", "7A1")]]).then(d => d.length)), 2);
+    await ke(page, "isianRapor", {}, 500);
+    tolak("siswa itu nggak lagi \"Belum diisi\"", /Belum diisi/.test(await page.$eval(`[data-isian-santri="${sid}"]`, b => b.textContent)));
+
+    await masuk(page, "u-kur");
+    await ke(page, "rapor", { kelasRapor: "Paket B|7A1", semRapor: null }, 900);
+    boleh("TU: ada tombol isian wali kelas", await page.$("#keIsianRapor"));
+    await page.click(`.baris[data-santri="${sid}"]`); await page.waitForTimeout(900);
+    const r = await page.evaluate(() => document.querySelector(".rapor-resmi").innerText.replace(/\s+/g, " "));
+    boleh("rapor: capaian dari wali kelas", /memahami teks deskripsi/.test(r));
+    boleh("rapor: sakit 2 hari", /Sakit : 2 hari/.test(r));
+    boleh("rapor: ekskul Pramuka (Baik)", /Pramuka Baik/.test(r));
+    boleh("rapor: catatan wali kelas", /Pertahankan semangat/.test(r));
+    harap("nggak ada error", galatBersih(galat), []);
+    await browser.close();
+  }
+
   // ---------- TU hemat kuota: isi mapel dimuat waktu dibuka ----------
   {
     console.log("\nTU: isi mapel baru dimuat waktu dibuka");

@@ -27,6 +27,8 @@ const toko = {
   kelas: [],          // daftar pengampu tiap kelas (buat aturan siapa boleh lihat santri)
   kelasSiap: false,
   kelasGagal: false,  // aturan database lama belum kenal "kelas"
+  isianRapor: {},     // isian rapor wali kelas yang udah diambil: "idKelas|tahun|semester" → { siap, dok, ... } (isianrapor.js)
+  kelasWali: null,    // ustadz: kelas yang dia walikan (diambil sekali)
   pengguna: [],       // semua akun (cuma buat admin)
   penggunaSiap: false,
   gagalMuat: []       // nama data yang gagal dipantau (kuota habis, izin, ...): ditampilkan di header

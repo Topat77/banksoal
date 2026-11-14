@@ -43,6 +43,7 @@ function fileKurang() {
     "js/bobot.js": typeof layarBobot === "function",
     "js/rapor.js": typeof layarRapor === "function",
     "js/raporresmi.js": typeof htmlLembarRaporResmi === "function",
+    "js/isianrapor.js": typeof layarIsianRapor === "function",
     "js/naikkelas.js": typeof ubahKeputusan === "function",
     "js/admin.js": typeof layarMapelTU === "function",
     "js/menuguru.js": typeof layarMapelGuru === "function",

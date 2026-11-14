@@ -69,7 +69,8 @@ const db = {
   "mapel/tupeng": { pengampu: ["hasan", "tu"], grup: "g-bi7" }, // admin kebetulan ikut di daftar pengampu
   "grup/g-bi7":  { pengampu: ["hasan", "aminah"], koordinator: "hasan" },
   "grup/g-fik7": { pengampu: ["yusuf"], koordinator: "yusuf" },
-  "kelas/k7a": { pengampu: ["hasan"] }
+  "kelas/k7a": { pengampu: ["hasan"] },
+  "kelas/k7b": { pengampu: ["aminah"], wali: "yusuf" }   // wali kelas 7B bukan pengampunya
 };
 const { bolehBaca, bolehTulis } = buatAturan(j => db[j], (email) => email === "tu@x");
 const akun = {

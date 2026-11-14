@@ -11,7 +11,7 @@
 // ---- induk layar TU (dipakai tombol ‹ dan penanda menu) ----
 const INDUK_TU = {
   mapelNamaTU: "mapelTU", formMapel: "mapelTU", bobot: "mapelTU", daftarUAS: "mapelTU",
-  rapor: "kelasSiswa", santri: "kelasSiswa", panduan: "lainnya"
+  rapor: "kelasSiswa", santri: "kelasSiswa", panduan: "lainnya", isianRapor: "rapor", isianSiswa: "isianRapor"
 };
 // layar TU yang punya induk: tombol ‹ ditampilkan (santri dari lembar nilai tetap balik ke nilai)
 function indukLayarTU() {
@@ -33,7 +33,7 @@ function kelompokLayarTU() {
   if (L === "cari") return "cari";
   if (L === "lainnya" || L === "panduan") return "lainnya";
   if (["akun", "formGuru", "pantauGuru"].includes(L)) return "guru";
-  if (["kelasSiswa", "rapor", "raporCetak"].includes(L) || (L === "santri" && !posisi.dariNilai)) return "siswa";
+  if (["kelasSiswa", "rapor", "raporCetak", "isianRapor", "isianSiswa"].includes(L) || (L === "santri" && !posisi.dariNilai)) return "siswa";
   return "mapelTU";
 }
 

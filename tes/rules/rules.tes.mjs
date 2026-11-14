@@ -60,6 +60,9 @@ beforeEach(async () => {
       "grup/g-bi7": { pengampu: ["hasan", "aminah"], koordinator: "hasan" },
       "grup/g-fik7": { pengampu: ["yusuf"], koordinator: "yusuf" },
       "kelas/k7a": { pengampu: ["hasan"] },
+      "kelas/k7b": { pengampu: ["aminah"], wali: "yusuf" },
+      "santri/sb1": { nama: "Siswa B", kelasId: "k7b" },
+      "rapor/r1": { jenis: "santri", kelasId: "k7b", santriId: "sb1", ...sem, sakit: 1, namaPengubah: "Admin TU", diubahOleh: "tu" },
       "santri/sa1": { nama: "Siswa", kelasId: "k7a" },
       "mapel/bi7a/modul/m1": modul(),
       "mapel/bi7a/modul/rahasia": modul({ dibagikan: false }),
@@ -363,4 +366,53 @@ test("modul lama: guru yang udah pindah kelas tetap bisa ngambil modul miliknya 
   assert.deepEqual(milik.docs.map(d => d.id).sort(), ["m1", "rahasia"]);
   // modul guru lain yang nggak dibagikan tetap nggak bisa diambil
   await assertFails(daftar(yusuf(), "mapel/bi7a/modul", ["pemilik", "==", "hasan"]));
+});
+
+// ---------- isian rapor (wali kelas) ----------
+const isianRapor = (o = {}) => ({ jenis: "santri", kelasId: "k7b", santriId: "sb1", ...sem, capaian: { mtk: "Mampu ..." },
+  sakit: 0, izin: 1, alpa: 0, ekskul: [{ kegiatan: "Pramuka", predikat: "B", keterangan: "" }], catatan: "Pertahankan.",
+  namaPengubah: "Ustadz Yusuf", diubahOleh: "yusuf", ...o });
+
+test("wali kelas (Yusuf, bukan pengampu 7B): bisa lihat siswa kelasnya", async () => {
+  await assertSucceeds(getDoc(doc(yusuf(), "santri/sb1")));
+  await assertSucceeds(getDocs(query(collection(yusuf(), "santri"), where("kelasId", "==", "k7b"))));
+  await assertFails(getDoc(doc(yusuf(), "santri/sa1")));          // kelas lain
+  await assertSucceeds(getDoc(doc(aminah(), "santri/sb1")));      // pengampu tetap bisa
+});
+
+test("isian rapor: cuma wali kelasnya & TU yang bisa baca / tulis", async () => {
+  await assertSucceeds(setDoc(doc(yusuf(), "rapor/r2"), isianRapor()));
+  await assertSucceeds(getDoc(doc(yusuf(), "rapor/r1")));
+  await assertSucceeds(getDocs(query(collection(yusuf(), "rapor"), where("kelasId", "==", "k7b"),
+    where("tahun", "==", "2026/2027"), where("semester", "==", "Ganjil"))));
+  await assertSucceeds(setDoc(doc(yusuf(), "rapor/r1"), isianRapor()));            // ubah isian yang dibuat TU
+  await assertSucceeds(setDoc(doc(tu(), "rapor/r3"), isianRapor({ namaPengubah: "Admin TU", diubahOleh: "tu" })));
+  // guru lain (pengampu 7B tapi bukan wali), guru kelas lain, akun menunggu
+  await assertFails(getDoc(doc(aminah(), "rapor/r1")));
+  await assertFails(setDoc(doc(aminah(), "rapor/r4"), isianRapor({ namaPengubah: "Ustadzah Aminah", diubahOleh: "aminah" })));
+  await assertFails(getDocs(query(collection(hasan(), "rapor"), where("kelasId", "==", "k7b"))));
+  await assertFails(setDoc(doc(yusuf(), "rapor/r5"), isianRapor({ kelasId: "k7a" })));   // bukan wali 7A
+  await assertFails(getDoc(doc(sebagai("baru", "baru@x"), "rapor/r1")));
+  // hapus cuma TU
+  await assertFails(deleteDoc(doc(yusuf(), "rapor/r1")));
+  await assertSucceeds(deleteDoc(doc(tu(), "rapor/r1")));
+});
+
+test("isian rapor: bentuknya dicek", async () => {
+  await assertFails(setDoc(doc(yusuf(), "rapor/x1"), isianRapor({ kolomAneh: 1 })));
+  await assertFails(setDoc(doc(yusuf(), "rapor/x2"), isianRapor({ jenis: "lain" })));
+  await assertFails(setDoc(doc(yusuf(), "rapor/x3"), isianRapor({ catatan: "x".repeat(1001) })));
+  await assertFails(setDoc(doc(yusuf(), "rapor/x4"), isianRapor({ ekskul: banyak(11, {}) })));
+  await assertFails(setDoc(doc(yusuf(), "rapor/x5"), isianRapor({ sakit: "dua" })));
+  await assertFails(setDoc(doc(yusuf(), "rapor/x6"), isianRapor({ diubahOleh: "hasan" })));
+  await assertFails(setDoc(doc(yusuf(), "rapor/x7"), isianRapor({ namaPengubah: "Ustadz Hasan" })));   // ngaku orang lain
+  await assertFails(setDoc(doc(yusuf(), "rapor/x8"), isianRapor({ semester: "Pendek" })));
+  // kelas, siswa & semester nggak boleh dipindah lewat ubah
+  await assertFails(setDoc(doc(yusuf(), "rapor/r1"), isianRapor({ santriId: "sb9" })));
+  await assertFails(setDoc(doc(tu(), "rapor/r1"), isianRapor({ kelasId: "k7a", namaPengubah: "Admin TU", diubahOleh: "tu" })));
+});
+
+test("kelas: TU boleh nyatat wali kelas, guru nggak", async () => {
+  await assertSucceeds(setDoc(doc(tu(), "kelas/k7a"), { jenjang: "Paket B", kelas: "7A", pengampu: ["hasan"], wali: "hasan" }));
+  await assertFails(setDoc(doc(yusuf(), "kelas/k7b"), { jenjang: "Paket B", kelas: "7B", pengampu: ["aminah"], wali: "yusuf" }));
 });

@@ -45,6 +45,15 @@
   font-style: italic; font-weight: bold; font-size: 10pt;
 }
 
+/* layar isian wali kelas (isianrapor.js) */
+.baris-hadir { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.baris-ekskul { display: grid; grid-template-columns: 2fr 1fr 2fr; gap: 8px; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px dashed var(--garis, #ccc); }
+@media (max-width: 560px) {
+  .baris-ekskul { grid-template-columns: 1fr 1fr; }
+  .baris-ekskul label:first-child { grid-column: 1 / -1; }
+  .baris-ekskul label:last-child { grid-column: 1 / -1; }
+}
+
 /* HP: tetap bentuk yang sama, cuma diperkecil */
 @media screen and (max-width: 560px) {
   .rapor-resmi { font-size: 9pt; }

@@ -114,6 +114,8 @@ function dataAwalCoba() {
   // wali kelas tahun ini: 7A1 udah dipilih, 7B1 belum
   db["pengaturan/wali"] = { tahun: { [t.tahun.replace("/", "-")]: {
     [idKelas("Paket B", "7A1")]: { uid: "u-hasan", nama: "Ustadz Hasan", nip: "198905232015031001" } } } };
+  // dokumen kelas ikut nyatat wali kelasnya (biasanya dicatat otomatis dari perangkat TU)
+  db[`kelas/${idKelas("Paket B", "7A1")}`].wali = "u-hasan";
   db["santri/san-14"] = { absen: 1, nama: "Yahya Ilham", nis: "2425001", jenjang: "Paket B", kelas: "9A1", aktif: false, status: "lulus",
     keluar: { tahun: tahunLalu, tanggal: jam - 120 * hari }, riwayatKelas: [{ tahun: tahunLalu, jenjang: "Paket B", kelas: "9A1", absen: 1, hasil: "lulus" }], dibuat: jam - 400 * hari };
 
