@@ -16,6 +16,7 @@
 .tabel-rapor-resmi col.kol-no { width: 6%; }
 .tabel-rapor-resmi col.kol-mapel { width: 28%; }
 .tabel-rapor-resmi col.kol-nilai { width: 11%; }
+.tabel-rapor-resmi col.kol-predikat { width: 16%; }   /* tabel ekskul: "Predikat" nggak muat di 11% */
 .tabel-rapor-resmi .tengah { text-align: center; }
 .tabel-rapor-resmi .kanan { text-align: right; }
 .tabel-rapor-resmi tr.kelompok td { font-weight: bold; }
@@ -26,9 +27,11 @@
 .dua-kotak-rapor > table { margin-bottom: 0; }
 .kotak-hadir { flex: 0 0 44%; }
 .kotak-hadir th { text-align: left; }
-.kotak-hadir td:nth-child(1) { width: 58%; white-space: nowrap; }
-.kotak-hadir td:nth-child(2) { width: 8%; }
-.kotak-hadir td:nth-child(3) { width: 34%; white-space: nowrap; }
+/* lebar kolom lewat <colgroup>: table-layout fixed + baris pertama colspan bikin lebar di td diabaikan */
+.kotak-hadir col.kol-hadir-nama { width: 58%; }
+.kotak-hadir col.kol-hadir-titik { width: 8%; }
+.kotak-hadir col.kol-hadir-hari { width: 34%; }
+.kotak-hadir td:nth-child(1), .kotak-hadir td:nth-child(3) { white-space: nowrap; }
 .kotak-keputusan { flex: 1; }
 .kotak-keputusan th { text-align: left; }
 .kotak-catatan th { text-align: left; }
@@ -37,6 +40,7 @@
 .ttd-resmi { margin-top: 14px; }
 .ttd-resmi td { width: 50%; vertical-align: top; padding: 4px 8px; }
 .ttd-resmi tr:first-child td:last-child { padding-left: 18%; }
+.ttd-resmi .nip-resmi { overflow-wrap: anywhere; }
 .ttd-resmi .ttd-kepala { text-align: center; padding-top: 14px; }
 .ruang-ttd { height: 64px; }
 .kaki-rapor {
@@ -46,7 +50,8 @@
 }
 
 /* layar isian wali kelas (isianrapor.js) */
-.baris-hadir { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.baris-hadir { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end; }
+details.capaian-siswa > summary { min-height: 44px; padding: 11px 0; line-height: 22px; box-sizing: border-box; cursor: pointer; }   /* tetap list-item biar segitiganya ada */
 .baris-ekskul { display: grid; grid-template-columns: 2fr 1fr 2fr; gap: 8px; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px dashed var(--garis, #ccc); }
 @media (max-width: 560px) {
   .baris-ekskul { grid-template-columns: 1fr 1fr; }
@@ -61,6 +66,7 @@
   .tabel-rapor-resmi td.capaian { font-size: 8pt; }
   .identitas-resmi td { font-size: 8.5pt; }
   .dua-kotak-rapor { gap: 8px; }
+  .ttd-resmi tr:first-child td:last-child { padding-left: 4%; }
   .ruang-ttd { height: 44px; }
 }
 @media print {

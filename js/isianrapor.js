@@ -73,11 +73,18 @@ function isianRapor(santri, sem) {
 // ---- kelas yang diwalikan akun ini (guru) ----
 function kelasWaliSaya() {
   if (sayaKurikulum()) return [];
-  if (toko.kelasWali) return toko.kelasWali.siap ? toko.kelasWali.daftar : null;
-  const w = toko.kelasWali = { siap: false, daftar: [] };
+  // hasil gagal nggak disimpan seterusnya: dicoba lagi waktu layar dibuka lagi (paling cepat 30 detik
+  // kemudian, biar render ulang nggak langsung ngambil terus-terusan)
+  const lama = toko.kelasWali;
+  if (lama && !(lama.gagal && Date.now() - lama.waktu > 30000)) return lama.siap ? lama.daftar : null;
+  const w = toko.kelasWali = { siap: false, gagal: false, waktu: 0, daftar: [] };
   toko.backend.ambilKoleksi("kelas", [["wali", "==", uidSaya()]])
     .then(d => { w.daftar = d.filter(k => raporResmi(k.jenjang)).sort(bandingKelas); })
-    .catch(err => console.warn("Gagal memuat kelas wali:", err && (err.code || err.message)))
+    .catch(err => {
+      console.warn("Gagal memuat kelas wali:", err && (err.code || err.message));
+      w.gagal = true;
+      w.waktu = Date.now();
+    })
     .finally(() => { w.siap = true; berubah(); });
   return null;
 }
@@ -232,7 +239,7 @@ function layarIsianSiswa() {
       </fieldset>
       <label>Catatan wali kelas
         <textarea name="catatan" rows="3" maxlength="1000">${aman(jadiTeks(d.catatan))}</textarea></label>
-      <details ${adaCapSiswa ? "open" : ""}>
+      <details class="capaian-siswa" ${adaCapSiswa ? "open" : ""}>
         <summary>Capaian khusus siswa ini</summary>
         <p class="info">Kosongkan agar memakai capaian kelas.</p>
         ${c.mapel.map(m => `<label>${spanArah(namaMapelRapor(m))}

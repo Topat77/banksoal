@@ -179,7 +179,7 @@ function htmlLembarRaporResmi(santri, sem) {
   // ekstrakurikuler
   const ekskul = Array.isArray(isian.ekskul) ? isian.ekskul.filter(adalahObjek) : [];
   h += `<table class="tabel-rapor-resmi">
-    <colgroup><col class="kol-no"><col class="kol-mapel"><col class="kol-nilai"><col></colgroup>
+    <colgroup><col class="kol-no"><col class="kol-mapel"><col class="kol-predikat"><col></colgroup>
     <thead><tr><th>No</th><th>Kegiatan Ekstrakurikuler</th><th>Predikat</th><th>Keterangan</th></tr></thead>
     <tbody>${(ekskul.length ? ekskul : [{}]).map((e, i) => `<tr><td class="tengah">${ekskul.length ? i + 1 : "&nbsp;"}</td>
       <td>${aman(jadiTeks(e.kegiatan))}</td><td class="tengah">${aman(jadiTeks(e.predikat))}</td><td>${aman(jadiTeks(e.keterangan))}</td></tr>`).join("")}</tbody>
@@ -190,6 +190,7 @@ function htmlLembarRaporResmi(santri, sem) {
   const keputusan = teksKeputusan(santri, sem);
   h += `<div class="dua-kotak-rapor">
     <table class="tabel-rapor-resmi kotak-hadir">
+      <colgroup><col class="kol-hadir-nama"><col class="kol-hadir-titik"><col class="kol-hadir-hari"></colgroup>
       <thead><tr><th colspan="3">Ketidakhadiran</th></tr></thead>
       <tbody>
         <tr><td>Sakit</td><td class="tengah">:</td><td class="kanan">${hari("sakit")}</td></tr>
@@ -213,7 +214,7 @@ function htmlLembarRaporResmi(santri, sem) {
     <tr>
       <td>Mengetahui<br>Orang Tua Murid,<div class="ruang-ttd"></div>..............................</td>
       <td>${aman(atur.tempat)}, ${tanggal ? aman(tanggal) : ".............................."}<br>Wali Kelas,<div class="ruang-ttd"></div>${wali
-        ? `<b><u>${aman(wali.nama)}</u></b><br>NIP. ${aman(wali.nip || "-")}`
+        ? `<b><u>${aman(wali.nama)}</u></b><br><span class="nip-resmi">NIP. ${aman(wali.nip || "-")}</span>`
         : "..............................<br>NIP. -"}</td>
     </tr>
     <tr><td colspan="2" class="ttd-kepala">Mengetahui<br>Kepala Sekolah,<div class="ruang-ttd"></div>${atur.kepala
