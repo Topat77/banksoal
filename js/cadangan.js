@@ -46,7 +46,9 @@ async function isiLengkap() {
   const ambil = (jalur) => toko.backend.ambilKoleksi(jalur, []);
   const hasil = { mapel: {}, grup: {}, rapor: [] };
   await Promise.all([
-    ambil("rapor").then(d => { hasil.rapor = d; }),   // isian rapor wali kelas
+    // isian rapor wali kelas. Kalau ditolak (misal rules baru belum di-Publish), cadangan tetap jalan
+    // tanpa isian rapor (null). Pulihkan tetap aman: buatKalauBelumAda nggak nimpa yang udah ada.
+    ambil("rapor").then(d => { hasil.rapor = d; }, e => { console.warn("Isian rapor tidak ikut dicadangkan", e); hasil.rapor = null; }),
     ...toko.mapel.map(async m => {
       const [modul, sumatif, nilai] = await Promise.all([ambil(`mapel/${m.id}/modul`), ambil(`mapel/${m.id}/sumatif`), ambil(`mapel/${m.id}/nilai`)]);
       hasil.mapel[m.id] = { modul: urutIsi(modul), sumatif: urutIsi(sumatif), nilai };
