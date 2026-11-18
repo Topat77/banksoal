@@ -2,7 +2,7 @@
 //  rapor.js — rapor santri per semester (khusus admin)
 //
 //  Nilai diambil dari lembar nilai tiap mapel di kelas santri itu.
-//  Paket B pakai format resmi PKBM (raporresmi.js). Paket C & I'dad masih format lama sampai formatnya dikirim sekolah.
+//  Paket B & Paket C pakai format resmi PKBM (raporresmi.js). I'dad masih format lama sampai formatnya dikirim sekolah.
 // =====================================================
 
 function mapelKelas(jenjang, kelas) {

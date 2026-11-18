@@ -348,7 +348,7 @@ function formMapel() {
       <fieldset>
         <legend>Kelompok di rapor PKBM</legend>
         <div class="kolom daftar-centang">${KELOMPOK_RAPOR.map(g => `<label class="radio"><input type="radio" name="rapor" value="${g.k}" ${kelompokRapor(m) === g.k ? "checked" : ""}> ${aman(g.label)}</label>`).join("")}</div>
-        <p class="info">Mapel diniah (MSU/MSW) tidak masuk rapor PKBM. Bahasa Arab di rapor PKBM biasanya masuk Muatan lokal.</p>
+        <p class="info">Mapel diniah (MSU/MSW) tidak masuk rapor PKBM. Bahasa Arab di rapor Paket B masuk Muatan lokal, di Paket C masuk Mata pelajaran pilihan.</p>
       </fieldset>
       <fieldset>
         <legend>Pengampu</legend>
@@ -391,7 +391,7 @@ function formMapel() {
   function tebakRapor() {
     if (raporDipilih) return;
     const jenis = (form.querySelector("[name=jenis]:checked") || {}).value || "umum";
-    form.querySelector(`[name=rapor][value="${CSS.escape(tebakKelompokRapor(form.nama.value, jenis))}"]`).checked = true;
+    form.querySelector(`[name=rapor][value="${CSS.escape(tebakKelompokRapor(form.nama.value, jenis, form.jenjang ? form.jenjang.value : ""))}"]`).checked = true;
   }
   form.nama.addEventListener("input", () => {
     if (!jenisDipilih) {

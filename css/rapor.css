@@ -34,15 +34,17 @@
 .kotak-hadir td:nth-child(1), .kotak-hadir td:nth-child(3) { white-space: nowrap; }
 .kotak-keputusan { flex: 1; }
 .kotak-keputusan th { text-align: left; }
-.kotak-catatan th { text-align: left; }
-.kotak-catatan td { height: 44px; vertical-align: top; }
+.kotak-catatan th, .kotak-tanggapan th { text-align: left; }
+.kotak-catatan td, .kotak-tanggapan td { height: 44px; vertical-align: top; }
+.dua-kotak-rapor > .kotak-catatan { flex: 1; }   /* Ganjil: catatan di samping ketidakhadiran */
+.dua-kotak-rapor > .kotak-catatan td { height: 62px; }
 
 .ttd-resmi { margin-top: 14px; }
-.ttd-resmi td { width: 50%; vertical-align: top; padding: 4px 8px; }
-.ttd-resmi tr:first-child td:last-child { padding-left: 18%; }
+.ttd-resmi { table-layout: fixed; }
+.ttd-resmi td { width: 33.3%; vertical-align: bottom; padding: 0 6px; text-align: center; }
+.ttd-resmi tr.ttd-nama td { padding-top: 64px; }   /* ruang tanda tangan */
+.ttd-resmi tr.ttd-jabatan td, .ttd-resmi tr.ttd-nip td { vertical-align: top; }
 .ttd-resmi .nip-resmi { overflow-wrap: anywhere; }
-.ttd-resmi .ttd-kepala { text-align: center; padding-top: 14px; }
-.ruang-ttd { height: 64px; }
 .kaki-rapor {
   display: flex; justify-content: space-between; gap: 12px;
   margin-top: 18px; padding-top: 4px; border-top: 1px solid #000;
@@ -68,10 +70,10 @@ details.capaian-siswa > summary { min-height: 44px; padding: 11px 0; line-height
   .dua-kotak-rapor { gap: 8px; flex-wrap: wrap; }
   .kotak-hadir { flex: 0 0 100%; }   /* 44% terlalu sempit buat "Tanpa Keterangan" di HP */
   .tabel-rapor-resmi th { font-size: 8pt; padding: 3px 2px; }
-  .ttd-resmi tr:first-child td:last-child { padding-left: 4%; }
-  .ruang-ttd { height: 44px; }
+  .ttd-resmi td { padding: 0 2px; }
+  .ttd-resmi tr.ttd-nama td { padding-top: 44px; }
 }
 @media print {
-  .tabel-rapor-resmi tr, .ttd-resmi, .dua-kotak-rapor, .kotak-catatan { break-inside: avoid; }
+  .tabel-rapor-resmi tr, .ttd-resmi, .dua-kotak-rapor, .kotak-catatan, .kotak-tanggapan { break-inside: avoid; }
   .rapor-resmi { font-size: 11pt; }
 }
