@@ -132,6 +132,60 @@ async function fitur() {
     await browser.close();
   }
 
+  // ---------- rapor Paket C (Genap, kelas akhir) + Ganjil ----------
+  {
+    console.log("\nRapor format resmi Paket C & semester Ganjil");
+    const { browser, page, galat } = await buka({ hp: false });
+    await page.clock.setFixedTime(new Date("2027-05-20T09:00:00"));   // Genap 2026/2027
+    await masuk(page, "u-kur");
+    await page.evaluate(() => {
+      simpanMapelData({ id: "bio12", nama: "Biologi", jenjang: "Paket C", kelas: "12B1", jenis: "umum", pengampu: [] });
+      simpanMapelData({ id: "sej12", nama: "Sejarah", jenjang: "Paket C", kelas: "12B1", jenis: "umum", pengampu: [] });
+      simpanSantri({ id: "sc1", absen: 1, nama: "Siswi Contoh", nis: "3.11.00.001", nisn: "0000000001", jenjang: "Paket C", kelas: "12B1", aktif: true });
+    });
+    await page.waitForTimeout(500);
+    await ke(page, "santri", { kelasSantri: "Paket C|12B1", dariNilai: false }, 700);
+    await page.click("[data-keputusan] [data-hasil=lulus]"); await page.waitForTimeout(600);
+    await ke(page, "rapor", { kelasRapor: "Paket C|12B1", semRapor: null }, 900);
+    await page.fill('#formAturRapor [name="tanggal"]', "2027-06-26");
+    await page.fill('#formAturRapor [name="tanggalAkhir"]', "2027-05-29");
+    await page.evaluate(() => document.getElementById("formAturRapor").requestSubmit()); await page.waitForTimeout(300);
+    await ke(page, "raporCetak", { kelasRapor: "Paket C|12B1", raporSantri: "sc1" }, 900);
+    const r = await page.evaluate(() => {
+      const L = document.querySelector(".rapor-resmi");
+      return {
+        teks: L ? L.innerText.replace(/\s+/g, " ") : "",
+        ttd: L ? [...L.querySelectorAll(".ttd-resmi tr")].map(tr => tr.cells.length) : [],
+        ekskul: L ? L.querySelectorAll(".tabel-rapor-resmi")[L.querySelectorAll(".tabel-rapor-resmi").length - 4].querySelectorAll("tbody tr").length : 0
+      };
+    });
+    boleh("Paket C pakai rapor format resmi, \"Nama Murid\"", /Nama Murid/.test(r.teks));
+    boleh("kelompok mata pelajaran pilihan berisi Biologi", /Kelompok Mata Pelajaran Pilihan \d+ Biologi/.test(r.teks));
+    boleh("Sejarah tetap di kelompok umum", /Umum .*Sejarah.*Kelompok Mata Pelajaran Pilihan/.test(r.teks));
+    boleh("keputusan: murid dinyatakan LULUS Program Paket C (setara SMA)", /murid dinyatakan: LULUS Program Paket C \(setara SMA\)/.test(r.teks));
+    boleh("kelas 12 pakai tanggal kelas akhir (29 Mei 2027)", /29 Mei 2027/.test(r.teks) && !/26 Juni 2027/.test(r.teks));
+    harap("tanda tangan 3 kolom sejajar (jabatan, nama, NIP)", r.ttd.join(), "3,3,3");
+    harap("ekstrakurikuler kosong tetap 2 baris", r.ekskul, 2);
+    harap("nggak ada error", galatBersih(galat), []);
+    await browser.close();
+
+    // semester Ganjil (Paket B): catatan di samping ketidakhadiran + kotak tanggapan orang tua, tanpa keputusan
+    const b = await buka({ hp: false });
+    await b.page.clock.setFixedTime(new Date("2026-10-10T09:00:00"));
+    await masuk(b.page, "u-kur");
+    await ke(b.page, "raporCetak", { kelasRapor: "Paket B|7A1", semRapor: null, raporSantri: null }, 1200);
+    const g = await b.page.evaluate(() => ({
+      catatanSamping: !!document.querySelector(".rapor-resmi .dua-kotak-rapor .kotak-catatan"),
+      tanggapan: !!document.querySelector(".rapor-resmi .kotak-tanggapan"),
+      keputusan: !!document.querySelector(".rapor-resmi .kotak-keputusan")
+    }));
+    boleh("Ganjil: catatan wali kelas di samping ketidakhadiran", g.catatanSamping);
+    boleh("Ganjil: ada kotak Tanggapan Orang Tua / Wali Murid", g.tanggapan);
+    tolak("Ganjil: tanpa kotak keputusan", g.keputusan);
+    harap("nggak ada error (Ganjil)", galatBersih(b.galat), []);
+    await b.browser.close();
+  }
+
   // ---------- isian rapor dari wali kelas ----------
   {
     console.log("\nIsian rapor wali kelas (Paket B)");

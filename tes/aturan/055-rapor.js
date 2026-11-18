@@ -1,18 +1,23 @@
 // =====================================================
-grup("Rapor format resmi Paket B (raporresmi.js)");
+grup("Rapor format resmi Paket B & C (raporresmi.js)");
 {
   const src = baca("js/raporresmi.js");
   const c = vm.createContext({});
   vm.runInContext([
     "const jenisMapel = (m) => m && m.jenis === 'diniah' ? 'diniah' : 'umum';",
     ambilFungsi(baca("js/grup.js"), "tingkatKelas"),
-    ...["KELOMPOK_RAPOR", "URUT_MAPEL_RAPOR", "ROMAWI", "ANGKA_KATA"].map(n => ambilKonstanta(src, n)),
+    ...["KELOMPOK_RAPOR", "MAPEL_PILIHAN", "URUT_MAPEL_RAPOR", "ROMAWI", "ANGKA_KATA"].map(n => ambilKonstanta(src, n)),
     ...["raporResmi", "tebakKelompokRapor", "kelompokRapor", "urutMapelRapor", "kelasRomawi", "namaTingkat", "faseKelas", "semesterAngka"].map(n => ambilFungsi(src, n)),
     "this.r = { raporResmi, tebakKelompokRapor, kelompokRapor, urutMapelRapor, kelasRomawi, namaTingkat, faseKelas, semesterAngka };"
   ].join("\n"), c);
   const R = c.r;
-  boleh("Paket B pakai format resmi", R.raporResmi("Paket B"));
-  tolak("Paket C & I'dad belum (format menyusul)", R.raporResmi("Paket C") || R.raporResmi("I'dad"));
+  boleh("Paket B & Paket C pakai format resmi", R.raporResmi("Paket B") && R.raporResmi("Paket C"));
+  tolak("I'dad belum (format menyusul)", R.raporResmi("I'dad"));
+  harap("Paket C: Biologi, Ekonomi, Sosiologi, Bahasa Arab jadi pilihan", ["Biologi", "Ekonomi", "Sosiologi", "Bahasa Arab"].map(n => R.tebakKelompokRapor(n, "umum", "Paket C")).join(), "pilihan,pilihan,pilihan,pilihan");
+  harap("Paket C: Sejarah & Matematika tetap umum", ["Sejarah", "Matematika"].map(n => R.tebakKelompokRapor(n, "umum", "Paket C")).join(), "umum,umum");
+  harap("Paket B nggak punya kelompok pilihan", R.tebakKelompokRapor("Biologi", "umum", "Paket B"), "umum");
+  harap("mapel Paket B yang terlanjur 'pilihan' → umum", R.kelompokRapor({ nama: "IPA", jenjang: "Paket B", rapor: "pilihan" }), "umum");
+  harap("mapel Paket C 'pilihan' tetap pilihan", R.kelompokRapor({ nama: "Biologi", jenjang: "Paket C", rapor: "pilihan" }), "pilihan");
   harap("kelas romawi 8A1 → VIII A1", R.kelasRomawi("8A1"), "VIII A1");
   harap("kelas romawi 9B2 → IX B2", R.kelasRomawi("9B2"), "IX B2");
   harap("kelas tanpa angka nggak diubah", R.kelasRomawi("I'dad A1"), "I'dad A1");
@@ -28,5 +33,8 @@ grup("Rapor format resmi Paket B (raporresmi.js)");
   harap("isian rapor rusak → pakai tebakan", R.kelompokRapor({ nama: "Matematika", jenis: "umum", rapor: "<b>" }), "umum");
   const urut = ["Seni Budaya", "Matematika", "Pendidikan Agama Islam dan Budi Pekerti", "Bahasa Inggris", "Pendidikan Pancasila", "Bahasa Indonesia"]
     .map(nama => ({ nama })).sort(R.urutMapelRapor).map(m => m.nama.split(" ")[0] + (m.nama.split(" ")[1] ? " " + m.nama.split(" ")[1] : ""));
+  const urutC = ["Seni dan Budaya", "Sejarah", "Bahasa Inggris", "Pendidikan Jasmani Olahraga dan Kesehatan", "Matematika"]
+    .map(nama => ({ nama })).sort(R.urutMapelRapor).map(m => m.nama.split(" ")[0]);
+  harap("Paket C: Sejarah sesudah Bahasa Inggris, sebelum PJOK", urutC.join(), "Matematika,Bahasa,Sejarah,Pendidikan,Seni");
   harap("urutan mapel umum ikut rapor resmi", urut.join(), "Pendidikan Agama,Pendidikan Pancasila,Bahasa Indonesia,Matematika,Bahasa Inggris,Seni Budaya");
 }

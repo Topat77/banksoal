@@ -1,43 +1,52 @@
 // =====================================================
 //  raporresmi.js — rapor format resmi PKBM (tahun pelajaran 2025/2026, tanpa P5)
 //
-//  Sekarang baru Paket B. Paket C & I'dad masih pakai rapor lama (rapor.js) sampai
-//  formatnya dikirim sekolah. Isinya:
+//  Paket B & Paket C (contoh rapor dari sekolah). I'dad masih pakai rapor lama (rapor.js)
+//  sampai formatnya dikirim sekolah. Isinya:
 //  - identitas: nama sekolah, alamat, nama, NIS / NISN, kelas romawi, fase, semester, tahun
 //  - nilai akhir (dibulatkan) + capaian kompetensi, dikelompokkan:
-//    Umum · Kokurikuler (pemberdayaan & keterampilan) · Muatan lokal. Mapel diniah (MSU/MSW) nggak ikut.
-//  - ekstrakurikuler, ketidakhadiran, keputusan naik kelas (semester Genap), catatan wali kelas
-//  - tanda tangan orang tua, wali kelas, kepala sekolah + kaki halaman
+//    Umum · Pilihan (Paket C) · Kokurikuler (pemberdayaan & keterampilan) · Muatan lokal.
+//    Mapel diniah (MSU/MSW) nggak ikut.
+//  - ekstrakurikuler (minimal 2 baris), ketidakhadiran
+//  - Ganjil: catatan wali kelas di samping ketidakhadiran + kotak tanggapan orang tua
+//    Genap: keputusan naik kelas / lulus di samping ketidakhadiran + catatan wali kelas
+//  - tanda tangan satu baris: orang tua · kepala sekolah · wali kelas + kaki halaman
 //  Capaian, ketidakhadiran, ekstrakurikuler & catatan diisi wali kelas (isianRapor(), isianrapor.js).
 // =====================================================
 
 // jenjang yang udah pakai format resmi
 function raporResmi(jenjang) {
-  return jenjang === "Paket B";
+  return jenjang === "Paket B" || jenjang === "Paket C";
 }
 
 // ====== KELOMPOK MAPEL DI RAPOR ======
-// field mapel.rapor: "umum" | "kokurikuler" | "mulok" | "tidak" (nggak masuk rapor PKBM)
+// field mapel.rapor: "umum" | "pilihan" (Paket C) | "kokurikuler" | "mulok" | "tidak" (nggak masuk rapor PKBM)
 const KELOMPOK_RAPOR = [
   { k: "umum", judul: "Kelompok Mata Pelajaran Umum", label: "Mata pelajaran umum" },
+  { k: "pilihan", judul: "Kelompok Mata Pelajaran Pilihan", label: "Mata pelajaran pilihan (Paket C)" },
   { k: "kokurikuler", judul: "Kokurikuler Muatan Pemberdayaan dan Keterampilan", label: "Kokurikuler (pemberdayaan & keterampilan)" },
   { k: "mulok", judul: "Muatan Lokal", label: "Muatan lokal" },
   { k: "tidak", judul: "", label: "Tidak masuk rapor PKBM (misal mapel diniah MSU/MSW)" }
 ];
-// kalau belum diatur: diniah nggak masuk rapor PKBM, pemberdayaan/keterampilan jadi kokurikuler
-function tebakKelompokRapor(nama, jenis) {
+// kalau belum diatur: diniah nggak masuk rapor PKBM, pemberdayaan/keterampilan jadi kokurikuler,
+// Paket C: mapel peminatan (Biologi, Ekonomi, Bahasa Arab, ...) jadi pilihan
+const MAPEL_PILIHAN = /biologi|fisika|kimia|ekonomi|sosiologi|geografi|antropologi|informatika|bahasa\s*arab|lanjut/i;
+function tebakKelompokRapor(nama, jenis, jenjang) {
   if (jenis === "diniah") return "tidak";
   if (/pemberdayaan|ke?trampilan|keterampilan/i.test(nama || "")) return "kokurikuler";
   if (/muatan\s*lokal|mulok/i.test(nama || "")) return "mulok";
+  if (jenjang === "Paket C" && MAPEL_PILIHAN.test(nama || "")) return "pilihan";
   return "umum";
 }
 function kelompokRapor(m) {
-  return KELOMPOK_RAPOR.some(x => x.k === m.rapor) ? m.rapor : tebakKelompokRapor(m.nama, jenisMapel(m));
+  const k = KELOMPOK_RAPOR.some(x => x.k === m.rapor) ? m.rapor : tebakKelompokRapor(m.nama, jenisMapel(m), m.jenjang);
+  return k === "pilihan" && m.jenjang !== "Paket C" ? "umum" : k;   // kelompok pilihan cuma ada di Paket C
 }
 
 // urutan mapel umum seperti di rapor resmi; yang nggak dikenal di belakang, urut nama
 const URUT_MAPEL_RAPOR = [/agama|pai\b/i, /pancasila|pkn/i, /indonesia/i, /matematika/i, /pengetahuan alam|\bipa\b/i,
-  /pengetahuan sosial|\bips\b/i, /inggris/i, /jasmani|olahraga|pjok/i, /seni|prakarya/i, /informatika/i];
+  /pengetahuan sosial|\bips\b/i, /inggris/i, /sejarah/i, /jasmani|olahraga|pjok/i, /seni|prakarya/i, /informatika/i,
+  /biologi/i, /fisika/i, /kimia/i, /arab/i, /sosiologi/i, /ekonomi/i, /geografi/i, /pemberdayaan/i, /ke?trampilan/i];
 function urutMapelRapor(a, b) {
   const i = (m) => { const n = URUT_MAPEL_RAPOR.findIndex(re => re.test(m.nama || "")); return n < 0 ? 99 : n; };
   return i(a) - i(b) || (a.nama || "").localeCompare(b.nama || "", "id");
@@ -68,16 +77,22 @@ function semesterAngka(sem) {
 }
 
 // ====== PENGATURAN RAPOR (TU) ======
-// disimpan di pengaturan/lembaga.rapor: { kepala, nipKepala, alamat, tempat, tanggal: { "2025/2026|Ganjil": "2025-12-14" } }
+// disimpan di pengaturan/lembaga.rapor: { kepala, nipKepala, alamat, tempat, tanggal: { "2025/2026|Ganjil": "2025-12-14" },
+//   tanggalAkhir: { "2025/2026|Genap": "2026-05-30" } }   ← kelas akhir (9 & 12) di semester Genap, biasanya lebih awal
 function aturRapor() {
   const r = toko.lembaga && adalahObjek(toko.lembaga.rapor) ? toko.lembaga.rapor : {};
   return {
     kepala: jadiTeks(r.kepala), nipKepala: jadiTeks(r.nipKepala), alamat: jadiTeks(r.alamat),
-    tempat: jadiTeks(r.tempat) || "Tulungagung", tanggal: adalahObjek(r.tanggal) ? r.tanggal : {}
+    tempat: jadiTeks(r.tempat) || "Tulungagung", tanggal: adalahObjek(r.tanggal) ? r.tanggal : {},
+    tanggalAkhir: adalahObjek(r.tanggalAkhir) ? r.tanggalAkhir : {}
   };
 }
-function tanggalRapor(sem) {
-  const t = aturRapor().tanggal[kunciSemester(sem)];
+// kelas: kelas siswa di semester itu. Kelas akhir (9 & 12) Genap pakai tanggalAkhir kalau diisi.
+function tanggalRapor(sem, kelas) {
+  const a = aturRapor();
+  const kunci = kunciSemester(sem);
+  const akhir = kelas && sem.semester === "Genap" && tingkatAkhir(kelas.jenjang, kelas.kelas) ? a.tanggalAkhir[kunci] : "";
+  const t = akhir || a.tanggal[kunci];
   const d = typeof t === "string" && /^\d{4}-\d{2}-\d{2}$/.test(t) ? new Date(t + "T00:00:00") : null;
   return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "";
 }
@@ -92,6 +107,8 @@ function htmlPengaturanRapor(sem) {
       <label>Alamat di rapor <input name="alamat" value="${aman(a.alamat)}" maxlength="120" placeholder="Jln. ..."></label>
       <label>Tempat tanda tangan <input name="tempat" value="${aman(a.tempat)}" maxlength="50"></label>
       <label>Tanggal rapor ${aman(namaSemester(sem))} <input name="tanggal" type="date" value="${aman(tgl)}"></label>
+      ${sem.semester === "Genap" ? `<label>Tanggal rapor kelas 9 &amp; 12 (kelas akhir) <input name="tanggalAkhir" type="date" value="${aman(a.tanggalAkhir[kunciSemester(sem)] || "")}">
+        <small>Kosongkan jika sama dengan tanggal di atas.</small></label>` : ""}
       <div class="baris-tombol">
         <button type="submit" class="tombol-utama">Simpan</button>
         <span class="tersimpan" id="tersimpanAturRapor" role="status"></span>
@@ -109,9 +126,14 @@ function pasangPengaturanRapor(sem) {
     const tanggal = { ...lama.tanggal };
     const tgl = String(f.get("tanggal") || "");
     if (tgl) tanggal[kunciSemester(sem)] = tgl; else delete tanggal[kunciSemester(sem)];
+    const tanggalAkhir = { ...lama.tanggalAkhir };
+    if (f.has("tanggalAkhir")) {
+      const tAkhir = String(f.get("tanggalAkhir") || "");
+      if (tAkhir) tanggalAkhir[kunciSemester(sem)] = tAkhir; else delete tanggalAkhir[kunciSemester(sem)];
+    }
     const rapor = {
       kepala: f.get("kepala").trim(), nipKepala: f.get("nipKepala").trim(),
-      alamat: f.get("alamat").trim(), tempat: f.get("tempat").trim() || "Tulungagung", tanggal
+      alamat: f.get("alamat").trim(), tempat: f.get("tempat").trim() || "Tulungagung", tanggal, tanggalAkhir
     };
     simpanLembaga({ ...toko.lembaga, rapor });
     document.getElementById("tersimpanAturRapor").textContent = "Tersimpan";
@@ -127,7 +149,10 @@ function teksKeputusan(santri, sem) {
   const t = Number(tingkatKelas(asal.kelas));
   if (hasil === "naik") return `Naik ke ${namaTingkat(t + 1)}`;
   if (hasil === "tinggal") return tingkatAkhir(asal.jenjang, asal.kelas) ? "Tidak lulus" : `Tidak naik, tetap di ${namaTingkat(t)}`;
-  if (hasil === "lulus" || hasil === "lanjut") return "Lulus";
+  if (hasil === "lulus" || hasil === "lanjut") {
+    return asal.jenjang === "Paket B" ? "LULUS Program Paket B (setara SMP)"
+      : asal.jenjang === "Paket C" ? "LULUS Program Paket C (setara SMA)" : "Lulus";
+  }
   return "";
 }
 
@@ -150,6 +175,7 @@ function htmlLembarRaporResmi(santri, sem) {
   const isian = isianRapor(santri, sem) || {};
   const nisn = jadiTeks(santri.nisn);
   const nama = String(santri.nama || "").toUpperCase();
+  const sebutan = k.jenjang === "Paket C" ? "murid" : "peserta didik";   // istilah di contoh rapor sekolah
   const baris = mapelKelas(k.jenjang, k.kelas).map(m => {
     const n = hitungNilai(lembarNilai(m.id, sem), santri.id, m);
     return { mapel: m, kelompok: kelompokRapor(m), akhir: n.akhir };
@@ -159,11 +185,11 @@ function htmlLembarRaporResmi(santri, sem) {
     <table class="identitas-resmi">
       <tr><td>Nama Sekolah</td><td>: ${aman(toko.lembaga.nama || KONFIG.namaLembaga || "")}</td><td>Kelas</td><td>: ${aman(kelasRomawi(k.kelas))}</td></tr>
       <tr><td>Alamat</td><td>: ${aman(atur.alamat || "-")}</td><td>Fase</td><td>: ${aman(faseKelas(k.jenjang, k.kelas))}</td></tr>
-      <tr><td>Nama Peserta Didik</td><td>: ${aman(nama)}</td><td>Semester</td><td>: ${aman(semesterAngka(sem))}</td></tr>
+      <tr><td>${k.jenjang === "Paket C" ? "Nama Murid" : "Nama Peserta Didik"}</td><td>: ${aman(nama)}</td><td>Semester</td><td>: ${aman(semesterAngka(sem))}</td></tr>
       <tr><td>Nomor Induk/NISN</td><td>: ${aman(santri.nis || "-")} / ${aman(nisn || "-")}</td><td>Tahun Pelajaran</td><td>: ${aman(sem.tahun)}</td></tr>
     </table>`;
 
-  // nilai: Umum, Kokurikuler, Muatan lokal (nomornya nyambung)
+  // nilai: Umum, Pilihan (Paket C), Kokurikuler, Muatan lokal (nomornya nyambung)
   let no = 1;
   for (const g of KELOMPOK_RAPOR.filter(x => x.k !== "tidak")) {
     const isi = baris.filter(b => b.kelompok === g.k);
@@ -181,13 +207,18 @@ function htmlLembarRaporResmi(santri, sem) {
   h += `<table class="tabel-rapor-resmi">
     <colgroup><col class="kol-no"><col class="kol-mapel"><col class="kol-predikat"><col></colgroup>
     <thead><tr><th>No</th><th>Kegiatan Ekstrakurikuler</th><th>Predikat</th><th>Keterangan</th></tr></thead>
-    <tbody>${(ekskul.length ? ekskul : [{}]).map((e, i) => `<tr><td class="tengah">${ekskul.length ? i + 1 : "&nbsp;"}</td>
+    <tbody>${(ekskul.length >= 2 ? ekskul : [...ekskul, {}, {}].slice(0, 2)).map((e, i) => `<tr><td class="tengah">${i + 1}</td>
       <td>${aman(jadiTeks(e.kegiatan))}</td><td class="tengah">${aman(jadiTeks(e.predikat))}</td><td>${aman(jadiTeks(e.keterangan))}</td></tr>`).join("")}</tbody>
   </table>`;
 
-  // ketidakhadiran + keputusan
+  // ketidakhadiran + (Genap: keputusan | Ganjil: catatan wali kelas)
   const hari = (x) => Number.isFinite(Number(isian[x])) && isian[x] !== "" && isian[x] !== undefined ? `${Math.max(0, Math.round(Number(isian[x])))} hari` : "- hari";
+  const genap = sem.semester === "Genap";
   const keputusan = teksKeputusan(santri, sem);
+  const catatan = `<table class="tabel-rapor-resmi kotak-catatan">
+    <thead><tr><th>Catatan Wali Kelas</th></tr></thead>
+    <tbody><tr><td>${aman(jadiTeks(isian.catatan)) || "&nbsp;"}</td></tr></tbody>
+  </table>`;
   h += `<div class="dua-kotak-rapor">
     <table class="tabel-rapor-resmi kotak-hadir">
       <colgroup><col class="kol-hadir-nama"><col class="kol-hadir-titik"><col class="kol-hadir-hari"></colgroup>
@@ -198,27 +229,35 @@ function htmlLembarRaporResmi(santri, sem) {
         <tr><td>Tanpa Keterangan</td><td class="tengah">:</td><td class="kanan">${hari("alpa")}</td></tr>
       </tbody>
     </table>
-    ${sem.semester === "Genap" ? `<table class="tabel-rapor-resmi kotak-keputusan">
+    ${genap ? `<table class="tabel-rapor-resmi kotak-keputusan">
       <thead><tr><th>Keputusan</th></tr></thead>
-      <tbody><tr><td>Berdasarkan seluruh capaian kompetensi pada semester 1 dan 2, maka peserta didik dinyatakan:<br><b>${keputusan ? aman(keputusan) : "...................................."}</b></td></tr></tbody>
-    </table>` : ""}
+      <tbody><tr><td>Berdasarkan seluruh capaian kompetensi pada semester 1 dan 2, maka ${sebutan} dinyatakan:<br><b>${keputusan ? aman(keputusan) : "...................................."}</b></td></tr></tbody>
+    </table>` : catatan}
   </div>
-  <table class="tabel-rapor-resmi kotak-catatan">
-    <thead><tr><th>Catatan Wali Kelas</th></tr></thead>
-    <tbody><tr><td>${aman(jadiTeks(isian.catatan)) || "&nbsp;"}</td></tr></tbody>
-  </table>`;
+  ${genap ? catatan : `<table class="tabel-rapor-resmi kotak-tanggapan">
+    <thead><tr><th>Tanggapan Orang Tua / Wali Murid</th></tr></thead>
+    <tbody><tr><td>&nbsp;</td></tr></tbody>
+  </table>`}`;
 
-  // tanda tangan
-  const tanggal = tanggalRapor(sem);
+  // tanda tangan: satu baris (orang tua · kepala sekolah · wali kelas)
+  const tanggal = tanggalRapor(sem, k);
+  // tiga baris tabel (jabatan · nama · NIP) biar nama ketiganya tetap sejajar walau tanggalnya panjang
   h += `<table class="ttd-resmi">
-    <tr>
-      <td>Mengetahui<br>Orang Tua Murid,<div class="ruang-ttd"></div>..............................</td>
-      <td>${aman(atur.tempat)}, ${tanggal ? aman(tanggal) : ".............................."}<br>Wali Kelas,<div class="ruang-ttd"></div>${wali
-        ? `<b><u>${aman(wali.nama)}</u></b><br><span class="nip-resmi">NIP. ${aman(wali.nip || "-")}</span>`
-        : "..............................<br>NIP. -"}</td>
+    <tr class="ttd-jabatan">
+      <td>Mengetahui<br>Orang Tua Murid,</td>
+      <td>Mengetahui<br>Kepala Sekolah,</td>
+      <td>${aman(atur.tempat)}, ${tanggal ? aman(tanggal) : ".............................."}<br>Wali Kelas,</td>
     </tr>
-    <tr><td colspan="2" class="ttd-kepala">Mengetahui<br>Kepala Sekolah,<div class="ruang-ttd"></div>${atur.kepala
-      ? `<b><u>${aman(atur.kepala)}</u></b>` : ".............................."}<br>NIP. ${aman(atur.nipKepala || "-")}</td></tr>
+    <tr class="ttd-nama">
+      <td>..............................</td>
+      <td class="ttd-kepala">${atur.kepala ? `<b><u>${aman(atur.kepala)}</u></b>` : ".............................."}</td>
+      <td>${wali ? `<b><u>${aman(wali.nama)}</u></b>` : ".............................."}</td>
+    </tr>
+    <tr class="ttd-nip">
+      <td></td>
+      <td><span class="nip-resmi">NIP. ${aman(atur.nipKepala || "-")}</span></td>
+      <td><span class="nip-resmi">NIP. ${aman((wali && wali.nip) || "-")}</span></td>
+    </tr>
   </table>
   <div class="kaki-rapor"><span>${aman(nama)} | ${aman(nisn || santri.nis || "-")}</span><span>${aman(k.jenjang)}</span></div>
   </div>`;
