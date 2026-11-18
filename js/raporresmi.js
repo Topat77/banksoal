@@ -29,13 +29,14 @@ const KELOMPOK_RAPOR = [
   { k: "tidak", judul: "", label: "Tidak masuk rapor PKBM (misal mapel diniah MSU/MSW)" }
 ];
 // kalau belum diatur: diniah nggak masuk rapor PKBM, pemberdayaan/keterampilan jadi kokurikuler,
-// Paket C: mapel peminatan (Biologi, Ekonomi, Bahasa Arab, ...) jadi pilihan
+// Paket C: mapel peminatan (Biologi, Ekonomi, Bahasa Arab, ...) jadi pilihan; Paket B: Bahasa Arab jadi muatan lokal
 const MAPEL_PILIHAN = /biologi|fisika|kimia|ekonomi|sosiologi|geografi|antropologi|informatika|bahasa\s*arab|lanjut/i;
 function tebakKelompokRapor(nama, jenis, jenjang) {
   if (jenis === "diniah") return "tidak";
   if (/pemberdayaan|ke?trampilan|keterampilan/i.test(nama || "")) return "kokurikuler";
   if (/muatan\s*lokal|mulok/i.test(nama || "")) return "mulok";
   if (jenjang === "Paket C" && MAPEL_PILIHAN.test(nama || "")) return "pilihan";
+  if (jenjang === "Paket B" && /bahasa\s*arab/i.test(nama || "")) return "mulok";   // Bahasa Arab Paket B: muatan lokal
   return "umum";
 }
 function kelompokRapor(m) {

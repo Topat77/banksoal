@@ -379,7 +379,8 @@ function formMapel() {
     const rentang = (KELAS_PER_JENJANG[j] || []).map(k => parseInt(k.replace(/\D/g, ""), 10));
     if (gantiJenjang === true && pilihKelas.value && rentang.length && !Number.isNaN(angka) && !rentang.includes(angka)) pilihKelas.value = "";
   }
-  form.querySelectorAll("[name=jenjang]").forEach(r => r.onchange = () => aturSaranKelas(true));
+  // tebakan kelompok rapor juga ikut jenjang (Biologi: Paket B umum, Paket C pilihan), selama belum dipilih sendiri
+  form.querySelectorAll("[name=jenjang]").forEach(r => r.onchange = () => { aturSaranKelas(true); tebakRapor(); });
   aturSaranKelas();
 
   // mapel baru: jenis (diniah / umum) ditebak dari namanya, selama belum dipilih sendiri
@@ -387,7 +388,7 @@ function formMapel() {
   let raporDipilih = !!(lama && lama.rapor);
   form.querySelectorAll("[name=jenis]").forEach(r => r.addEventListener("change", () => { jenisDipilih = true; tebakRapor(); }));
   form.querySelectorAll("[name=rapor]").forEach(r => r.addEventListener("change", () => { raporDipilih = true; }));
-  // kelompok rapor ikut ditebak dari nama & jenis, selama belum dipilih sendiri
+  // kelompok rapor ikut ditebak dari nama, jenis & jenjang, selama belum dipilih sendiri
   function tebakRapor() {
     if (raporDipilih) return;
     const jenis = (form.querySelector("[name=jenis]:checked") || {}).value || "umum";
