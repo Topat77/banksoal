@@ -132,3 +132,27 @@ grup("Batas ukuran dokumen sebelum disimpan");
   harap("pengingat mendekati batas cuma sekali per dokumen", pesan.length, 0);
 }
 
+grup("Batas jumlah isi daftar sebelum disimpan (sama dengan rules)");
+{
+  const pesan = [];
+  ctx.kabar = (t) => pesan.push(t);
+  const isi = (n) => Array.from({ length: n }, (_, i) => ({ id: "s" + i }));
+  boleh("500 soal di modul boleh", muatDiDok({ id: "m1", soal: isi(500) }, null, "Modul", BATAS_ISI.Modul));
+  tolak("501 soal di modul ditolak", muatDiDok({ id: "m2", soal: isi(501) }, null, "Modul", BATAS_ISI.Modul));
+  boleh("ditolak → guru dikasih tau jumlah & batasnya", /501 soal, batasnya 500 soal.*TIDAK disimpan/.test(pesan.pop() || ""));
+  tolak("101 pertemuan ditolak", muatDiDok({ id: "m3", pertemuan: isi(101) }, null, "Modul", BATAS_ISI.Modul));
+  tolak("51 teks bacaan ditolak", muatDiDok({ id: "m4", bacaan: isi(51) }, null, "Modul", BATAS_ISI.Modul));
+  tolak("201 butir ujian ditolak", muatDiDok({ id: "u1", butir: isi(201) }, null, "Ujian", BATAS_ISI.Ujian));
+  tolak("tetap ditolak walau dikurangi tapi masih lewat batas", muatDiDok({ id: "u2", butir: isi(250) }, { id: "u2", butir: isi(300) }, "Ujian", BATAS_ISI.Ujian));
+  tolak("201 butir UAS (koordinator) ditolak", muatDiDok({ id: "u4", butir: isi(201) }, null, "UAS", BATAS_ISI.UAS));
+  harap("UAS: cuma disuruh ngurangin, nggak disuruh bikin UAS baru", pesan.pop(), "UAS ini berisi 201 soal, batasnya 200 soal. Perubahan ini TIDAK disimpan.\n\nKurangi soal menjadi paling banyak 200.");
+  boleh("tanpa batas (UAS dari TU) boleh", muatDiDok({ id: "u3", butir: isi(300) }, null, "UAS", null));
+  pesan.length = 0;
+  // angkanya harus sama dengan firestore.rules
+  const rules = baca("firestore.rules");
+  const di = (fungsi, kolom) => Number((rules.match(new RegExp(`function ${fungsi}\\(\\)[\\s\\S]*?daftar\\('${kolom}', (\\d+)\\)`)) || [])[1]);
+  for (const k of Object.keys(BATAS_ISI.Modul)) harap(`batas ${k} modul sama dengan rules`, BATAS_ISI.Modul[k][0], di("modulValid", k));
+  harap("batas butir ujian sama dengan rules", BATAS_ISI.Ujian.butir[0], di("sumatifValid", "butir"));
+  harap("batas butir UAS sama dengan rules", BATAS_ISI.UAS.butir[0], di("uasValid", "butir"));
+}
+

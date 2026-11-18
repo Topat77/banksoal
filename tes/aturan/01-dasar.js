@@ -50,10 +50,10 @@ vm.runInContext([
   ...["KELOMPOK_NILAI", "BOBOT_BAWAAN"].map(n => ambilKonstanta(nilaiJs, n)),
   ...["jenisMapel", "bobotUntuk", "rataRata", "nilaiSah", "hitungNilai"].map(n => ambilFungsi(nilaiJs, n)),
   ...["angkaAcak", "kocok", "kelompokkan", "acakPilihanSoal", "acakItems", "siapkanLembar"].map(n => ambilFungsi(cetakJs, n)),
-  ambilKonstanta(simpanJs, "sudahDiingatkanUkuran"), ...["tanpaId", "muatDiDok"].map(n => ambilFungsi(simpanJs, n)),
-  "this.ekspor2 = { bacaJawabanAI, hitungNilai, nilaiSah, angkaAcak, kocok, siapkanLembar, muatDiDok };"
+  ambilKonstanta(simpanJs, "BATAS_ISI"), ambilKonstanta(simpanJs, "sudahDiingatkanUkuran"), ...["tanpaId", "muatDiDok"].map(n => ambilFungsi(simpanJs, n)),
+  "this.ekspor2 = { bacaJawabanAI, hitungNilai, nilaiSah, angkaAcak, kocok, siapkanLembar, muatDiDok, BATAS_ISI };"
 ].join("\n"), ctx);
-const { bacaJawabanAI, hitungNilai, nilaiSah, angkaAcak, kocok, siapkanLembar, muatDiDok } = ctx.ekspor2;
+const { bacaJawabanAI, hitungNilai, nilaiSah, angkaAcak, kocok, siapkanLembar, muatDiDok, BATAS_ISI } = ctx.ekspor2;
 
 // ---------- data contoh ----------
 const db = {

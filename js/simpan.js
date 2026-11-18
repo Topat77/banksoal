@@ -31,27 +31,43 @@ function pasangDiDaftar(daftar, x) {
 
 // Firestore nolak dokumen di atas 1 MiB, jadi yang kegedean ditolak di sini, sebelum dikirim.
 // Yang nggak nambah gede (misal hapus soal) tetap boleh, biar modul kegedean masih bisa dikecilin.
+// Jumlah isi daftar juga dibatasi rules (daftar(...) di modulValid / sumatifValid / uasValid),
+// angkanya harus sama persis dengan firestore.rules. Beda sama ukuran: lewat batas tetap ditolak
+// walaupun dikurangin, jadi selalu dicek.
 // hasilnya false kalau nggak boleh disimpan
+const BATAS_ISI = {
+  Modul: { pertemuan: [100, "pertemuan"], bacaan: [50, "teks bacaan"], soal: [500, "soal"], terkait: [50, "modul terkait"] },
+  Ujian: { butir: [200, "soal"] },
+  UAS: { butir: [200, "soal"] }
+};
 const sudahDiingatkanUkuran = new Set();
-function muatDiDok(baru, lama, jenis) {
+function muatDiDok(baru, lama, jenis, batas) {
+  const satuSaja = jenis === "UAS";   // UAS cuma satu per grup per semester, jadi nggak bisa disaranin bikin baru
+  for (const [kolom, [maks, nama]] of Object.entries(batas || {})) {
+    const n = Array.isArray(baru[kolom]) ? baru[kolom].length : 0;
+    if (n > maks) {
+      kabar(`${jenis} ini berisi ${n} ${nama}, batasnya ${maks} ${nama}. Perubahan ini TIDAK disimpan.\n\nKurangi ${nama} menjadi paling banyak ${maks}${satuSaja ? "" : `, atau pindahkan sebagian ke ${jenis.toLowerCase()} baru`}.`);
+      return false;
+    }
+  }
   const ukuran = ukuranDok(tanpaId(baru));
   const kb = (n) => Math.round(n / 1024);
   if (ukuran > BATAS_DOK.maks && (!lama || ukuran > ukuranDok(tanpaId(lama)))) {
-    kabar(`${jenis} ini terlalu besar (±${kb(ukuran)} KB, batasnya ±${kb(BATAS_DOK.maks)} KB), jadi perubahan ini TIDAK disimpan.\n\nPecah jadi dua ${jenis.toLowerCase()}, atau pendekkan teks bacaan / soal yang panjang.`);
+    kabar(`${jenis} ini terlalu besar (±${kb(ukuran)} KB, batasnya ±${kb(BATAS_DOK.maks)} KB), jadi perubahan ini TIDAK disimpan.\n\n${satuSaja ? "Pendekkan" : `Pecah jadi dua ${jenis.toLowerCase()}, atau pendekkan`} teks bacaan / soal yang panjang.`);
     return false;
   }
   if (ukuran > BATAS_DOK.peringatan && !sudahDiingatkanUkuran.has(baru.id)) {
     sudahDiingatkanUkuran.add(baru.id);
-    kabar(`${jenis} ini sudah ±${kb(ukuran)} KB, mendekati batas ±${kb(BATAS_DOK.maks)} KB. Soal berikutnya sebaiknya diletakkan di ${jenis.toLowerCase()} baru.`);
+    kabar(`${jenis} ini sudah ±${kb(ukuran)} KB, mendekati batas ±${kb(BATAS_DOK.maks)} KB. ${satuSaja ? "Hindari menambah teks bacaan / soal yang panjang." : `Soal berikutnya sebaiknya diletakkan di ${jenis.toLowerCase()} baru.`}`);
   }
   return true;
 }
 
-// hasilnya null kalau nggak disimpan (kegedean)
+// hasilnya null kalau nggak disimpan (kegedean / isinya kebanyakan)
 function simpanModul(idMapel, modul) {
   const baru = { ...salin(modul), pemilik: uidSaya(), namaPemilik: namaSaya(), diubah: Date.now() };
   if (!baru.dibuat) baru.dibuat = Date.now();
-  if (!muatDiDok(baru, modulMapel(idMapel).find(m => m.id === baru.id), "Modul")) return null;
+  if (!muatDiDok(baru, modulMapel(idMapel).find(m => m.id === baru.id), "Modul", BATAS_ISI.Modul)) return null;
   const w = toko.isi[idMapel];
   if (w) {
     if (w.modulSemua) pasangDiDaftar(w.modulSemua, baru);
@@ -79,7 +95,7 @@ function hapusModul(idMapel, idModul) {
 function simpanSumatif(idMapel, sum) {
   const baru = { ...salin(sum), pemilik: uidSaya(), namaPemilik: namaSaya(), diubah: Date.now() };
   if (!baru.dibuat) baru.dibuat = Date.now();
-  if (!muatDiDok(baru, sumatifMapel(idMapel).find(s => s.id === baru.id), "Ujian")) return null;
+  if (!muatDiDok(baru, sumatifMapel(idMapel).find(s => s.id === baru.id), "Ujian", BATAS_ISI.Ujian)) return null;
   const w = toko.isi[idMapel];
   if (w) pasangDiDaftar(w.sumatif, baru);
   toko.backend.tulis(`mapel/${idMapel}/sumatif/${baru.id}`, tanpaId(baru)).catch(gagalSimpan);
@@ -98,7 +114,7 @@ function hapusSumatif(idMapel, idSum) {
 function simpanUAS(gid, uas) {
   const baru = { ...salin(uas), diubah: Date.now(), diubahOleh: uidSaya(), namaPengubah: namaSaya() };
   if (!baru.dibuat) baru.dibuat = Date.now();
-  if (!muatDiDok(baru, (toko.uas[gid] || []).find(u => u.id === baru.id), "UAS")) return null;
+  if (!muatDiDok(baru, (toko.uas[gid] || []).find(u => u.id === baru.id), "UAS", sayaKurikulum() ? null : BATAS_ISI.UAS)) return null;
   if (toko.uas[gid]) pasangDiDaftar(toko.uas[gid], baru);
   toko.backend.tulis(`grup/${gid}/uas/${baru.id}`, tanpaId(baru)).catch(gagalSimpan);
   berubah();
