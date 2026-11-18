@@ -42,22 +42,23 @@ const BATAS_ISI = {
 };
 const sudahDiingatkanUkuran = new Set();
 function muatDiDok(baru, lama, jenis, batas) {
+  const satuSaja = jenis === "UAS";   // UAS cuma satu per grup per semester, jadi nggak bisa disaranin bikin baru
   for (const [kolom, [maks, nama]] of Object.entries(batas || {})) {
     const n = Array.isArray(baru[kolom]) ? baru[kolom].length : 0;
     if (n > maks) {
-      kabar(`${jenis} ini berisi ${n} ${nama}, batasnya ${maks} ${nama}. Perubahan ini TIDAK disimpan.\n\nKurangi ${nama} menjadi paling banyak ${maks}, atau pindahkan sebagian ke ${jenis.toLowerCase()} baru.`);
+      kabar(`${jenis} ini berisi ${n} ${nama}, batasnya ${maks} ${nama}. Perubahan ini TIDAK disimpan.\n\nKurangi ${nama} menjadi paling banyak ${maks}${satuSaja ? "" : `, atau pindahkan sebagian ke ${jenis.toLowerCase()} baru`}.`);
       return false;
     }
   }
   const ukuran = ukuranDok(tanpaId(baru));
   const kb = (n) => Math.round(n / 1024);
   if (ukuran > BATAS_DOK.maks && (!lama || ukuran > ukuranDok(tanpaId(lama)))) {
-    kabar(`${jenis} ini terlalu besar (±${kb(ukuran)} KB, batasnya ±${kb(BATAS_DOK.maks)} KB), jadi perubahan ini TIDAK disimpan.\n\nPecah jadi dua ${jenis.toLowerCase()}, atau pendekkan teks bacaan / soal yang panjang.`);
+    kabar(`${jenis} ini terlalu besar (±${kb(ukuran)} KB, batasnya ±${kb(BATAS_DOK.maks)} KB), jadi perubahan ini TIDAK disimpan.\n\n${satuSaja ? "Pendekkan" : `Pecah jadi dua ${jenis.toLowerCase()}, atau pendekkan`} teks bacaan / soal yang panjang.`);
     return false;
   }
   if (ukuran > BATAS_DOK.peringatan && !sudahDiingatkanUkuran.has(baru.id)) {
     sudahDiingatkanUkuran.add(baru.id);
-    kabar(`${jenis} ini sudah ±${kb(ukuran)} KB, mendekati batas ±${kb(BATAS_DOK.maks)} KB. Soal berikutnya sebaiknya diletakkan di ${jenis.toLowerCase()} baru.`);
+    kabar(`${jenis} ini sudah ±${kb(ukuran)} KB, mendekati batas ±${kb(BATAS_DOK.maks)} KB. ${satuSaja ? "Hindari menambah teks bacaan / soal yang panjang." : `Soal berikutnya sebaiknya diletakkan di ${jenis.toLowerCase()} baru.`}`);
   }
   return true;
 }

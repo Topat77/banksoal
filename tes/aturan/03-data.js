@@ -144,6 +144,8 @@ grup("Batas jumlah isi daftar sebelum disimpan (sama dengan rules)");
   tolak("51 teks bacaan ditolak", muatDiDok({ id: "m4", bacaan: isi(51) }, null, "Modul", BATAS_ISI.Modul));
   tolak("201 butir ujian ditolak", muatDiDok({ id: "u1", butir: isi(201) }, null, "Ujian", BATAS_ISI.Ujian));
   tolak("tetap ditolak walau dikurangi tapi masih lewat batas", muatDiDok({ id: "u2", butir: isi(250) }, { id: "u2", butir: isi(300) }, "Ujian", BATAS_ISI.Ujian));
+  tolak("201 butir UAS (koordinator) ditolak", muatDiDok({ id: "u4", butir: isi(201) }, null, "UAS", BATAS_ISI.UAS));
+  harap("UAS: cuma disuruh ngurangin, nggak disuruh bikin UAS baru", pesan.pop(), "UAS ini berisi 201 soal, batasnya 200 soal. Perubahan ini TIDAK disimpan.\n\nKurangi soal menjadi paling banyak 200.");
   boleh("tanpa batas (UAS dari TU) boleh", muatDiDok({ id: "u3", butir: isi(300) }, null, "UAS", null));
   pesan.length = 0;
   // angkanya harus sama dengan firestore.rules
