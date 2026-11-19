@@ -118,6 +118,15 @@ function buatAturan(ambilDok, cekAdminAwal) {
     peta(b, "capaian", 40) && daftar(b, "ekskul", 10) && teksAtauKosong(b, "catatan", 1000) &&
     angka(b, "sakit") && angka(b, "izin") && angka(b, "alpa") &&
     teks(b, "namaPengubah", 100) && nilaiKolom(b, "diubahOleh") === auth.uid;
+  // id dokumen wajib cocok sama isinya (sama persis dengan raporIdCocok() di rules).
+  // Rules: replace('/', '-') ganti SEMUA "/", jadi di sini pakai /\//g biar hasilnya sama.
+  const raporIdCocok = (id, b) => {
+    const awal = String(nilaiKolom(b, "tahun") ?? "").replace(/\//g, "-") + "_" + String(nilaiKolom(b, "semester") ?? "") + "_";
+    const santriId = nilaiKolom(b, "santriId");
+    return nilaiKolom(b, "jenis") === "kelas"
+      ? id === awal + "kelas-" + String(nilaiKolom(b, "kelasId") ?? "")
+      : typeof santriId === "string" && santriId.length > 0 && id === awal + santriId;
+  };
   const grupValid = (lama, b) =>
     kolomDikenal(lama, b, ["nama", "jenjang", "tingkat", "pengampu", "koordinator"]) &&
     teks(b, "nama", 200) && teks(b, "jenjang", 50) && daftar(b, "pengampu", 300) &&
@@ -209,7 +218,7 @@ function buatAturan(ambilDok, cekAdminAwal) {
       if (baru === null) return kurikulum(auth);
       const kelasnya = lama ? lama.kelasId : nilaiKolom(baru, "kelasId");
       return (kurikulum(auth) || waliKelasDari(auth, kelasnya)) && raporValid(lama, baru, auth) &&
-        namaAsli(auth, lama, baru, "namaPengubah");
+        raporIdCocok(b[1], baru) && namaAsli(auth, lama, baru, "namaPengubah");
     }
 
     if (b[0] === "mapel" && (b[2] === "modul" || b[2] === "sumatif") && b.length === 4) {

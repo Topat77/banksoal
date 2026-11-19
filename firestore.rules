@@ -188,6 +188,16 @@ service cloud.firestore {
         && angka('sakit') && angka('izin') && angka('alpa')
         && teks('namaPengubah', 100) && isi().get('diubahOleh', null) == request.auth.uid;
     }
+    // id dokumen wajib cocok sama isinya: {tahun "/"→"-"}_{semester}_kelas-{kelasId} (jenis 'kelas')
+    // atau {tahun}_{semester}_{santriId} (jenis 'santri'). Biar wali kelas lain nggak bisa
+    // nyerobot id kelas / siswa orang duluan. Dipanggil setelah raporValid() (tipe kolom udah dicek).
+    function raporIdCocok(id) {
+      let d = isi();
+      let awal = d.get('tahun', '').replace('/', '-') + '_' + d.get('semester', '') + '_';
+      return d.get('jenis', null) == 'kelas'
+        ? id == awal + 'kelas-' + d.get('kelasId', '')
+        : (d.get('santriId', null) is string && d.santriId.size() > 0 && id == awal + d.santriId);
+    }
     function grupValid() {
       return kolomDikenal(['nama', 'jenjang', 'tingkat', 'pengampu', 'koordinator'])
         && teks('nama', 200) && teks('jenjang', 50) && daftar('pengampu', 300)
@@ -260,9 +270,9 @@ service cloud.firestore {
     match /rapor/{id} {
       allow read: if aktif() && (kurikulum() || waliKelasDari(resource.data.kelasId));
       allow create: if aktif() && (kurikulum() || waliKelasDari(isi().get('kelasId', null)))
-        && raporValid() && namaAsli('namaPengubah');
+        && raporValid() && raporIdCocok(id) && namaAsli('namaPengubah');
       allow update: if aktif() && (kurikulum() || waliKelasDari(resource.data.kelasId))
-        && raporValid() && namaAsli('namaPengubah');
+        && raporValid() && raporIdCocok(id) && namaAsli('namaPengubah');
       allow delete: if kurikulum();
     }
 
