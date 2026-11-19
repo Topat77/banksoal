@@ -229,7 +229,7 @@ function layarRaporCetak() {
         <div class="baris-tombol"><button class="tombol-utama" id="print">Cetak / PDF</button></div>
         <p class="info">Ingin menyimpan sebagai PDF? Di jendela cetak, pilih tujuan "Simpan sebagai PDF".</p>
       </div>
-      <div id="lembar">${daftar.map((s, i) => (i ? `<div class="halaman-baru"></div>` : "") + htmlLembarRapor(s, sem)).join("")}</div>
+      <div id="lembar" class="lembar-rapor">${daftar.map((s, i) => (i ? `<div class="halaman-baru"></div>` : "") + htmlLembarRapor(s, sem)).join("")}</div>
     </div>`;
   document.getElementById("print").onclick = () => window.print();
 }

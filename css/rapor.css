@@ -46,7 +46,8 @@
 .ttd-resmi td { width: 33.3%; vertical-align: bottom; padding: 0 6px; text-align: center; }
 .ttd-resmi tr.ttd-nama td { padding-top: 64px; }   /* ruang tanda tangan */
 .ttd-resmi tr.ttd-jabatan td, .ttd-resmi tr.ttd-nip td { vertical-align: top; }
-.ttd-resmi .nip-resmi { overflow-wrap: normal; }   /* NIP 18 digit cuma boleh pecah di spasi setelah "NIP.", nggak di tengah angka */
+.ttd-resmi .nip-resmi { overflow-wrap: normal; }
+.ttd-resmi .titik-kosong { overflow-wrap: anywhere; }   /* "Tulungagung, ......" jangan keluar kolom di HP sempit */   /* NIP 18 digit cuma boleh pecah di spasi setelah "NIP.", nggak di tengah angka */
 .kaki-rapor {
   display: flex; justify-content: space-between; gap: 12px;
   margin-top: 18px; padding-top: 4px; border-top: 1px solid #000;
@@ -74,12 +75,27 @@ details.capaian-siswa > summary { min-height: 44px; padding: 11px 0; line-height
   .dua-kotak-rapor { gap: 8px; flex-wrap: wrap; }
   .kotak-hadir { flex: 0 0 100%; }   /* 44% terlalu sempit buat "Tanpa Keterangan" di HP */
   .tabel-rapor-resmi th { font-size: 8pt; padding: 3px 2px; }
-  .ttd-resmi td { padding: 0 2px; }
   .ttd-resmi tr.ttd-nama td { padding-top: 44px; }
   .tabel-rapor-resmi col.kol-no { width: 8%; }   /* muat nomor 10+ */
   .identitas-resmi td:nth-child(4) { white-space: nowrap; }   /* ": 2026/2027" jangan kepisah dari titik dua */
   .identitas-resmi td:nth-child(3) { white-space: normal; }   /* gantinya label "Tahun Pelajaran" yang turun baris */
   .ttd-resmi .nip-resmi { font-size: 7pt; }   /* kecilin biar muat di kolom tanda tangan */
+  .ttd-resmi td { padding: 0 5px; }   /* biar dua NIP nggak nyambung jadi satu deret angka */
+  .identitas-resmi td:nth-child(1) { white-space: normal; }   /* "Nomor Induk/NISN" boleh turun baris, biar kolom ke-4 nggak kepotong */
+  .tabel-rapor-resmi col.kol-mapel { width: 34%; }   /* "Kewarganegaraan" nggak kepotong tengah kata */
+  .tabel-rapor-resmi col.kol-predikat { width: 20%; }
+}
+/* HP sempit (320px): identitas dikecilin lagi biar kolom ke-4 (": 2026/2027") nggak kepotong */
+@media screen and (max-width: 360px) {
+  .identitas-resmi td { font-size: 7.5pt; padding-right: 4px; }
+  .tabel-rapor-resmi col.kol-mapel { width: 40%; }
+  .tabel-rapor-resmi col.kol-nilai { width: 12%; }   /* "Akhir" di judul kolom muat */
+  .tabel-rapor-resmi td { font-size: 8.5pt; }   /* "Kewarganegaraan" muat satu baris */
+  .ttd-resmi .pecah-nip::after { content: "\200B"; }   /* NIP 18 digit nggak muat: boleh pecah setelah digit ke-8 */
+}
+/* tulisan "Besar": rapor itu pratinjau kertas, jangan ikut diperbesar (cetak udah balik 1 lewat menu.css) */
+@media screen {
+  :root[data-huruf="besar"] #lembar.lembar-rapor { zoom: 0.8696; }   /* = 1 / 1.15 */
 }
 @media print {
   .tabel-rapor-resmi tr, .ttd-resmi, .dua-kotak-rapor, .kotak-catatan, .kotak-tanggapan { break-inside: avoid; }

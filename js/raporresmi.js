@@ -242,22 +242,26 @@ function htmlLembarRaporResmi(santri, sem) {
 
   // tanda tangan: satu baris (orang tua · kepala sekolah · wali kelas)
   const tanggal = tanggalRapor(sem, k);
+  // titik-titik isian kosong boleh dipecah di HP sempit biar nggak keluar kolom (cetak tetap satu baris)
+  // NIP 18 digit tanpa spasi: titik pecah setelah digit ke-8 (format 8-6-1-3), cuma aktif di HP sempit (css/rapor.css)
+  const nip = (n) => aman(n).replace(/^(\d{8})(\d{10})$/, `$1<span class="pecah-nip"></span>$2`);
+  const TITIK = `<span class="titik-kosong">..............................</span>`;
   // tiga baris tabel (jabatan · nama · NIP) biar nama ketiganya tetap sejajar walau tanggalnya panjang
   h += `<table class="ttd-resmi">
     <tr class="ttd-jabatan">
       <td>Mengetahui<br>Orang Tua Murid,</td>
       <td>Mengetahui<br>Kepala Sekolah,</td>
-      <td>${aman(atur.tempat)}, ${tanggal ? aman(tanggal) : ".............................."}<br>Wali Kelas,</td>
+      <td>${aman(atur.tempat)}, ${tanggal ? aman(tanggal) : TITIK}<br>Wali Kelas,</td>
     </tr>
     <tr class="ttd-nama">
-      <td>..............................</td>
-      <td class="ttd-kepala">${atur.kepala ? `<b><u>${aman(atur.kepala)}</u></b>` : ".............................."}</td>
-      <td>${wali ? `<b><u>${aman(wali.nama)}</u></b>` : ".............................."}</td>
+      <td>${TITIK}</td>
+      <td class="ttd-kepala">${atur.kepala ? `<b><u>${aman(atur.kepala)}</u></b>` : TITIK}</td>
+      <td>${wali ? `<b><u>${aman(wali.nama)}</u></b>` : TITIK}</td>
     </tr>
     <tr class="ttd-nip">
       <td></td>
-      <td><span class="nip-resmi">NIP. ${aman(atur.nipKepala || "-")}</span></td>
-      <td><span class="nip-resmi">NIP. ${aman((wali && wali.nip) || "-")}</span></td>
+      <td><span class="nip-resmi">NIP. ${nip(atur.nipKepala || "-")}</span></td>
+      <td><span class="nip-resmi">NIP. ${nip((wali && wali.nip) || "-")}</span></td>
     </tr>
   </table>
   <div class="kaki-rapor"><span>${aman(nama)} | ${aman(nisn || santri.nis || "-")}</span><span>${aman(k.jenjang)}</span></div>
