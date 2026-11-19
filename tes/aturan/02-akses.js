@@ -416,6 +416,6 @@ grup("Isian rapor wali kelas (aturan.js = firestore.rules)");
   tolak("isian kelas pakai id gaya santri ditolak", bolehTulis("rapor/2026-2027_Ganjil_k7b", null, kelasK7b(), akun.yusuf));
   boleh("ubah isian dengan id benar tetap lolos", bolehTulis("rapor/2026-2027_Ganjil_kelas-k7b", kelasK7b(), kelasK7b({ sakit: 3 }), akun.yusuf));
   tolak("ubah dokumen lama ber-id salah ditolak", bolehTulis("rapor/r1", isian(), isian({ sakit: 2 }), akun.yusuf));
-boleh("TU nyatat wali kelas di dokumen kelas", bolehTulis("kelas/k7a", { pengampu: ["hasan"] }, { jenjang: "Paket B", kelas: "7A", pengampu: ["hasan"], wali: "hasan" }, akun.tu));
+  boleh("TU nyatat wali kelas di dokumen kelas", bolehTulis("kelas/k7a", { pengampu: ["hasan"] }, { jenjang: "Paket B", kelas: "7A", pengampu: ["hasan"], wali: "hasan" }, akun.tu));
   tolak("guru nggak bisa ngubah wali kelas", bolehTulis("kelas/k7b", db["kelas/k7b"], { ...db["kelas/k7b"], wali: "yusuf" }, akun.yusuf));
 }

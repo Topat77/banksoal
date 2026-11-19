@@ -191,6 +191,9 @@ service cloud.firestore {
     // id dokumen wajib cocok sama isinya: {tahun "/"→"-"}_{semester}_kelas-{kelasId} (jenis 'kelas')
     // atau {tahun}_{semester}_{santriId} (jenis 'santri'). Biar wali kelas lain nggak bisa
     // nyerobot id kelas / siswa orang duluan. Dipanggil setelah raporValid() (tipe kolom udah dicek).
+    // CATATAN: jenis 'santri' belum ngecek siswa itu memang anggota kelasId (wali lain masih bisa
+    // nyerobot id siswa kelas lain). Nunggu keputusan pemilik: cek santri.kelasId bikin wali kelas
+    // lama nggak bisa ngisi siswa yang pindah kelas tengah tahun; ganti format id bikin dokumen lama tertinggal.
     function raporIdCocok(id) {
       let d = isi();
       let awal = d.get('tahun', '').replace('/', '-') + '_' + d.get('semester', '') + '_';

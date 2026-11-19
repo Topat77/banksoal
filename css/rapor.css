@@ -46,8 +46,8 @@
 .ttd-resmi td { width: 33.3%; vertical-align: bottom; padding: 0 6px; text-align: center; }
 .ttd-resmi tr.ttd-nama td { padding-top: 64px; }   /* ruang tanda tangan */
 .ttd-resmi tr.ttd-jabatan td, .ttd-resmi tr.ttd-nip td { vertical-align: top; }
-.ttd-resmi .nip-resmi { overflow-wrap: normal; }
-.ttd-resmi .titik-kosong { overflow-wrap: anywhere; }   /* "Tulungagung, ......" jangan keluar kolom di HP sempit */   /* NIP 18 digit cuma boleh pecah di spasi setelah "NIP.", nggak di tengah angka */
+.ttd-resmi .nip-resmi { overflow-wrap: normal; }   /* NIP 18 digit cuma boleh pecah di spasi setelah "NIP.", nggak di tengah angka */
+.ttd-resmi .titik-kosong { overflow-wrap: anywhere; }   /* "Tulungagung, ......" jangan keluar kolom di HP sempit */
 .kaki-rapor {
   display: flex; justify-content: space-between; gap: 12px;
   margin-top: 18px; padding-top: 4px; border-top: 1px solid #000;
@@ -84,6 +84,8 @@ details.capaian-siswa > summary { min-height: 44px; padding: 11px 0; line-height
   .identitas-resmi td:nth-child(1) { white-space: normal; }   /* "Nomor Induk/NISN" boleh turun baris, biar kolom ke-4 nggak kepotong */
   .tabel-rapor-resmi col.kol-mapel { width: 34%; }   /* "Kewarganegaraan" nggak kepotong tengah kata */
   .tabel-rapor-resmi col.kol-predikat { width: 20%; }
+  /* titik-titik dipotong selebar kolom, bukan pecah jadi dua baris dengan sisa ".." */
+  .ttd-resmi .titik-kosong { display: inline-block; max-width: 100%; overflow: hidden; white-space: nowrap; vertical-align: bottom; }
 }
 /* HP sempit (320px): identitas dikecilin lagi biar kolom ke-4 (": 2026/2027") nggak kepotong */
 @media screen and (max-width: 360px) {

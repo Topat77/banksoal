@@ -120,6 +120,7 @@ function buatAturan(ambilDok, cekAdminAwal) {
     teks(b, "namaPengubah", 100) && nilaiKolom(b, "diubahOleh") === auth.uid;
   // id dokumen wajib cocok sama isinya (sama persis dengan raporIdCocok() di rules).
   // Rules: replace('/', '-') ganti SEMUA "/", jadi di sini pakai /\//g biar hasilnya sama.
+  // CATATAN: jenis "santri" belum ngecek siswa itu anggota kelasId (nunggu keputusan pemilik, soal pindah kelas).
   const raporIdCocok = (id, b) => {
     const awal = String(nilaiKolom(b, "tahun") ?? "").replace(/\//g, "-") + "_" + String(nilaiKolom(b, "semester") ?? "") + "_";
     const santriId = nilaiKolom(b, "santriId");
