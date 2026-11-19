@@ -13,7 +13,10 @@ function mapelKelas(jenjang, kelas) {
 // kelasnya kelas santri DI TAHUN rapor itu (dari riwayatKelas), bukan kelas sekarang
 function nilaiRapor(santri, sem) {
   const k = kelasSantriDi(santri, sem.tahun, sem.semester);
-  const baris = mapelKelas(k.jenjang, k.kelas).map(m => {
+  // rapor resmi (Paket B & C): mapel yang nggak masuk rapor PKBM (diniah) nggak ikut dihitung,
+  // biar ringkasan di daftar rapor sama dengan lembarnya. I'dad (rapor lama) tetap semua mapel.
+  const resmi = raporResmi(k.jenjang);
+  const baris = mapelKelas(k.jenjang, k.kelas).filter(m => !resmi || kelompokRapor(m) !== "tidak").map(m => {
     const n = hitungNilai(lembarNilai(m.id, sem), santri.id, m);
     return {
       mapel: m, jenis: jenisMapel(m),
