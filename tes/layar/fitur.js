@@ -196,6 +196,37 @@ async function fitur() {
     await b.browser.close();
   }
 
+  // ---------- modul di semester lain tetap kelihatan di perangkat lain ----------
+  {
+    console.log("\nModul semester lain tetap muncul (perangkat lain)");
+    const { browser, page, galat } = await buka({ hp: false });
+    await masuk(page, "u-aminah");
+    // "HP": modul dibuat di semester lain (Genap tahun lalu)
+    const semLain = await page.evaluate(async () => {
+      const t = semesterSekarang().tahun.split("/").map(Number);
+      const sem = { semester: "Genap", tahun: `${t[0] - 1}/${t[1] - 1}` };
+      await toko.backend.tulis("mapel/bindo7b/modul/mod-semlain", {
+        semester: sem.semester, tahun: sem.tahun, judul: "Modul Semester Lalu", catatan: "", link: "",
+        pemilik: uidSaya(), namaPemilik: namaSaya(), dibagikan: false, pertemuan: [], bacaan: [], soal: [],
+        dibuat: Date.now(), diubah: Date.now()
+      });
+      return `${sem.semester} ${sem.tahun}`;
+    });
+    // "laptop": aplikasi dibuka ulang (semester itu belum pernah dibuka di sini)
+    await masuk(page, "u-aminah");
+    await ke(page, "mapel", { mapelId: "bindo7b", tab: "modul", semester: null }, 1200);
+    const chip = await page.$$eval(".pilih-semester .chip", x => x.map(e => e.textContent.trim()));
+    boleh(`pilihan semester ${semLain} muncul sendiri`, chip.includes(semLain));
+    const tombol = await page.$(`.pilih-semester .chip[data-sem*="Genap"]`);
+    if (tombol) { await tombol.click(); await page.waitForTimeout(900); }
+    boleh("modulnya kelihatan di semester itu", /Modul Semester Lalu/.test(await page.textContent("#isi")));
+    await masuk(page, "u-kur");   // TU juga bisa nemu
+    await ke(page, "mapel", { mapelId: "bindo7b", tab: "modul", semester: null }, 1200);
+    boleh("TU: pilihan semester itu juga muncul", (await page.$$eval(".pilih-semester .chip", x => x.map(e => e.textContent.trim()))).includes(semLain));
+    harap("nggak ada error", galatBersih(galat), []);
+    await browser.close();
+  }
+
   // ---------- isian rapor dari wali kelas ----------
   {
     console.log("\nIsian rapor wali kelas (Paket B)");

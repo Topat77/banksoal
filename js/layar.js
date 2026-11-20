@@ -332,6 +332,26 @@ function jumlahSoal(m) { return (m.soal || []).length; }
 function namaMapel(m) { return `${m.nama} ${m.kelas}`; }
 
 // semua semester yang ada isinya di satu mapel + semester sekarang
+// Semester yang punya modul / ujian di server (semua semester, bukan cuma yang dimuat).
+// Tanpa ini, modul di semester lain (misal dibuat lewat "+ Semester lain" di HP) nggak kelihatan
+// di perangkat lain karena pilihan semesternya nggak muncul. Diambil sekali per mapel per buka aplikasi;
+// guru: modul & ujian sendiri + yang dibagikan (sesuai rules), admin: semua.
+function semesterAdaIsi(idMapel) {
+  toko.semesterAda = toko.semesterAda || {};
+  const ada = toko.semesterAda[idMapel];
+  if (ada) return ada.daftar;
+  const w = toko.semesterAda[idMapel] = { daftar: [] };
+  const b = toko.backend;
+  const syarat = sayaKurikulum() ? [[]] : [[["pemilik", "==", uidSaya()]], [["dibagikan", "==", true]]];
+  const tugas = ["modul", "sumatif"].flatMap(k => syarat.map(s => b.ambilKoleksi(`mapel/${idMapel}/${k}`, s).catch(() => [])));
+  Promise.all(tugas).then(hasil => {
+    const peta = new Map();
+    for (const d of hasil.flat()) if (d && typeof d.semester === "string" && typeof d.tahun === "string") peta.set(kunciSemester(d), { semester: d.semester, tahun: d.tahun });
+    w.daftar = [...peta.values()];
+    if (w.daftar.length) berubah();
+  });
+  return w.daftar;
+}
 function daftarSemesterMapel(idMapel) {
   const peta = new Map();
   const tambah = (x) => peta.set(kunciSemester(x), { semester: x.semester, tahun: x.tahun });
@@ -342,6 +362,7 @@ function daftarSemesterMapel(idMapel) {
   semesterDimuat.forEach(tambah);
   modulMapel(idMapel).forEach(tambah);
   sumatifMapel(idMapel).forEach(tambah);
+  semesterAdaIsi(idMapel).forEach(tambah);
   if (posisi.semester && posisi.mapelId === idMapel) tambah(dariKunciSemester(posisi.semester));
   return [...peta.values()].sort(bandingSemester);
 }

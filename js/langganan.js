@@ -423,6 +423,7 @@ function hentikanData() {
   toko.kelasSiap = false;
   toko.kelasGagal = false;
   toko.isianRapor = {};
+  toko.semesterAda = {};
   toko.kelasWali = null;
   toko.isi = {};
   toko.mapel = [];
