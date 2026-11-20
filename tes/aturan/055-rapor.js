@@ -45,3 +45,32 @@ grup("Rapor format resmi Paket B & C (raporresmi.js)");
   harap("Paket C: Sejarah sesudah Bahasa Inggris, sebelum PJOK", urutC.join(), "Matematika,Bahasa,Sejarah,Pendidikan,Seni");
   harap("urutan mapel umum ikut rapor resmi", urut.join(), "Pendidikan Agama,Pendidikan Pancasila,Bahasa Indonesia,Matematika,Bahasa Inggris,Seni Budaya");
 }
+
+// =====================================================
+grup("Ringkasan daftar rapor (nilaiRapor) ikut lembar rapor");
+{
+  const src = baca("js/raporresmi.js");
+  const c = vm.createContext({});
+  vm.runInContext([
+    "const jenisMapel = (m) => m && m.jenis === 'diniah' ? 'diniah' : 'umum';",
+    ambilFungsi(baca("js/grup.js"), "tingkatKelas"),
+    ...["KELOMPOK_RAPOR", "PILIHAN_RAPOR_FORM", "MAPEL_PILIHAN"].map(n => ambilKonstanta(src, n)),
+    ...["raporResmi", "tebakKelompokRapor", "kelompokRapor"].map(n => ambilFungsi(src, n)),
+    ambilFungsi(baca("js/nilai.js"), "adaNilai"),
+    // data bohongan: tiap kelas punya 1 mapel umum (ada nilai) + 1 mapel diniah (belum ada nilai)
+    "const kelasSantriDi = (s) => ({ jenjang: s.jenjang, kelas: s.kelas });",
+    "const mapelKelas = (j, k) => [{ id: 'mtk', nama: 'Matematika', jenis: 'umum', jenjang: j }, { id: 'fiq', nama: 'Fiqih', jenis: 'diniah', jenjang: j }];",
+    "const lembarNilai = (id) => id;",
+    "const hitungNilai = (l) => ({ per: {}, akhir: l === 'mtk' ? 80 : null, hadir: null });",
+    "const rataRata = (a) => { const x = a.filter(v => typeof v === 'number'); return x.length ? x.reduce((p, q) => p + q, 0) / x.length : null; };",
+    ambilFungsi(baca("js/rapor.js"), "nilaiRapor"),
+    "this.nilaiRapor = nilaiRapor;"
+  ].join("\n"), c);
+  const B = c.nilaiRapor({ jenjang: "Paket B", kelas: "7A1" }, {});
+  harap("Paket B: mapel diniah nggak dihitung 'belum ada nilai'", B.kosong, 0);
+  harap("Paket B: rata-rata cuma mapel rapor PKBM", B.rataSemua, 80);
+  const C = c.nilaiRapor({ jenjang: "Paket C", kelas: "10A1" }, {});
+  harap("Paket C: sama", `${C.kosong} ${C.rataSemua}`, "0 80");
+  const I = c.nilaiRapor({ jenjang: "I'dad", kelas: "I'dad A1" }, {});
+  harap("I'dad: mapel tanpa nilai (diniah) juga nggak ikut", `${I.kosong} ${I.diniah.length}`, "0 0");
+}
