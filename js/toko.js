@@ -30,6 +30,7 @@ const toko = {
   kelasGagal: false,  // aturan database lama belum kenal "kelas"
   isianRapor: {},     // isian rapor wali kelas yang udah diambil: "idKelas|tahun|semester" → { siap, dok, ... } (isianrapor.js)
   kelasWali: null,    // ustadz: kelas yang dia walikan (diambil sekali)
+  semesterAda: {},    // id mapel → semester yang punya modul / ujian di server (layar.js semesterAdaIsi)
   pengguna: [],       // semua akun (cuma buat admin)
   penggunaSiap: false,
   gagalMuat: []       // nama data yang gagal dipantau (kuota habis, izin, ...): ditampilkan di header
