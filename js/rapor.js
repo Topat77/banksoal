@@ -13,7 +13,10 @@ function mapelKelas(jenjang, kelas) {
 // kelasnya kelas santri DI TAHUN rapor itu (dari riwayatKelas), bukan kelas sekarang
 function nilaiRapor(santri, sem) {
   const k = kelasSantriDi(santri, sem.tahun, sem.semester);
-  const baris = mapelKelas(k.jenjang, k.kelas).map(m => {
+  // rapor resmi (Paket B & C): mapel yang nggak masuk rapor PKBM (diniah) nggak ikut dihitung,
+  // biar ringkasan di daftar rapor sama dengan lembarnya. I'dad (rapor lama) tetap semua mapel.
+  const resmi = raporResmi(k.jenjang);
+  const baris = mapelKelas(k.jenjang, k.kelas).filter(m => !resmi || kelompokRapor(m) !== "tidak").map(m => {
     const n = hitungNilai(lembarNilai(m.id, sem), santri.id, m);
     return {
       mapel: m, jenis: jenisMapel(m),
@@ -229,7 +232,7 @@ function layarRaporCetak() {
         <div class="baris-tombol"><button class="tombol-utama" id="print">Cetak / PDF</button></div>
         <p class="info">Ingin menyimpan sebagai PDF? Di jendela cetak, pilih tujuan "Simpan sebagai PDF".</p>
       </div>
-      <div id="lembar">${daftar.map((s, i) => (i ? `<div class="halaman-baru"></div>` : "") + htmlLembarRapor(s, sem)).join("")}</div>
+      <div id="lembar" class="lembar-rapor">${daftar.map((s, i) => (i ? `<div class="halaman-baru"></div>` : "") + htmlLembarRapor(s, sem)).join("")}</div>
     </div>`;
   document.getElementById("print").onclick = () => window.print();
 }
