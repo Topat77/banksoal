@@ -55,6 +55,8 @@ async function fitur() {
     // menu Mapel TU: dikelompokkan per tingkat kelas, satu kotak = satu mapel di tingkat itu
     await ke(page, "mapelTU", {}, 600);
     boleh("menu Mapel: ada kelompok Kelas 7", await page.$$eval("h2.subjudul", h => h.some(x => /^Kelas 7\b/.test(x.textContent.trim()))));
+    const nama7 = await page.$$eval('[data-tingkat="7"]', x => x.map(b => b.dataset.namaMapel));
+    harap("mapel kelas 7 urut abjad", nama7.join("|"), [...nama7].sort((a, b) => a.localeCompare(b, "id", { sensitivity: "base" })).join("|"));
     const kotakBI7 = await page.$('[data-nama-mapel="Bahasa Indonesia"][data-tingkat="7"]');
     boleh("kotak Bahasa Indonesia kelas 7 ada", kotakBI7);
     if (kotakBI7) {
