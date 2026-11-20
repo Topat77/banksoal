@@ -106,10 +106,13 @@ function konteksIsian() {
   const santri = tu ? santriKelasDi(jenjang, kelas, sem.tahun, sem.semester) : (w.santri || []);
   const mapel = (tu ? mapelKelas(jenjang, kelas) : (w.mapel || []))
     .filter(m => kelompokRapor(m) !== "tidak").sort(urutMapelRapor);
-  return { jenjang, kelas, kelasId: idKelas(jenjang, kelas), sem, w, santri, mapel };
+  // kokurikuler (Pemberdayaan, Keterampilan): bukan mapel, tapi capaiannya diisi di sini juga (kunci "ko:nama")
+  const ko = aturRapor().kokurikuler.map(nama => ({ id: kunciCapaianKo(nama), nama, ko: true }));
+  return { jenjang, kelas, kelasId: idKelas(jenjang, kelas), sem, w, santri, mapel: [...mapel, ...ko], ko };
 }
 
 function namaMapelRapor(m) {
+  if (m.ko) return `${m.nama} (kokurikuler)`;
   return kelompokRapor(m) === "mulok" && !/muatan\s*lokal/i.test(m.nama) ? `Muatan Lokal (${m.nama})` : m.nama;
 }
 
@@ -226,6 +229,10 @@ function layarIsianSiswa() {
   isi.innerHTML = htmlGagalIsian(c) + `
     <form id="formIsianSiswa">
       <h2 dir="auto">${aman(s.nama)}</h2>
+      ${c.ko.length ? `<fieldset><legend>Nilai kokurikuler (0&ndash;100)</legend>
+        <div class="baris-hadir">${c.ko.map((k, i) => `<label>${aman(k.nama)} <input name="kn_${i}" type="number" min="0" max="100" inputmode="numeric" value="${aman(jadiTeks((adalahObjek(d.capaian) ? d.capaian : {})[kunciNilaiKo(k.nama)]))}"></label>`).join("")}</div>
+        <p class="info">Capaiannya ditulis di bagian capaian (sama untuk semua siswa, atau capaian khusus di bawah).</p>
+      </fieldset>` : ""}
       <fieldset><legend>Ketidakhadiran (hari)</legend>
         <div class="baris-hadir">
           <label>Sakit <input name="sakit" type="number" min="0" max="200" inputmode="numeric" value="${hari("sakit")}"></label>
@@ -274,6 +281,10 @@ function layarIsianSiswa() {
       const t = String(f.get(`c_${m.id}`) || "").trim();
       if (t) baru.capaian[m.id] = t;
     }
+    c.ko.forEach((k, i) => {
+      const t = String(f.get(`kn_${i}`) || "").trim();
+      if (t !== "" && Number.isFinite(Number(t))) baru.capaian[kunciNilaiKo(k.nama)] = String(Math.min(100, Math.max(0, Math.round(Number(t)))));
+    });
     simpanIsian(c, s.id, baru);
   };
   form.onsubmit = (e) => {

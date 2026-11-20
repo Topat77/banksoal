@@ -388,20 +388,20 @@ function layarKelasSiswa() {
       const naik = hitungKeputusanKelas(kl.jenjang, kl.kelas, semNaik.tahun);
       const belumSemua = genap && naik.total && naik.sudah < naik.total;
       h += `
-        <article class="kartu-kelas-tu">
+        <article class="kartu-kelas-tu" data-kelas-tu="${aman(kunci)}">
           <div class="kepala-kelas-tu">
-            <span><strong>Kelas ${aman(kl.kelas)}</strong><small>Wali kelas: ${wali ? aman(wali.nama) : "belum dipilih"}</small></span>
+            <span><strong>Kelas ${aman(kl.kelas)}</strong></span>
             <span class="angka-kecil"><span><b>${siswa.length}</b> siswa</span><span><b>${mapel.length}</b> mapel</span></span>
           </div>
+          ${htmlPilihWali(kl.jenjang, kl.kelas, tahun)}
           <div class="baris-tombol aksi-kelas-tu">
             <button class="${belumSemua ? "tombol-utama" : "tombol-kedua"}" data-naik-kelas="${aman(kunci)}">Naik kelas${genap && naik.total ? ` <small>${naik.sudah}/${naik.total} diputuskan</small>` : ""}</button>
             <button class="tombol-kedua" data-ubah-siswa="${aman(kunci)}">Ubah daftar siswa</button>
             <button class="tombol-kedua" data-rapor="${aman(kunci)}">Rapor</button>
           </div>
           <details class="kartu-kelas" data-kartu-kelas="${aman(kunci)}" ${posisi.kelasTerbuka === kunci ? "open" : ""}>
-            <summary><span><strong>Siswa, wali kelas &amp; guru</strong></span></summary>
+            <summary><span><strong>Daftar siswa &amp; guru</strong></span></summary>
             <div class="isi-kartu-kelas">
-              ${htmlPilihWali(kl.jenjang, kl.kelas, tahun)}
               <h3>Daftar siswa</h3>
               ${siswa.length ? `<ol class="daftar-siswa-kelas">${siswa.map((s, i) => `<li><span class="nomor-santri">${aman(noAbsen(s, i + 1))}</span><span dir="auto">${aman(s.nama)}</span>${s.nis ? `<small>${aman(s.nis)}</small>` : ""}</li>`).join("")}</ol>`
                 : `<p class="info">Belum ada siswa.</p>`}

@@ -44,7 +44,10 @@ function bobotUntuk(jenjang, jenis) {
 function ringkasBobot(bobot) {
   return KELOMPOK_NILAI.filter(g => bobot[g.k] > 0).map(g => `${g.label} ${bobot[g.k]}%`).join(" · ");
 }
-function namaJenis(j) { return j === "diniah" ? "Diniah" : "Umum"; }
+// "jenis" mapel sekarang cuma buat bedain masuk rapor PKBM (ada nilai) atau nggak (cuma modul & soal)
+function namaJenis(j) { return j === "diniah" ? "Tanpa nilai" : "Masuk rapor"; }
+// mapel yang punya lembar nilai = yang masuk rapor PKBM (kelompokRapor di raporresmi.js)
+function adaNilai(m) { return !!m && kelompokRapor(m) !== "tidak"; }
 
 // daftar mapel dikelompokkan per jenis: diniah dulu (fiqih, aqidah, nahwu, ...), lalu umum.
 // Tiap mapel tetap sendiri-sendiri; di dalam kelompok urut nama mapel, lalu kelas.
@@ -58,11 +61,8 @@ function kelompokJenis(daftar) {
     .map(jenis => ({ jenis, mapel: daftar.filter(m => jenisMapel(m) === jenis).sort(urutMapelJenis) }))
     .filter(k => k.mapel.length);
 }
-// tebakan jenis dari nama mapel, buat form tambah mapel
-const POLA_DINIAH = /fiq[ih]|fikih|aqidah|akidah|akhlak|nahw|nahu|sh?or[ao]f|sharaf|tajwid|tafsir|hadi[ts]|tahfi[dz]|qur.?an|bahasa arab|tarikh|sirah|mahfu[dz]?at|imla|khat|fara.?idh?|ushul|balaghah|mantiq|tauhid|tasawuf|muthala/i;
-function tebakJenis(nama) {
-  return POLA_DINIAH.test(nama || "") ? "diniah" : "umum";
-}
+// nama mapel kitab/diniah: tebakan "tidak masuk rapor" di form mapel (tebakKelompokRapor, raporresmi.js)
+const POLA_DINIAH = /fiq[ih]|fikih|aqidah|akidah|akhlak|nahw|nahu|sh?or[ao]f|sharaf|tajwid|tafsir|hadi[ts]|tahfi[dz]|qur.?an|tarikh|sirah|mahfu[dz]?at|imla|khat|fara.?idh?|ushul|balaghah|mantiq|tauhid|tasawuf|muthala/i;
 
 function angkaRapi(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return "-";
@@ -219,6 +219,12 @@ function layarNilai() {
   const jenis = jenisMapel(mp);
   const bobot = bobotUntuk(mp.jenjang, jenis);
   const sem = semAktif();
+  if (!adaNilai(mp)) {
+    judul.textContent = `Nilai ${mp.nama}`;
+    tombolKembali.hidden = false;
+    isi.innerHTML = `<p class="kosong">${aman(mp.nama)} tidak masuk rapor PKBM, jadi tidak ada lembar nilai. Pengaturannya ada di form mapel (Tata Usaha).</p>`;
+    return;
+  }
   posisi.semester = kunciSemester(sem);
 
   judul.textContent = `Nilai ${mp.nama}`;

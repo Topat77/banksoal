@@ -98,7 +98,7 @@ function layarSiswaGuru() {
       <section class="panel kelas-guru">
         <div class="panel-kepala"><h2>Kelas ${aman(kl.kelas)} <small>${aman(kl.jenjang)}</small></h2><span class="info">${siswa.length} siswa</span></div>
         ${sayaWali ? `<p class="info">Anda wali kelas ini.</p>` : ""}
-        <div class="baris-tombol">${mapel.map(m =>
+        <div class="baris-tombol">${mapel.filter(adaNilai).map(m =>
           `<button class="tombol-utama" data-isi-nilai="${aman(m.id)}">Isi nilai ${aman(m.nama)}</button>`).join("")}</div>
         <details class="kartu-kelas" data-kartu-kelas="${aman(kunci)}" ${posisi.kelasTerbuka === kunci ? "open" : ""}>
           <summary><span><strong>Daftar siswa</strong><small>${siswa.length} siswa</small></span></summary>

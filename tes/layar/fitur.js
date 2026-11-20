@@ -47,9 +47,9 @@ async function fitur() {
     const { browser, page } = await buka({ hp: true });
     await masuk(page, "u-kur");
     await ke(page, "kelasSiswa", { bagianSiswa: "putra" });
-    const wali7A1 = await page.$$eval('[data-kartu-kelas="Paket B|7A1"] select[data-wali] option', x => x.map(o => o.value));
+    const wali7A1 = await page.$$eval('[data-kelas-tu="Paket B|7A1"] select[data-wali] option', x => x.map(o => o.value));
     tolak("pilihan wali 7A1 tanpa ustadzah", wali7A1.includes("u-aminah"));
-    await page.evaluate(() => { const s = document.querySelector('[data-kartu-kelas="Paket B|7A2"] select[data-wali]'); s.value = "u-yusuf"; s.dispatchEvent(new Event("change")); });
+    await page.evaluate(() => { const s = document.querySelector('[data-kelas-tu="Paket B|7A2"] select[data-wali]'); s.value = "u-yusuf"; s.dispatchEvent(new Event("change")); });
     await page.waitForTimeout(500);
     harap("wali 7A2 tersimpan", await page.evaluate(() => (waliKelas(semesterSekarang().tahun, idKelas("Paket B", "7A2")) || {}).uid), "u-yusuf");
     await ke(page, "formMapel", { mapelEditId: "bindo7", dariMapel: false, dariMapelTU: true, namaMapelTU: "Bahasa Indonesia" });
@@ -196,6 +196,8 @@ async function fitur() {
     await masuk(page, "u-hasan");   // wali 7A1
     await ke(page, "siswaGuru", {}, 700);
     boleh("wali kelas: ada tombol Isi rapor kelas 7A1", await page.$('[data-isian-kelas="Paket B|7A1"]'));
+    tolak("mapel yang tidak masuk rapor (Aqidah Akhlak) nggak punya tombol isi nilai", await page.$$eval("[data-isi-nilai]", b => b.some(x => /Aqidah/.test(x.textContent))));
+    boleh("mapel yang masuk rapor tetap ada tombol isi nilai", await page.$$eval("[data-isi-nilai]", b => b.some(x => /Bahasa Indonesia/.test(x.textContent))));
     await page.click('[data-isian-kelas="Paket B|7A1"]'); await page.waitForTimeout(700);
     const kolom = await page.$eval('#formCapaian textarea', t => t.name);
     await page.fill(`#formCapaian [name="${kolom}"]`, "Ananda sudah mampu memahami teks deskripsi.");
@@ -208,6 +210,7 @@ async function fitur() {
     await page.click("#tambahEkskul");
     harap("tambah kegiatan: jadi 2 baris", await page.$$eval(".baris-ekskul", x => x.length), 2);
     await page.fill('[name="catatan"]', "Pertahankan semangat belajarmu.");
+    await page.fill('[name="kn_0"]', "90");   // nilai kokurikuler Pemberdayaan
     await page.click('#formIsianSiswa [type=submit]'); await page.waitForTimeout(400);
     harap("tersimpan di database (capaian kelas + 1 siswa)", await page.evaluate(() =>
       toko.backend.ambilKoleksi("rapor", [["kelasId", "==", idKelas("Paket B", "7A1")]]).then(d => d.length)), 2);
@@ -223,6 +226,7 @@ async function fitur() {
     boleh("rapor: sakit 2 hari", /Sakit : 2 hari/.test(r));
     boleh("rapor: ekskul Pramuka (Baik)", /Pramuka Baik/.test(r));
     boleh("rapor: catatan wali kelas", /Pertahankan semangat/.test(r));
+    boleh("rapor: nilai kokurikuler dari wali kelas (Pemberdayaan 90)", /Kokurikuler Muatan Pemberdayaan dan Keterampilan \d+ Pemberdayaan 90/.test(r));
     harap("nggak ada error", galatBersih(galat), []);
     await browser.close();
   }

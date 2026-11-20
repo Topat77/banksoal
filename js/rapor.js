@@ -13,7 +13,7 @@ function mapelKelas(jenjang, kelas) {
 // kelasnya kelas santri DI TAHUN rapor itu (dari riwayatKelas), bukan kelas sekarang
 function nilaiRapor(santri, sem) {
   const k = kelasSantriDi(santri, sem.tahun, sem.semester);
-  const baris = mapelKelas(k.jenjang, k.kelas).map(m => {
+  const baris = mapelKelas(k.jenjang, k.kelas).filter(adaNilai).map(m => {
     const n = hitungNilai(lembarNilai(m.id, sem), santri.id, m);
     return {
       mapel: m, jenis: jenisMapel(m),
@@ -99,13 +99,13 @@ function layarRapor() {
   // wali tahun ajaran sekarang dipilih di menu Siswa; tahun lama dipilih di sini (buat rapor lama)
   h += sem.tahun === semesterSekarang().tahun ? htmlNamaWali(jenjang, kelas, sem.tahun) : htmlPilihWali(jenjang, kelas, sem.tahun);
   if (raporResmi(jenjang)) {
-    const masuk = mapel.filter(m => kelompokRapor(m) !== "tidak");
-    const tidak = mapel.filter(m => kelompokRapor(m) === "tidak");
-    h += `<p class="info">Format rapor PKBM tahun pelajaran 2025/2026. ${masuk.length} mapel masuk rapor: ${masuk.map(m => aman(m.nama)).join(", ") || "belum ada"}.${tidak.length ? ` Tidak masuk rapor PKBM: ${tidak.map(m => aman(m.nama)).join(", ")}.` : ""} Kelompok mapel di rapor diatur di form mapel.</p>`;
+    const masuk = mapel.filter(adaNilai);
+    const tidak = mapel.filter(m => !adaNilai(m));
+    h += `<p class="info">Format rapor PKBM tahun pelajaran 2025/2026. ${masuk.length} mapel masuk rapor: ${masuk.map(m => aman(m.nama)).join(", ") || "belum ada"}.${tidak.length ? ` Tidak masuk rapor: ${tidak.map(m => aman(m.nama)).join(", ")}.` : ""} Bagian rapor tiap mapel diatur di form mapel. Kokurikuler diisi wali kelas.</p>`;
     h += `<div class="baris-tombol"><button class="tombol-kedua" id="keIsianRapor">Isian wali kelas (capaian, ketidakhadiran, catatan)</button></div>`;
     h += htmlPengaturanRapor(sem);
   } else {
-    h += `<p class="info">${mapel.length} mapel di kelas ini: ${mapel.map(m => `${aman(m.nama)} (${namaJenis(jenisMapel(m))})`).join(", ") || "belum ada"}. Format rapor ${aman(jenjang)} menyusul dari sekolah, sementara ini masih format lama.</p>`;
+    h += `<p class="info">${mapel.filter(adaNilai).length} mapel masuk rapor: ${mapel.filter(adaNilai).map(m => aman(m.nama)).join(", ") || "belum ada"}. Format rapor ${aman(jenjang)} menyusul dari sekolah, sementara ini masih format lama.</p>`;
   }
 
   if (santri.length === 0) {

@@ -6,7 +6,7 @@ grup("Rapor format resmi Paket B & C (raporresmi.js)");
   vm.runInContext([
     "const jenisMapel = (m) => m && m.jenis === 'diniah' ? 'diniah' : 'umum';",
     ambilFungsi(baca("js/grup.js"), "tingkatKelas"),
-    ...["KELOMPOK_RAPOR", "MAPEL_PILIHAN", "URUT_MAPEL_RAPOR", "ROMAWI", "ANGKA_KATA"].map(n => ambilKonstanta(src, n)),
+    ...["KELOMPOK_RAPOR", "PILIHAN_RAPOR_FORM", "MAPEL_PILIHAN", "URUT_MAPEL_RAPOR", "ROMAWI", "ANGKA_KATA"].map(n => ambilKonstanta(src, n)),
     ...["raporResmi", "tebakKelompokRapor", "kelompokRapor", "urutMapelRapor", "kelasRomawi", "namaTingkat", "faseKelas", "semesterAngka"].map(n => ambilFungsi(src, n)),
     "this.r = { raporResmi, tebakKelompokRapor, kelompokRapor, urutMapelRapor, kelasRomawi, namaTingkat, faseKelas, semesterAngka };"
   ].join("\n"), c);
@@ -30,9 +30,13 @@ grup("Rapor format resmi Paket B & C (raporresmi.js)");
   harap("I'dad di luar fase", R.faseKelas("I'dad", "I'dad A1"), "-");
   harap("semester ditulis 1 (Ganjil) / 2 (Genap)", [R.semesterAngka({ semester: "Ganjil" }), R.semesterAngka({ semester: "Genap" })].join(), "1 (Ganjil),2 (Genap)");
   harap("mapel diniah (MSU/MSW) nggak masuk rapor PKBM", R.tebakKelompokRapor("Fiqih", "diniah"), "tidak");
-  harap("pemberdayaan & keterampilan jadi kokurikuler", [R.tebakKelompokRapor("Pemberdayaan", "umum"), R.tebakKelompokRapor("Keterampilan Komputer Perkantoran", "umum")].join(), "kokurikuler,kokurikuler");
+  harap("pemberdayaan & keterampilan bukan mapel (diisi wali kelas)", [R.tebakKelompokRapor("Pemberdayaan", "umum"), R.tebakKelompokRapor("Keterampilan Komputer Perkantoran", "umum")].join(), "tidak,tidak");
+  harap("mapel lama yang terlanjur 'kokurikuler' → tidak masuk rapor", R.kelompokRapor({ nama: "Pemberdayaan", jenis: "umum", rapor: "kokurikuler" }), "tidak");
   harap("mapel umum biasa", R.tebakKelompokRapor("Matematika", "umum"), "umum");
-  harap("pilihan TU (mapel.rapor) menang dari tebakan", R.kelompokRapor({ nama: "Bahasa Arab", jenis: "diniah", rapor: "mulok" }), "mulok");
+  harap("pilihan TU (mapel.rapor) menang dari tebakan", R.kelompokRapor({ nama: "Bahasa Arab", jenis: "umum", rapor: "mulok" }), "mulok");
+  harap("mapel lama 'diniah' tanpa pilihan → tidak masuk rapor", R.kelompokRapor({ nama: "Fiqih", jenis: "diniah" }), "tidak");
+  harap("pilihan di form menang (Bahasa Arab lama diniah tapi dipilih muatan lokal)", R.kelompokRapor({ nama: "Bahasa Arab", jenis: "diniah", rapor: "mulok" }), "mulok");
+  harap("pilihan 'tidak masuk rapor' dipakai apa adanya", R.kelompokRapor({ nama: "Matematika", jenis: "umum", rapor: "tidak" }), "tidak");
   harap("isian rapor rusak → pakai tebakan", R.kelompokRapor({ nama: "Matematika", jenis: "umum", rapor: "<b>" }), "umum");
   const urut = ["Seni Budaya", "Matematika", "Pendidikan Agama Islam dan Budi Pekerti", "Bahasa Inggris", "Pendidikan Pancasila", "Bahasa Indonesia"]
     .map(nama => ({ nama })).sort(R.urutMapelRapor).map(m => m.nama.split(" ")[0] + (m.nama.split(" ")[1] ? " " + m.nama.split(" ")[1] : ""));

@@ -338,17 +338,9 @@ function formMapel() {
       </div>
       <p class="info">Tulis kelas dan rombelnya, misal 7A1 (A putra, B putri). Daftar siswa, lembar nilai, dan rapor dikelompokkan per kelas ini.</p>
       <fieldset>
-        <legend>Jenis pelajaran</legend>
-        <div class="pilih-jenis">
-          <label class="radio"><input type="radio" name="jenis" value="umum" ${jenisMapel(m) === "umum" ? "checked" : ""}> Umum</label>
-          <label class="radio"><input type="radio" name="jenis" value="diniah" ${jenisMapel(m) === "diniah" ? "checked" : ""}> Diniah</label>
-        </div>
-        <p class="info">Berpengaruh ke bobot penilaian (diatur di halaman Bobot nilai).</p>
-      </fieldset>
-      <fieldset>
-        <legend>Kelompok di rapor PKBM</legend>
-        <div class="kolom daftar-centang">${KELOMPOK_RAPOR.map(g => `<label class="radio"><input type="radio" name="rapor" value="${g.k}" ${kelompokRapor(m) === g.k ? "checked" : ""}> ${aman(g.label)}</label>`).join("")}</div>
-        <p class="info">Mapel diniah (MSU/MSW) tidak masuk rapor PKBM. Bahasa Arab di rapor Paket B masuk Muatan lokal, di Paket C masuk Mata pelajaran pilihan.</p>
+        <legend>Di rapor PKBM</legend>
+        <div class="kolom daftar-centang">${PILIHAN_RAPOR_FORM.map(g => `<label class="radio"><input type="radio" name="rapor" value="${g.k}" ${kelompokRapor(m) === g.k ? "checked" : ""}> ${aman(g.label)}</label>`).join("")}</div>
+        <p class="info">Bahasa Arab: Paket B masuk Muatan lokal, Paket C masuk Mata pelajaran pilihan. Mapel yang tidak masuk rapor tidak punya lembar nilai. Kokurikuler diisi wali kelas, tidak perlu dibuat sebagai mapel.</p>
       </fieldset>
       <fieldset>
         <legend>Pengampu</legend>
@@ -383,24 +375,16 @@ function formMapel() {
   form.querySelectorAll("[name=jenjang]").forEach(r => r.onchange = () => { aturSaranKelas(true); tebakRapor(); });
   aturSaranKelas();
 
-  // mapel baru: jenis (diniah / umum) ditebak dari namanya, selama belum dipilih sendiri
-  let jenisDipilih = !!lama;
+  // bagian rapor ditebak dari nama & jenjang (Biologi: Paket B umum, Paket C pilihan), selama belum dipilih sendiri
   let raporDipilih = !!(lama && lama.rapor);
-  form.querySelectorAll("[name=jenis]").forEach(r => r.addEventListener("change", () => { jenisDipilih = true; tebakRapor(); }));
   form.querySelectorAll("[name=rapor]").forEach(r => r.addEventListener("change", () => { raporDipilih = true; }));
-  // kelompok rapor ikut ditebak dari nama, jenis & jenjang, selama belum dipilih sendiri
   function tebakRapor() {
     if (raporDipilih) return;
-    const jenis = (form.querySelector("[name=jenis]:checked") || {}).value || "umum";
-    form.querySelector(`[name=rapor][value="${CSS.escape(tebakKelompokRapor(form.nama.value, jenis, form.jenjang ? form.jenjang.value : ""))}"]`).checked = true;
+    const tebakan = tebakKelompokRapor(form.nama.value, "umum", form.jenjang ? form.jenjang.value : "");
+    const pilih = form.querySelector(`[name=rapor][value="${CSS.escape(tebakan)}"]`);
+    if (pilih) pilih.checked = true;
   }
-  form.nama.addEventListener("input", () => {
-    if (!jenisDipilih) {
-      const j = tebakJenis(form.nama.value);
-      form.querySelector(`[name=jenis][value="${CSS.escape(j)}"]`).checked = true;
-    }
-    tebakRapor();
-  });
+  form.nama.addEventListener("input", tebakRapor);
 
   // ustadzah yang dicentang di kelas putra (rombel A) → tidak bisa disimpan
   const peringatan = document.getElementById("peringatanPengampu");
@@ -437,7 +421,9 @@ function formMapel() {
     const baru = simpanMapelData({
       ...(lama || {}),
       id: lama ? lama.id : buatId(),
-      nama, jenjang: f.get("jenjang"), kelas, jenis: f.get("jenis") || "umum", rapor: f.get("rapor") || "umum",
+      nama, jenjang: f.get("jenjang"), kelas, rapor: f.get("rapor") || "umum",
+      // "jenis" ikut pilihan rapor: yang nggak masuk rapor = "diniah" (tanpa nilai), sisanya "umum"
+      jenis: f.get("rapor") === "tidak" ? "diniah" : "umum",
       pengampu, namaPengampu
     });
     pilihJenjang(baru.jenjang);   // daftar mapel langsung nunjukin jenjang mapel yang barusan disimpan

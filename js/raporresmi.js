@@ -20,28 +20,39 @@ function raporResmi(jenjang) {
 }
 
 // ====== KELOMPOK MAPEL DI RAPOR ======
-// field mapel.rapor: "umum" | "pilihan" (Paket C) | "kokurikuler" | "mulok" | "tidak" (nggak masuk rapor PKBM)
+// Satu pilihan di form mapel (mapel.rapor): "umum" | "pilihan" (Paket C) | "mulok" | "tidak".
+// "tidak" = mapel nggak masuk rapor PKBM: cuma buat modul & soal, nggak punya lembar nilai (adaNilai() di nilai.js).
+// Kokurikuler (Pemberdayaan, Keterampilan) bukan mapel: nilainya diisi wali kelas (isianrapor.js),
+// daftar kegiatannya di pengaturan rapor. Mapel lama yang terlanjur "kokurikuler" dianggap "tidak".
 const KELOMPOK_RAPOR = [
   { k: "umum", judul: "Kelompok Mata Pelajaran Umum", label: "Mata pelajaran umum" },
   { k: "pilihan", judul: "Kelompok Mata Pelajaran Pilihan", label: "Mata pelajaran pilihan (Paket C)" },
-  { k: "kokurikuler", judul: "Kokurikuler Muatan Pemberdayaan dan Keterampilan", label: "Kokurikuler (pemberdayaan & keterampilan)" },
+  { k: "kokurikuler", judul: "Kokurikuler Muatan Pemberdayaan dan Keterampilan", label: "", dariWali: true },
   { k: "mulok", judul: "Muatan Lokal", label: "Muatan lokal" },
-  { k: "tidak", judul: "", label: "Tidak masuk rapor PKBM (misal mapel diniah MSU/MSW)" }
+  { k: "tidak", judul: "", label: "Tidak masuk rapor (hanya modul & soal, tanpa nilai)" }
 ];
-// kalau belum diatur: diniah nggak masuk rapor PKBM, pemberdayaan/keterampilan jadi kokurikuler,
+const PILIHAN_RAPOR_FORM = KELOMPOK_RAPOR.filter(x => !x.dariWali);
+// tebakan buat mapel yang belum diatur: kitab/diniah & kegiatan kokurikuler nggak masuk rapor,
 // Paket C: mapel peminatan (Biologi, Ekonomi, Bahasa Arab, ...) jadi pilihan; Paket B: Bahasa Arab jadi muatan lokal
 const MAPEL_PILIHAN = /biologi|fisika|kimia|ekonomi|sosiologi|geografi|antropologi|informatika|bahasa\s*arab|lanjut/i;
 function tebakKelompokRapor(nama, jenis, jenjang) {
+  const n = nama || "";
+  if (/pemberdayaan|ke?trampilan|keterampilan/i.test(n)) return "tidak";
   if (jenis === "diniah") return "tidak";
-  if (/pemberdayaan|ke?trampilan|keterampilan/i.test(nama || "")) return "kokurikuler";
-  if (/muatan\s*lokal|mulok/i.test(nama || "")) return "mulok";
-  if (jenjang === "Paket C" && MAPEL_PILIHAN.test(nama || "")) return "pilihan";
-  if (jenjang === "Paket B" && /bahasa\s*arab/i.test(nama || "")) return "mulok";   // Bahasa Arab Paket B: muatan lokal
+  if (/muatan\s*lokal|mulok/i.test(n)) return "mulok";
+  if (jenjang === "Paket C" && MAPEL_PILIHAN.test(n)) return "pilihan";
+  if (jenjang === "Paket B" && /bahasa\s*arab/i.test(n)) return "mulok";
+  if (typeof POLA_DINIAH !== "undefined" && POLA_DINIAH.test(n)) return "tidak";
   return "umum";
 }
 function kelompokRapor(m) {
-  const k = KELOMPOK_RAPOR.some(x => x.k === m.rapor) ? m.rapor : tebakKelompokRapor(m.nama, jenisMapel(m), m.jenjang);
-  return k === "pilihan" && m.jenjang !== "Paket C" ? "umum" : k;   // kelompok pilihan cuma ada di Paket C
+  const r = m && m.rapor;
+  if (r === "kokurikuler") return "tidak";
+  if (PILIHAN_RAPOR_FORM.some(x => x.k === r)) return r === "pilihan" && m.jenjang !== "Paket C" ? "umum" : r;
+  // mapel lama tanpa pilihan: yang dulu "diniah" nggak masuk rapor
+  if (jenisMapel(m) === "diniah") return "tidak";
+  const k = tebakKelompokRapor(m.nama, "umum", m.jenjang);
+  return k === "pilihan" && m.jenjang !== "Paket C" ? "umum" : k;
 }
 
 // urutan mapel umum seperti di rapor resmi; yang nggak dikenal di belakang, urut nama
@@ -85,9 +96,15 @@ function aturRapor() {
   return {
     kepala: jadiTeks(r.kepala), nipKepala: jadiTeks(r.nipKepala), alamat: jadiTeks(r.alamat),
     tempat: jadiTeks(r.tempat) || "Tulungagung", tanggal: adalahObjek(r.tanggal) ? r.tanggal : {},
-    tanggalAkhir: adalahObjek(r.tanggalAkhir) ? r.tanggalAkhir : {}
+    tanggalAkhir: adalahObjek(r.tanggalAkhir) ? r.tanggalAkhir : {},
+    kokurikuler: Array.isArray(r.kokurikuler) ? r.kokurikuler.map(jadiTeks).filter(Boolean).slice(0, 8) : KOKURIKULER_BAWAAN
   };
 }
+// kegiatan kokurikuler di rapor (ikut contoh rapor sekolah); TU bisa ganti di pengaturan rapor
+const KOKURIKULER_BAWAAN = ["Pemberdayaan", "Keterampilan Komputer Perkantoran"];
+// nilai & capaian kokurikuler disimpan di peta capaian isian rapor (isianrapor.js), kuncinya:
+const kunciCapaianKo = (nama) => `ko:${nama}`;
+const kunciNilaiKo = (nama) => `kn:${nama}`;
 // kelas: kelas siswa di semester itu. Kelas akhir (9 & 12) Genap pakai tanggalAkhir kalau diisi.
 function tanggalRapor(sem, kelas) {
   const a = aturRapor();
@@ -110,6 +127,9 @@ function htmlPengaturanRapor(sem) {
       <label>Tanggal rapor ${aman(namaSemester(sem))} <input name="tanggal" type="date" value="${aman(tgl)}"></label>
       ${sem.semester === "Genap" ? `<label>Tanggal rapor kelas 9 &amp; 12 (kelas akhir) <input name="tanggalAkhir" type="date" value="${aman(a.tanggalAkhir[kunciSemester(sem)] || "")}">
         <small>Kosongkan jika sama dengan tanggal di atas.</small></label>` : ""}
+      <label>Kegiatan kokurikuler (satu per baris)
+        <textarea name="kokurikuler" rows="3" maxlength="400">${aman(a.kokurikuler.join("\n"))}</textarea>
+        <small>Nilai dan capaiannya diisi wali kelas.</small></label>
       <div class="baris-tombol">
         <button type="submit" class="tombol-utama">Simpan</button>
         <span class="tersimpan" id="tersimpanAturRapor" role="status"></span>
@@ -134,7 +154,8 @@ function pasangPengaturanRapor(sem) {
     }
     const rapor = {
       kepala: f.get("kepala").trim(), nipKepala: f.get("nipKepala").trim(),
-      alamat: f.get("alamat").trim(), tempat: f.get("tempat").trim() || "Tulungagung", tanggal, tanggalAkhir
+      alamat: f.get("alamat").trim(), tempat: f.get("tempat").trim() || "Tulungagung", tanggal, tanggalAkhir,
+      kokurikuler: String(f.get("kokurikuler") || "").split("\n").map(x => x.trim().slice(0, 80)).filter(Boolean).slice(0, 8)
     };
     simpanLembaga({ ...toko.lembaga, rapor });
     document.getElementById("tersimpanAturRapor").textContent = "Tersimpan";
@@ -192,8 +213,14 @@ function htmlLembarRaporResmi(santri, sem) {
 
   // nilai: Umum, Pilihan (Paket C), Kokurikuler, Muatan lokal (nomornya nyambung)
   let no = 1;
+  // kokurikuler: bukan mapel, nilai & capaiannya dari isian wali kelas (kunci "kn:" / "ko:" di peta capaian)
+  const cap = adalahObjek(isian.capaian) ? isian.capaian : {};
+  const barisKo = atur.kokurikuler.map(nama => {
+    const n = Number(jadiTeks(cap[kunciNilaiKo(nama)]).replace(",", "."));
+    return { mapel: { id: kunciCapaianKo(nama), nama }, kelompok: "kokurikuler", akhir: jadiTeks(cap[kunciNilaiKo(nama)]) !== "" && Number.isFinite(n) ? n : null };
+  });
   for (const g of KELOMPOK_RAPOR.filter(x => x.k !== "tidak")) {
-    const isi = baris.filter(b => b.kelompok === g.k);
+    const isi = g.k === "kokurikuler" ? barisKo : baris.filter(b => b.kelompok === g.k);
     if (!isi.length && g.k !== "umum") continue;
     h += `<table class="tabel-rapor-resmi">
       <colgroup><col class="kol-no"><col class="kol-mapel"><col class="kol-nilai"><col></colgroup>

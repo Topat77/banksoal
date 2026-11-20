@@ -392,14 +392,14 @@ function tugasHariIni(diampu, sem) {
     const kelas = `${mp.nama} ${mp.kelas}`;
     // 1. nilai yang udah mulai diisi tapi belum lengkap: lanjutkan
     const separuh = g.kolom.find(x => x.isi > 0 && x.isi < g.santri.length);
-    if (separuh) tugas.push({ urut: 1, ikon: "nilai", judul: `Lanjutkan isi nilai ${separuh.k.label}`, ket: `${kelas} · ${separuh.isi} dari ${g.santri.length} siswa`, ke: { layar: "nilai", mapelId: mp.id, semester: kunciSemester(sem), kolomNilai: separuh.k.id } });
+    if (separuh && adaNilai(mp)) tugas.push({ urut: 1, ikon: "nilai", judul: `Lanjutkan isi nilai ${separuh.k.label}`, ket: `${kelas} · ${separuh.isi} dari ${g.santri.length} siswa`, ke: { layar: "nilai", mapelId: mp.id, semester: kunciSemester(sem), kolomNilai: separuh.k.id } });
     // 2. belum punya modul semester ini
     if (!g.modul.length) tugas.push({ urut: 2, ikon: "modul", judul: "Buat modul ajar pertama", ket: `${kelas} · ${namaSemester(sem)}`, ke: { layar: "mapel", mapelId: mp.id, semester: kunciSemester(sem), tab: "modul" } });
     // 3. pertemuan yang belum ada soalnya
     const kosong = g.tanpaSoal[0];
     if (kosong) tugas.push({ urut: 3, ikon: "soal", judul: `Tambah soal pertemuan ${kosong.nomor}`, ket: `${kosong.modul.judul} · ${kelas}`, ke: { layar: "modul", mapelId: mp.id, modId: kosong.modul.id, semester: kunciSemester(sem) } });
     // 4. ada siswa tapi lembar nilai belum ada
-    if (g.santri.length && !g.lembar) tugas.push({ urut: 4, ikon: "nilai", judul: "Mulai isi nilai", ket: `${kelas} · ${g.santri.length} siswa`, ke: { layar: "nilai", mapelId: mp.id, semester: kunciSemester(sem), kolomNilai: null } });
+    if (g.santri.length && !g.lembar && adaNilai(mp)) tugas.push({ urut: 4, ikon: "nilai", judul: "Mulai isi nilai", ket: `${kelas} · ${g.santri.length} siswa`, ke: { layar: "nilai", mapelId: mp.id, semester: kunciSemester(sem), kolomNilai: null } });
   }
   return tugas.sort((a, b) => a.urut - b.urut).slice(0, 3);
 }
