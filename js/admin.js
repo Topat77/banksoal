@@ -22,7 +22,7 @@ function indukLayarTU() {
   if (L === "formMapel" && posisi.dariMapelTU) return "mapelNamaTU";
   if (L === "mapel" && posisi.namaMapelTU) {
     const mp = cariMapel(posisi.mapelId);
-    if (mp && mp.nama === posisi.namaMapelTU) return "mapelNamaTU";
+    if (mp && mp.nama === posisi.namaMapelTU && (!posisi.tingkatTU || tingkatKelas(mp.kelas) === posisi.tingkatTU)) return "mapelNamaTU";
   }
   return INDUK_TU[L] || null;
 }
@@ -83,21 +83,28 @@ function layarMapelTU() {
   if (mapelJenjang.length === 0) {
     h += `<p class="kosong">Belum ada mapel ${aman(jenjang)}.</p>`;
   }
-  for (const k of kelompokJenis(mapelJenjang)) {
-    // satu kotak = satu nama mapel (misal "Fiqih" di 7A1, 7B1, 8A1)
-    const perNama = new Map();
-    for (const m of k.mapel) {
-      if (!perNama.has(m.nama)) perNama.set(m.nama, []);
-      perNama.get(m.nama).push(m);
-    }
-    h += `<h2 class="subjudul">Mapel ${namaJenis(k.jenis).toLowerCase()} <small>${perNama.size} mapel</small></h2><div class="ubin-mapel-daftar">`;
-    for (const [nama, daftar] of [...perNama.entries()].sort((a, b) => a[0].localeCompare(b[0], "id"))) {
+  // dikelompokkan per tingkat (Kelas 7, Kelas 8, ...); satu kotak = satu mapel di tingkat itu (misal Matematika 7A1, 7B1)
+  const perTingkat = new Map();
+  for (const m of mapelJenjang) {
+    const t = tingkatKelas(m.kelas);
+    if (!perTingkat.has(t)) perTingkat.set(t, new Map());
+    const perNama = perTingkat.get(t);
+    if (!perNama.has(m.nama)) perNama.set(m.nama, []);
+    perNama.get(m.nama).push(m);
+  }
+  const urutTingkat = [...perTingkat.keys()].sort((a, b) => (Number(a) || 999) - (Number(b) || 999) || String(a).localeCompare(String(b), "id"));
+  for (const t of urutTingkat) {
+    const perNama = perTingkat.get(t);
+    h += `<h2 class="subjudul">${/^\d+$/.test(t) ? `Kelas ${aman(t)}` : aman(t)} <small>${perNama.size} mapel</small></h2><div class="ubin-mapel-daftar">`;
+    for (const [nama, daftar] of [...perNama.entries()].sort((a, b) => urutMapelRapor({ nama: a[0] }, { nama: b[0] }))) {
+      daftar.sort(bandingKelas);
       const r = ringkasMapelTU(daftar, sem);
       const perhatian = r.tanpaGuru ? `${r.tanpaGuru} kelas belum ada guru` : (r.siap === r.kelas && r.adaModul < r.kelas ? `${r.kelas - r.adaModul} kelas belum ada modul` : "");
       h += `
-        <button class="ubin-mapel" data-nama-mapel="${aman(nama)}">
+        <button class="ubin-mapel" data-nama-mapel="${aman(nama)}" data-tingkat="${aman(t)}">
           <strong dir="auto">${aman(nama)}</strong>
-          <small>${r.kelas} kelas · ${r.guru} guru</small>
+          <small>${aman(daftar.map(m => m.kelas).join(", "))} · ${r.guru} guru</small>
+          ${daftar.every(m => !adaNilai(m)) ? `<span class="tanda tanda-tutup">Tanpa nilai</span>` : ""}
           ${perhatian ? `<span class="tanda tanda-ragu">${aman(perhatian)}</span>` : ""}
         </button>`;
     }
@@ -108,7 +115,7 @@ function layarMapelTU() {
 
   pasangTabJenjang("mapelTU");
   isi.querySelectorAll("[data-ke-tu]").forEach(b => b.onclick = () => pergi(b.dataset.keTu, { dariMapel: false, dariMapelTU: false }));
-  isi.querySelectorAll("[data-nama-mapel]").forEach(b => b.onclick = () => pergi("mapelNamaTU", { namaMapelTU: b.dataset.namaMapel }));
+  isi.querySelectorAll("[data-nama-mapel]").forEach(b => b.onclick = () => pergi("mapelNamaTU", { namaMapelTU: b.dataset.namaMapel, tingkatTU: b.dataset.tingkat || null }));
   document.getElementById("tambahMapel").onclick = () => pergi("formMapel", { mapelEditId: null, dariMapel: false, dariMapelTU: false });
 }
 
@@ -143,13 +150,18 @@ function linkWA(teks) {
   return `https://wa.me/?text=${encodeURIComponent(teks)}`;
 }
 
+// mapel bernama sama di satu jenjang (+ satu tingkat kalau dipilih dari kotak di menu Mapel)
+function mapelNamaTU(jenjang, nama, tingkat) {
+  return toko.mapel.filter(m => m.jenjang === jenjang && m.nama === nama && (!tingkat || tingkatKelas(m.kelas) === tingkat));
+}
 function layarMapelNamaTU() {
   wajibKurikulum();
   const nama = posisi.namaMapelTU || "";
   const jenjang = jenjangAktif();
-  judul.textContent = nama || "Mapel";
+  const t = posisi.tingkatTU;
+  judul.textContent = nama ? `${nama}${t ? (/^\d+$/.test(t) ? ` kelas ${t}` : ` ${t}`) : ""}` : "Mapel";
   if (!dataDasarSiap()) return tampilMemuat(nama);
-  const daftar = toko.mapel.filter(m => m.jenjang === jenjang && m.nama === nama).sort(bandingKelas);
+  const daftar = mapelNamaTU(jenjang, nama, t).sort(bandingKelas);
   if (daftar.length === 0) throw new DataHilang();
   const pilihanSem = semesterPantauTU(daftar);
   const kunci = posisi.semPantau && pilihanSem.some(x => kunciSemester(x) === posisi.semPantau) ? posisi.semPantau : kunciSemester(semesterSekarang());
@@ -388,20 +400,20 @@ function layarKelasSiswa() {
       const naik = hitungKeputusanKelas(kl.jenjang, kl.kelas, semNaik.tahun);
       const belumSemua = genap && naik.total && naik.sudah < naik.total;
       h += `
-        <article class="kartu-kelas-tu">
+        <article class="kartu-kelas-tu" data-kelas-tu="${aman(kunci)}">
           <div class="kepala-kelas-tu">
-            <span><strong>Kelas ${aman(kl.kelas)}</strong><small>Wali kelas: ${wali ? aman(wali.nama) : "belum dipilih"}</small></span>
+            <span><strong>Kelas ${aman(kl.kelas)}</strong></span>
             <span class="angka-kecil"><span><b>${siswa.length}</b> siswa</span><span><b>${mapel.length}</b> mapel</span></span>
           </div>
+          ${htmlPilihWali(kl.jenjang, kl.kelas, tahun)}
           <div class="baris-tombol aksi-kelas-tu">
             <button class="${belumSemua ? "tombol-utama" : "tombol-kedua"}" data-naik-kelas="${aman(kunci)}">Naik kelas${genap && naik.total ? ` <small>${naik.sudah}/${naik.total} diputuskan</small>` : ""}</button>
             <button class="tombol-kedua" data-ubah-siswa="${aman(kunci)}">Ubah daftar siswa</button>
             <button class="tombol-kedua" data-rapor="${aman(kunci)}">Rapor</button>
           </div>
           <details class="kartu-kelas" data-kartu-kelas="${aman(kunci)}" ${posisi.kelasTerbuka === kunci ? "open" : ""}>
-            <summary><span><strong>Siswa, wali kelas &amp; guru</strong></span></summary>
+            <summary><span><strong>Daftar siswa &amp; guru</strong></span></summary>
             <div class="isi-kartu-kelas">
-              ${htmlPilihWali(kl.jenjang, kl.kelas, tahun)}
               <h3>Daftar siswa</h3>
               ${siswa.length ? `<ol class="daftar-siswa-kelas">${siswa.map((s, i) => `<li><span class="nomor-santri">${aman(noAbsen(s, i + 1))}</span><span dir="auto">${aman(s.nama)}</span>${s.nis ? `<small>${aman(s.nis)}</small>` : ""}</li>`).join("")}</ol>`
                 : `<p class="info">Belum ada siswa.</p>`}

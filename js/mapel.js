@@ -38,7 +38,7 @@ function layarMapel() {
     <div class="tab" role="tablist">
       <button role="tab" data-tab="modul" class="${tab === "modul" ? "aktif" : ""}" aria-selected="${tab === "modul"}">Modul ajar <span>${semuaModul.length}</span></button>
       <button role="tab" data-tab="sumatif" class="${tab === "sumatif" ? "aktif" : ""}" aria-selected="${tab === "sumatif"}">Sumatif <span>${semuaSum.length}</span></button>
-      <button role="tab" data-tab="nilai" class="${tab === "nilai" ? "aktif" : ""}" aria-selected="${tab === "nilai"}">Nilai</button>
+      ${adaNilai(mp) ? `<button role="tab" data-tab="nilai" class="${tab === "nilai" ? "aktif" : ""}" aria-selected="${tab === "nilai"}">Nilai</button>` : ""}
     </div>`;
 
   // modul & sumatif dari kelas lain di grup yang sama (misal 7A2, 7B1 buat 7A1)
@@ -95,7 +95,7 @@ function layarMapel() {
         html += `<div class="daftar">${daftar.map((m, i) => barisModul(m, i + 1, false)).join("")}</div>`;
       }
     }
-  } else if (tab === "nilai") {
+  } else if (tab === "nilai" && adaNilai(mp)) {
     html += htmlTabNilai(mp, sem);
   } else {
     html += htmlKartuUAS(mp, sem);

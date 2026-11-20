@@ -1,13 +1,14 @@
 // =====================================================
-//  bobot.js — layar bobot nilai (khusus admin), satu set per jenjang & jenis mapel.
+//  bobot.js — layar bobot nilai (khusus admin), satu set per jenjang.
+//  (dulu ada set "diniah" juga; sekarang mapel diniah / tanpa rapor nggak punya nilai, jadi cuma "umum")
 //  Konstanta & hitungannya (KELOMPOK_NILAI, bobotUntuk, hitungNilai) ada di nilai.js.
 // =====================================================
-const JENIS_MAPEL = ["umum", "diniah"];
+const JENIS_MAPEL = ["umum"];
 
 function layarBobot() {
   wajibKurikulum();
   judul.textContent = "Bobot nilai";
-  jejak.textContent = "Berlaku untuk semua mapel sesuai jenjang & jenisnya";
+  jejak.textContent = "Berlaku untuk semua mapel yang masuk rapor, per jenjang";
 
   const jenjang = JENJANG_PKBM;
   const isian = {};
@@ -20,11 +21,11 @@ function layarBobot() {
 
   let h = `<p class="info">Nilai akhir tiap mapel = gabungan rata-rata tiap kelompok sesuai bobot di bawah. Kelompok yang bobotnya 0% tidak dihitung. Kehadiran dihitung otomatis dari hadir ÷ (hadir + sakit + izin) × 100. Ustadz/ustadzah hanya bisa melihat bobot ini.</p>`;
   for (const j of jenjang) {
-    h += `<h2 class="subjudul">${aman(j)}</h2><div class="grid-bobot">`;
+    h += `<div class="grid-bobot">`;
     for (const t of JENIS_MAPEL) {
       h += `
         <section class="bagian kartu-bobot" data-jenis="${aman(kunci(j, t))}">
-          <h2>Mapel ${namaJenis(t).toLowerCase()} <small>${jumlahMapel(j, t)} mapel</small></h2>
+          <h2>${aman(j)} <small>${jumlahMapel(j, t)} mapel</small></h2>
           <div class="isian-bobot">
             ${KELOMPOK_NILAI.map(g => `<label>${g.nama}<span class="kotak-persen"><input type="number" inputmode="numeric" min="0" max="100" data-jenjang="${aman(j)}" data-jenis="${t}" data-bobot="${g.k}" value="${isian[j][t][g.k]}"><span>%</span></span></label>`).join("")}
           </div>
@@ -66,7 +67,7 @@ function layarBobot() {
   document.getElementById("simpanBobot").onclick = async () => {
     if (!tulisTotal() && !(await tanyaYakin("Total bobot belum tepat 100%. Tetap simpan?\n\n(Nilai akhir tetap dihitung adil: dibagi total bobot yang ada.)", { ya: "Tetap simpan" }))) return;
     const data = { diubah: Date.now(), diubahOleh: uidSaya() };
-    for (const j of jenjang) data[j] = { umum: { ...isian[j].umum }, diniah: { ...isian[j].diniah } };
+    for (const j of jenjang) data[j] = { umum: { ...isian[j].umum }, diniah: { ...bobotUntuk(j, "diniah") } };   // set diniah lama dibiarkan
     simpanBobot(data);
     formKotor = false;   // udah disimpan, tetap di layar ini
     pesan.textContent = "Tersimpan";

@@ -34,7 +34,7 @@ function dataAwalCoba() {
     dibuat: jam - 28 * hari
   };
   db["mapel/barab7"] = {
-    nama: "Bahasa Arab", jenjang: "Paket B", kelas: "7A1", jenis: "diniah",
+    nama: "Bahasa Arab", jenjang: "Paket B", kelas: "7A1", jenis: "umum", rapor: "mulok",
     pengampu: ["u-hasan"],
     namaPengampu: { "u-hasan": "Ustadz Hasan" },
     dibuat: jam - 28 * hari
