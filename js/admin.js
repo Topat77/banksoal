@@ -83,7 +83,7 @@ function layarMapelTU() {
   if (mapelJenjang.length === 0) {
     h += `<p class="kosong">Belum ada mapel ${aman(jenjang)}.</p>`;
   }
-  // dikelompokkan per tingkat (Kelas 7, Kelas 8, ...); satu kotak = satu mapel di tingkat itu (misal Matematika 7A1, 7B1)
+  // dikelompokkan per tingkat (Kelas 7, Kelas 8, ...), di dalamnya urut abjad; satu kotak = satu mapel di tingkat itu (misal Matematika 7A1, 7B1)
   const perTingkat = new Map();
   for (const m of mapelJenjang) {
     const t = tingkatKelas(m.kelas);
@@ -96,7 +96,7 @@ function layarMapelTU() {
   for (const t of urutTingkat) {
     const perNama = perTingkat.get(t);
     h += `<h2 class="subjudul">${/^\d+$/.test(t) ? `Kelas ${aman(t)}` : aman(t)} <small>${perNama.size} mapel</small></h2><div class="ubin-mapel-daftar">`;
-    for (const [nama, daftar] of [...perNama.entries()].sort((a, b) => urutMapelRapor({ nama: a[0] }, { nama: b[0] }))) {
+    for (const [nama, daftar] of [...perNama.entries()].sort((a, b) => a[0].localeCompare(b[0], "id", { sensitivity: "base" }))) {
       daftar.sort(bandingKelas);
       const r = ringkasMapelTU(daftar, sem);
       const perhatian = r.tanpaGuru ? `${r.tanpaGuru} kelas belum ada guru` : (r.siap === r.kelas && r.adaModul < r.kelas ? `${r.kelas - r.adaModul} kelas belum ada modul` : "");
