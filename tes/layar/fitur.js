@@ -52,6 +52,16 @@ async function fitur() {
     await page.evaluate(() => { const s = document.querySelector('[data-kelas-tu="Paket B|7A2"] select[data-wali]'); s.value = "u-yusuf"; s.dispatchEvent(new Event("change")); });
     await page.waitForTimeout(500);
     harap("wali 7A2 tersimpan", await page.evaluate(() => (waliKelas(semesterSekarang().tahun, idKelas("Paket B", "7A2")) || {}).uid), "u-yusuf");
+    // menu Mapel TU: dikelompokkan per tingkat kelas, satu kotak = satu mapel di tingkat itu
+    await ke(page, "mapelTU", {}, 600);
+    boleh("menu Mapel: ada kelompok Kelas 7", await page.$$eval("h2.subjudul", h => h.some(x => /^Kelas 7\b/.test(x.textContent.trim()))));
+    const kotakBI7 = await page.$('[data-nama-mapel="Bahasa Indonesia"][data-tingkat="7"]');
+    boleh("kotak Bahasa Indonesia kelas 7 ada", kotakBI7);
+    if (kotakBI7) {
+      await kotakBI7.click(); await page.waitForTimeout(600);
+      const kelasDiHalaman = await page.$$eval(".kartu-pantau-judul strong", x => x.map(e => e.textContent.trim()));
+      boleh("isi kotak cuma kelas 7", kelasDiHalaman.length > 0 && kelasDiHalaman.every(k => /^Kelas 7/.test(k)));
+    }
     await ke(page, "formMapel", { mapelEditId: "bindo7", dariMapel: false, dariMapelTU: true, namaMapelTU: "Bahasa Indonesia" });
     await page.evaluate(() => { const c = document.querySelector('[name="pengampu"][value="u-aminah"]'); c.checked = true; c.dispatchEvent(new Event("change")); document.getElementById("form").requestSubmit(); });
     await page.waitForTimeout(500);

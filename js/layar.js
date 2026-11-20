@@ -116,7 +116,7 @@ function mintaIsiLayarTU() {
   const edit = posisi.layar === "formMapel" && posisi.mapelEditId && cariMapel(posisi.mapelEditId);
   if (edit) ids.push(edit.id);
   if (posisi.uasGrup) ids.push(...mapelGrup(posisi.uasGrup).map(x => x.id));
-  if (posisi.layar === "mapelNamaTU") ids.push(...toko.mapel.filter(m => m.jenjang === jenjangAktif() && m.nama === posisi.namaMapelTU).map(m => m.id));
+  if (posisi.layar === "mapelNamaTU") ids.push(...mapelNamaTU(jenjangAktif(), posisi.namaMapelTU, posisi.tingkatTU).map(m => m.id));
   mintaIsiMapel(ids);
 }
 

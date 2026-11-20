@@ -428,7 +428,7 @@ function formMapel() {
     });
     pilihJenjang(baru.jenjang);   // daftar mapel langsung nunjukin jenjang mapel yang barusan disimpan
     if (posisi.dariMapel) pergi("mapel", { mapelId: baru.id });
-    else if (posisi.dariMapelTU && toko.mapel.some(m => m.jenjang === baru.jenjang && m.nama === posisi.namaMapelTU)) pergi("mapelNamaTU");
+    else if (posisi.dariMapelTU && mapelNamaTU(baru.jenjang, posisi.namaMapelTU, posisi.tingkatTU).length) pergi("mapelNamaTU");
     else pergi("mapelTU");
   };
 
