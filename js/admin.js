@@ -96,7 +96,7 @@ function layarMapelTU() {
   for (const t of urutTingkat) {
     const perNama = perTingkat.get(t);
     h += `<h2 class="subjudul">${/^\d+$/.test(t) ? `Kelas ${aman(t)}` : aman(t)} <small>${perNama.size} mapel</small></h2><div class="ubin-mapel-daftar">`;
-    for (const [nama, daftar] of [...perNama.entries()].sort((a, b) => a[0].localeCompare(b[0], "id", { sensitivity: "base" }))) {
+    for (const [nama, daftar] of [...perNama.entries()].sort((a, b) => String(a[0] ?? "").localeCompare(String(b[0] ?? ""), "id", { sensitivity: "base" }))) {
       daftar.sort(bandingKelas);
       const r = ringkasMapelTU(daftar, sem);
       const perhatian = r.tanpaGuru ? `${r.tanpaGuru} kelas belum ada guru` : (r.siap === r.kelas && r.adaModul < r.kelas ? `${r.kelas - r.adaModul} kelas belum ada modul` : "");
